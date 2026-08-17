@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { logIn } from "@/app/actions/auth";
+import { logIn, guestSignIn } from "@/app/actions/auth";
 
 export default async function LoginPage({
   searchParams,
@@ -9,7 +9,7 @@ export default async function LoginPage({
   const { error } = await searchParams;
 
   return (
-    <main className="flex flex-1 flex-col items-center justify-center px-6">
+    <main className="flex flex-1 flex-col items-center justify-center px-6 py-10">
       <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-8 shadow-sm">
         <div className="mb-6 text-center">
           <span className="text-5xl">🐵</span>
@@ -57,6 +57,38 @@ export default async function LoginPage({
             Criar conta
           </Link>
         </p>
+
+        <div className="my-6 flex items-center gap-3 text-xs text-muted">
+          <span className="h-px flex-1 bg-border" />
+          ou
+          <span className="h-px flex-1 bg-border" />
+        </div>
+
+        <form action={guestSignIn} className="flex flex-col gap-3">
+          <label className="flex flex-col gap-1 text-sm font-medium text-accent">
+            Só quero entrar rapidinho
+            <input
+              type="text"
+              name="username"
+              required
+              minLength={3}
+              maxLength={24}
+              placeholder="Escolha um nome de macaco"
+              className="rounded-lg border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-secondary"
+            />
+          </label>
+          <button
+            type="submit"
+            className="rounded-full border border-secondary px-4 py-2 font-semibold text-secondary transition hover:bg-secondary/10"
+          >
+            Entrar como convidado
+          </button>
+          <p className="text-center text-xs text-muted">
+            Sem senha, sem email — dá pra criar bando e entrar em call na
+            hora. Mas se você limpar os cookies do navegador, perde o
+            acesso.
+          </p>
+        </form>
       </div>
     </main>
   );

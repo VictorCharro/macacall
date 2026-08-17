@@ -38,6 +38,38 @@ export async function logIn(formData: FormData) {
   redirect("/bandos");
 }
 
+export async function guestSignIn(formData: FormData) {
+  const username = String(formData.get("username")).trim();
+
+  if (username.length < 3) {
+    redirect(
+      `/login?error=${encodeURIComponent("Nome de macaco precisa ter pelo menos 3 letras")}`,
+    );
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.signInAnonymously();
+
+  if (error || !data.user) {
+    redirect(`/login?error=${encodeURIComponent(error?.message ?? "Não deu pra entrar como convidado")}`);
+  }
+
+  const { error: profileError } = await supabase
+    .from("profiles")
+    .insert({ id: data.user.id, username });
+
+  if (profileError) {
+    await supabase.auth.signOut();
+    const message =
+      profileError.code === "23505"
+        ? "Esse nome já está em uso, tenta outro"
+        : profileError.message;
+    redirect(`/login?error=${encodeURIComponent(message)}`);
+  }
+
+  redirect("/bandos");
+}
+
 export async function logOut() {
   const supabase = await createClient();
   await supabase.auth.signOut();
