@@ -82,7 +82,7 @@ export function CallRoom({
           serverUrl={serverUrl}
           connect
           audio
-          video
+          video={false}
           data-lk-theme="default"
           style={{ height: "100%" }}
           onDisconnected={() => router.push(`/bandos/${bandoId}`)}

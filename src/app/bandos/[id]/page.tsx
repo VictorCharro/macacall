@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { InviteLink } from "@/components/InviteLink";
+import { VoiceChannelPresence } from "@/components/VoiceChannelPresence";
 import type { Profile } from "@/lib/types";
 
 export default async function BandoPage({
@@ -68,10 +69,11 @@ export default async function BandoPage({
           </h2>
           <Link
             href={`/bandos/${bando.id}/call`}
-            className="inline-block rounded-full bg-secondary px-6 py-3 font-semibold text-secondary-foreground transition hover:brightness-95"
+            className="mb-5 inline-block rounded-full bg-secondary px-6 py-3 font-semibold text-secondary-foreground transition hover:brightness-95"
           >
             Entrar na chamada
           </Link>
+          <VoiceChannelPresence bandoId={bando.id} />
         </section>
       )}
 
