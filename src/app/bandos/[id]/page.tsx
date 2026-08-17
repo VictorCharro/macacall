@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { InviteLink } from "@/components/InviteLink";
 import type { Profile } from "@/lib/types";
 
 export default async function BandoPage({
@@ -23,6 +25,11 @@ export default async function BandoPage({
     .maybeSingle();
 
   if (!bando) notFound();
+
+  const headerList = await headers();
+  const host = headerList.get("host") ?? "macacall.vercel.app";
+  const protocol = host.includes("localhost") ? "http" : "https";
+  const inviteUrl = `${protocol}://${host}/join/${bando.invite_code}`;
 
   const { data: channel } = await supabase
     .from("channels")
@@ -50,9 +57,7 @@ export default async function BandoPage({
           </Link>
           <h1 className="text-2xl font-bold text-accent">{bando.name} 🐒</h1>
         </div>
-        <div className="rounded-full border border-border bg-card px-4 py-2 text-sm text-muted">
-          Convite: <span className="font-mono font-semibold text-accent">{bando.invite_code}</span>
-        </div>
+        <InviteLink url={inviteUrl} />
       </header>
 
       {channel && (

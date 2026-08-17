@@ -3,6 +3,16 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
+function safeNext(next: FormDataEntryValue | null): string {
+  const value = String(next ?? "");
+  return value.startsWith("/") ? value : "/bandos";
+}
+
+function safeErrorPage(page: FormDataEntryValue | null): string {
+  const value = String(page ?? "");
+  return value.startsWith("/") ? value : "/login";
+}
+
 export async function signUp(formData: FormData) {
   const email = String(formData.get("email"));
   const password = String(formData.get("password"));
@@ -24,6 +34,7 @@ export async function signUp(formData: FormData) {
 export async function logIn(formData: FormData) {
   const email = String(formData.get("email"));
   const password = String(formData.get("password"));
+  const next = safeNext(formData.get("next"));
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({
@@ -35,15 +46,17 @@ export async function logIn(formData: FormData) {
     redirect(`/login?error=${encodeURIComponent(error.message)}`);
   }
 
-  redirect("/bandos");
+  redirect(next);
 }
 
 export async function guestSignIn(formData: FormData) {
   const username = String(formData.get("username")).trim();
+  const next = safeNext(formData.get("next"));
+  const errorPage = safeErrorPage(formData.get("errorPage"));
 
   if (username.length < 3) {
     redirect(
-      `/login?error=${encodeURIComponent("Nome de macaco precisa ter pelo menos 3 letras")}`,
+      `${errorPage}?error=${encodeURIComponent("Nome de macaco precisa ter pelo menos 3 letras")}`,
     );
   }
 
@@ -51,7 +64,9 @@ export async function guestSignIn(formData: FormData) {
   const { data, error } = await supabase.auth.signInAnonymously();
 
   if (error || !data.user) {
-    redirect(`/login?error=${encodeURIComponent(error?.message ?? "Não deu pra entrar como convidado")}`);
+    redirect(
+      `${errorPage}?error=${encodeURIComponent(error?.message ?? "Não deu pra entrar como convidado")}`,
+    );
   }
 
   const { error: profileError } = await supabase
@@ -64,10 +79,10 @@ export async function guestSignIn(formData: FormData) {
       profileError.code === "23505"
         ? "Esse nome já está em uso, tenta outro"
         : profileError.message;
-    redirect(`/login?error=${encodeURIComponent(message)}`);
+    redirect(`${errorPage}?error=${encodeURIComponent(message)}`);
   }
 
-  redirect("/bandos");
+  redirect(next);
 }
 
 export async function logOut() {
