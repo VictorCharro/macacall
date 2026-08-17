@@ -47,6 +47,54 @@ export async function createBando(formData: FormData) {
   redirect(`/bandos/${data.id}`);
 }
 
+export async function renameBando(bandoId: string, formData: FormData) {
+  const name = String(formData.get("name")).trim();
+
+  if (name.length < 2) {
+    redirect(`/bandos?error=${encodeURIComponent("Dê um nome ao seu bando")}`);
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const { error } = await supabase
+    .from("bandos")
+    .update({ name })
+    .eq("id", bandoId)
+    .eq("owner_id", user.id);
+
+  if (error) {
+    redirect(`/bandos?error=${encodeURIComponent(error.message)}`);
+  }
+
+  redirect("/bandos");
+}
+
+export async function deleteBando(bandoId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const { error } = await supabase
+    .from("bandos")
+    .delete()
+    .eq("id", bandoId)
+    .eq("owner_id", user.id);
+
+  if (error) {
+    redirect(`/bandos?error=${encodeURIComponent(error.message)}`);
+  }
+
+  redirect("/bandos");
+}
+
 export async function joinBandoByCode(formData: FormData) {
   const code = String(formData.get("code")).trim().toUpperCase();
   await joinBando(code);

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createBando, joinBandoByCode } from "@/app/actions/bandos";
 import { logOut } from "@/app/actions/auth";
+import { BandoMenu } from "@/components/BandoMenu";
 import type { Bando } from "@/lib/types";
 
 export default async function BandosPage({
@@ -67,10 +68,13 @@ export default async function BandosPage({
         ) : (
           <ul className="flex flex-col gap-2">
             {bandos.map((bando) => (
-              <li key={bando.id}>
+              <li
+                key={bando.id}
+                className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-3 shadow-sm transition hover:border-primary"
+              >
                 <Link
                   href={`/bandos/${bando.id}`}
-                  className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3 shadow-sm transition hover:border-primary"
+                  className="flex flex-1 items-center justify-between"
                 >
                   <span className="font-semibold text-accent">
                     {bando.name}
@@ -79,6 +83,9 @@ export default async function BandosPage({
                     código: {bando.invite_code}
                   </span>
                 </Link>
+                {bando.owner_id === user.id && (
+                  <BandoMenu bandoId={bando.id} bandoName={bando.name} />
+                )}
               </li>
             ))}
           </ul>
