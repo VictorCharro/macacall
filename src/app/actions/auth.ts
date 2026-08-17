@@ -61,20 +61,35 @@ export async function guestSignIn(formData: FormData) {
   }
 
   const supabase = await createClient();
-  const { data, error } = await supabase.auth.signInAnonymously();
 
-  if (error || !data.user) {
-    redirect(
-      `${errorPage}?error=${encodeURIComponent(error?.message ?? "Não deu pra entrar como convidado")}`,
-    );
+  const {
+    data: { user: existingUser },
+  } = await supabase.auth.getUser();
+
+  let user = existingUser;
+  let isNewUser = false;
+
+  if (!user) {
+    const { data, error } = await supabase.auth.signInAnonymously();
+
+    if (error || !data.user) {
+      redirect(
+        `${errorPage}?error=${encodeURIComponent(error?.message ?? "Não deu pra entrar como convidado")}`,
+      );
+    }
+
+    user = data.user;
+    isNewUser = true;
   }
 
   const { error: profileError } = await supabase
     .from("profiles")
-    .insert({ id: data.user.id, username });
+    .upsert({ id: user.id, username }, { onConflict: "id" });
 
   if (profileError) {
-    await supabase.auth.signOut();
+    if (isNewUser) {
+      await supabase.auth.signOut();
+    }
     const message =
       profileError.code === "23505"
         ? "Esse nome já está em uso, tenta outro"
