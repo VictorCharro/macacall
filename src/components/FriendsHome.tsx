@@ -167,14 +167,20 @@ export function FriendsHome({
                       <FriendRow key={f.friendshipId} friend={f}>
                         <button
                           type="button"
-                          onClick={() => respondFriendRequest(f.friendshipId, true)}
+                          onClick={async () => {
+                            await respondFriendRequest(f.friendshipId, true);
+                            router.refresh();
+                          }}
                           className="rounded-full bg-secondary px-3 py-1.5 text-xs font-semibold text-secondary-foreground hover:brightness-95"
                         >
                           Aceitar
                         </button>
                         <button
                           type="button"
-                          onClick={() => respondFriendRequest(f.friendshipId, false)}
+                          onClick={async () => {
+                            await respondFriendRequest(f.friendshipId, false);
+                            router.refresh();
+                          }}
                           className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-muted hover:bg-border/40"
                         >
                           Recusar
@@ -197,7 +203,10 @@ export function FriendsHome({
                       <FriendRow key={f.friendshipId} friend={f}>
                         <button
                           type="button"
-                          onClick={() => removeFriend(f.friendshipId)}
+                          onClick={async () => {
+                            await removeFriend(f.friendshipId);
+                            router.refresh();
+                          }}
                           className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-muted hover:bg-border/40"
                         >
                           Cancelar
@@ -251,6 +260,7 @@ function ConditionalFriendRow({
   filterOnline?: boolean;
 }) {
   const status = useEffectiveStatus(friend.id);
+  const router = useRouter();
 
   if (filterOnline && !status) return null;
 
@@ -268,7 +278,10 @@ function ConditionalFriendRow({
       </form>
       <button
         type="button"
-        onClick={() => removeFriend(friend.friendshipId)}
+        onClick={async () => {
+          await removeFriend(friend.friendshipId);
+          router.refresh();
+        }}
         title="Remover amigo"
         aria-label="Remover amigo"
         className="flex h-8 w-8 items-center justify-center rounded-full bg-background text-muted transition hover:bg-danger/15 hover:text-danger"
