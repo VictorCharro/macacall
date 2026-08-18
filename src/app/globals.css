@@ -1,30 +1,24 @@
 @import "tailwindcss";
 
 :root {
-  --background: #111413;
-  --foreground: #e4e4e7;
-  --card: #161c18;
-  --card-2: #1a231d;
-  --card-3: #121614;
-  --border: #232c25;
-  --border-soft: #1f2722;
-  --primary: #f59e0b;
-  --primary-foreground: #09090b;
-  --secondary: #059669;
+  --background: #fff8e7;
+  --foreground: #2b1c12;
+  --card: #fffdf6;
+  --border: #e8d9ad;
+  --primary: #ffb703;
+  --primary-foreground: #2b1c12;
+  --secondary: #2d6a4f;
   --secondary-foreground: #ffffff;
-  --accent: #f4f4f5;
-  --danger: #e11d48;
-  --muted: #a1a1aa;
+  --accent: #6f4e37;
+  --danger: #d64545;
+  --muted: #8a7758;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
-  --color-card-2: var(--card-2);
-  --color-card-3: var(--card-3);
   --color-border: var(--border);
-  --color-border-soft: var(--border-soft);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
@@ -35,6 +29,16 @@
   --font-sans: var(--font-fredoka);
 }
 
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #1b140d;
+    --foreground: #fdf3dc;
+    --card: #241b12;
+    --border: #3a2c1a;
+    --muted: #b8a67f;
+  }
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
@@ -42,13 +46,13 @@ body {
 }
 
 .macacall-call {
-  --lk-bg: #111413;
-  --lk-bg2: #161c18;
-  --lk-bg3: #1f2722;
-  --lk-accent-bg: #f59e0b;
-  --lk-accent-fg: #09090b;
-  --lk-danger: #e11d48;
-  --lk-fg: #e4e4e7;
+  --lk-bg: #1b140d;
+  --lk-bg2: #241b12;
+  --lk-bg3: #3a2c1a;
+  --lk-accent-bg: #ffb703;
+  --lk-accent-fg: #2b1c12;
+  --lk-danger: #d64545;
+  --lk-fg: #fdf3dc;
 }
 
 @keyframes overlay-in {

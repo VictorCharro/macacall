@@ -12,18 +12,6 @@ import {
 } from "@livekit/components-react";
 import { Track, type Participant } from "livekit-client";
 import type { TrackReference } from "@livekit/components-core";
-import {
-  Mic,
-  MicOff,
-  Video,
-  VideoOff,
-  Monitor,
-  MonitorOff,
-  MessageSquare,
-  PhoneOff,
-  Maximize2,
-  Minimize2,
-} from "lucide-react";
 import { useCall } from "@/components/CallProvider";
 
 export function VoiceChannelView({
@@ -192,19 +180,10 @@ export function CallInterface({
       }
     >
       {!compact && (
-        <header className="flex h-12 items-center justify-between border-b border-border-soft bg-card-3/90 px-4 backdrop-blur">
-          <div className="flex items-center gap-1.5 rounded-full border border-secondary/30 bg-secondary/10 px-2.5 py-1 text-xs font-bold text-secondary">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-secondary opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-secondary" />
-            </span>
-            AO VIVO
-          </div>
-          <h1 className="ml-3 flex-1 truncate text-sm font-bold text-accent">
-            🌴 {channelName}{" "}
-            <span className="font-normal text-muted">
-              ({participants.length} {participants.length === 1 ? "macaco" : "macacos"})
-            </span>
+        <header className="flex items-center justify-between border-b border-border bg-card px-6 py-3">
+          <h1 className="font-semibold text-accent">
+            🌴 {channelName} · {participants.length}{" "}
+            {participants.length === 1 ? "macaco" : "macacos"}
           </h1>
         </header>
       )}
@@ -227,86 +206,75 @@ export function CallInterface({
         )}
       </div>
 
-      <div
-        className={`flex items-center justify-center gap-3 border-t border-border-soft bg-card-3 px-4 ${compact ? "py-2.5" : "h-20"}`}
-      >
-        <CallButton
+      <div className="flex items-center justify-center gap-3 border-t border-border bg-card px-4 py-2.5">
+        <ControlButton
+          active={micEnabled}
           onClick={toggleMic}
-          title={micEnabled ? "Silenciar" : "Ativar microfone"}
-          tone={micEnabled ? "neutral" : "danger"}
-        >
-          {micEnabled ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
-        </CallButton>
-        <CallButton
+          label={micEnabled ? "Mic ligado" : "Mic mudo"}
+          icon={micEnabled ? "🎙️" : "🔇"}
+        />
+        <ControlButton
+          active={cam.enabled}
           onClick={() => cam.toggle()}
-          title={cam.enabled ? "Desligar câmera" : "Ligar câmera"}
-          tone={cam.enabled ? "secondary" : "neutral"}
-        >
-          {cam.enabled ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
-        </CallButton>
-        <CallButton
+          label={cam.enabled ? "Câmera ligada" : "Ligar câmera"}
+          icon="📷"
+        />
+        <ControlButton
+          active={screen.enabled}
           onClick={() => screen.toggle()}
-          title={screen.enabled ? "Parar compartilhamento" : "Compartilhar tela"}
-          tone={screen.enabled ? "primary" : "neutral"}
-        >
-          {screen.enabled ? <MonitorOff className="h-5 w-5" /> : <Monitor className="h-5 w-5" />}
-        </CallButton>
+          label={screen.enabled ? "Parar tela" : "Compartilhar tela"}
+          icon="🖥️"
+        />
         {!compact && (
-          <CallButton
+          <ControlButton
+            active={chatOpen}
             onClick={() => setChatOpen((v) => !v)}
-            title="Chat"
-            tone={chatOpen ? "secondary" : "neutral"}
-          >
-            <MessageSquare className="h-5 w-5" />
-          </CallButton>
+            label="Chat"
+            icon="💬"
+          />
         )}
         {onToggleChatHidden && (
-          <CallButton
+          <ControlButton
+            active={!chatHidden}
             onClick={onToggleChatHidden}
-            title={chatHidden ? "Mostrar chat" : "Minimizar chat"}
-            tone={chatHidden ? "neutral" : "secondary"}
-          >
-            {chatHidden ? <Maximize2 className="h-5 w-5" /> : <Minimize2 className="h-5 w-5" />}
-          </CallButton>
+            label={chatHidden ? "Mostrar chat" : "Minimizar chat"}
+            icon="💬"
+          />
         )}
         <button
           onClick={leaveCall}
-          title="Sair da call"
-          className="ml-2 flex h-12 w-14 items-center justify-center rounded-full bg-danger text-white shadow-lg shadow-danger/30 transition hover:brightness-90 active:scale-95"
+          className="ml-2 rounded-full bg-danger px-5 py-2.5 text-sm font-semibold text-white transition hover:brightness-90"
         >
-          <PhoneOff className="h-5 w-5" />
+          Sair 🍌
         </button>
       </div>
     </div>
   );
 }
 
-function CallButton({
+function ControlButton({
+  active,
   onClick,
-  title,
-  tone,
-  children,
+  label,
+  icon,
 }: {
+  active: boolean;
   onClick: () => void;
-  title: string;
-  tone: "neutral" | "secondary" | "primary" | "danger";
-  children: React.ReactNode;
+  label: string;
+  icon: string;
 }) {
-  const toneClasses = {
-    neutral: "bg-card-2 text-foreground hover:bg-card-2/70",
-    secondary: "bg-secondary text-secondary-foreground hover:brightness-110",
-    primary: "bg-primary text-primary-foreground shadow-primary/30 ring-2 ring-primary/40 hover:brightness-105",
-    danger: "bg-danger text-white hover:brightness-90",
-  } as const;
-
   return (
     <button
       onClick={onClick}
-      title={title}
-      aria-label={title}
-      className={`flex h-12 w-12 items-center justify-center rounded-full font-bold shadow-lg transition active:scale-95 ${toneClasses[tone]}`}
+      title={label}
+      className={`flex items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-medium transition ${
+        active
+          ? "border-secondary bg-secondary/15 text-secondary"
+          : "border-border bg-background text-muted hover:border-secondary/50"
+      }`}
     >
-      {children}
+      <span>{icon}</span>
+      <span className="hidden sm:inline">{label}</span>
     </button>
   );
 }
@@ -373,9 +341,9 @@ function Tile({
     <div
       ref={containerRef}
       onClick={onFocus}
-      className={`group relative aspect-video shrink-0 overflow-hidden rounded-2xl border-2 bg-card-2 shadow-xl transition ${TILE_WIDTH[size]} ${
-        isSpeaking ? "border-secondary shadow-secondary/20 ring-4 ring-secondary/25" : "border-border-soft"
-      } ${onFocus ? "cursor-pointer hover:border-secondary/60" : ""} ${
+      className={`group relative aspect-video shrink-0 overflow-hidden rounded-2xl border bg-card transition ${TILE_WIDTH[size]} ${
+        isSpeaking ? "border-primary shadow-[0_0_0_3px_rgba(255,183,3,0.3)]" : "border-border"
+      } ${onFocus ? "cursor-pointer hover:border-primary" : ""} ${
         isFullscreen ? "!aspect-auto !h-screen !w-screen !max-h-none" : ""
       }`}
     >
@@ -385,29 +353,17 @@ function Tile({
           className={`h-full w-full ${size === "focus" ? "object-contain bg-black" : "object-cover"}`}
         />
       ) : (
-        <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 bg-card-2 px-2">
-          <div className="relative">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-background text-2xl">
-              🐵
-            </div>
-            {isSpeaking && (
-              <span className="absolute inset-0 animate-ping rounded-full border-2 border-secondary opacity-60" />
-            )}
+        <div className="flex h-full w-full items-center justify-center bg-secondary/15">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-secondary/25 text-3xl">
+            🐵
           </div>
-          <span className="max-w-full truncate text-xs font-bold text-foreground">
-            {participant.name || participant.identity}
-          </span>
         </div>
       )}
 
-      <span className="absolute bottom-2 left-2 flex items-center gap-1.5 rounded-lg bg-black/65 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-sm">
-        {isScreenShare && <Monitor className="h-3.5 w-3.5 shrink-0 text-primary" />}
-        <span className="truncate">
-          {isScreenShare
-            ? `Tela de ${participant.name || participant.identity}`
-            : participant.name || participant.identity}
-        </span>
-        {!isScreenShare && isMuted && <MicOff className="h-3.5 w-3.5 shrink-0 text-danger" />}
+      <span className="absolute bottom-2 left-2 flex items-center gap-1 rounded-full bg-black/60 px-2.5 py-1 text-xs text-white">
+        {isScreenShare && "🖥️ "}
+        {isScreenShare ? `Tela de ${participant.name || participant.identity}` : participant.name || participant.identity}
+        {!isScreenShare && isMuted && <span aria-hidden="true">🔇</span>}
       </span>
 
       {allowFullscreen && (
@@ -417,7 +373,7 @@ function Tile({
           aria-label={isFullscreen ? "Sair da tela cheia" : "Tela cheia"}
           className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white opacity-0 transition group-hover:opacity-100"
         >
-          {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          {isFullscreen ? "⤢" : "⛶"}
         </button>
       )}
     </div>

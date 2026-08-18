@@ -35,7 +35,7 @@ export function VoiceIconButton({
         {children}
       </button>
 
-      <div className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-border bg-card-2 px-2.5 py-1.5 text-center opacity-0 shadow-lg transition-opacity duration-150 group-hover/tip:opacity-100">
+      <div className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-border bg-card px-2.5 py-1.5 text-center opacity-0 shadow-lg transition-opacity duration-150 group-hover/tip:opacity-100">
         <p className="text-xs font-semibold text-accent">{label}</p>
         {sublabel && <p className="text-[10px] text-muted">{sublabel}</p>}
       </div>

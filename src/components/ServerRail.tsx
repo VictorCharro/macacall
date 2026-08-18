@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Plus, MonitorUp } from "lucide-react";
 import { BandoMenu } from "@/components/BandoMenu";
 import { CreateOrJoinBandoModal } from "@/components/CreateOrJoinBandoModal";
 
@@ -34,17 +33,17 @@ export function ServerRail({
   const [createModalOpen, setCreateModalOpen] = useState(false);
 
   return (
-    <nav className="flex w-[72px] shrink-0 flex-col items-center gap-1.5 border-r border-border-soft bg-card-3 py-3">
+    <nav className="flex w-[76px] shrink-0 flex-col items-center gap-2 border-r border-border bg-card/60 py-3">
       <RailIcon
         href="/bandos"
         active={pathname === "/bandos"}
-        label="Amigos e mensagens diretas"
+        label="Amigos"
       >
-        <span className="text-2xl">🐵</span>
+        <span className="text-xl">🍌</span>
       </RailIcon>
 
       {bandos.length > 0 && (
-        <div className="my-1 h-px w-8 shrink-0 bg-border-soft" />
+        <div className="my-1 h-px w-8 shrink-0 bg-border" />
       )}
 
       {bandos.map((bando) => (
@@ -56,19 +55,19 @@ export function ServerRail({
         />
       ))}
 
-      <div className="relative flex w-full items-center justify-center">
-        <div className="group relative">
-          <button
-            type="button"
-            onClick={() => setCreateModalOpen(true)}
-            aria-label="Criar ou entrar num bando"
-            className="flex h-12 w-12 items-center justify-center rounded-[24px] bg-card text-secondary transition-all duration-200 hover:rounded-2xl hover:bg-secondary hover:text-secondary-foreground"
-          >
-            <Plus className="h-6 w-6 transition-transform group-hover:rotate-90" />
-          </button>
-          <div className="pointer-events-none absolute left-full top-1/2 z-20 ml-3 -translate-y-1/2 whitespace-nowrap rounded-lg border border-border bg-card-2 px-3 py-1.5 text-sm font-medium text-accent opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
-            Criar ou entrar num bando
-          </div>
+      <div className="my-1 h-px w-8 shrink-0 bg-border" />
+
+      <div className="group relative">
+        <button
+          type="button"
+          onClick={() => setCreateModalOpen(true)}
+          aria-label="Criar ou entrar num bando"
+          className="flex h-12 w-12 items-center justify-center rounded-full bg-background text-xl leading-none text-secondary transition-all duration-150 hover:rounded-2xl hover:bg-primary hover:text-primary-foreground"
+        >
+          +
+        </button>
+        <div className="pointer-events-none absolute left-full top-1/2 z-20 ml-3 -translate-y-1/2 whitespace-nowrap rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium text-accent opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
+          Criar ou entrar num bando
         </div>
       </div>
 
@@ -91,24 +90,22 @@ function RailIcon({
   children: React.ReactNode;
 }) {
   return (
-    <div className="group relative flex w-full items-center justify-center">
-      <span
-        className={`absolute left-0 w-1 rounded-r-full bg-primary transition-all duration-200 ${
-          active ? "h-10" : "h-0 opacity-0 group-hover:h-5 group-hover:opacity-100"
-        }`}
-      />
+    <div className="group relative">
+      {active && (
+        <span className="absolute -left-1 top-1/2 h-8 w-1 -translate-y-1/2 rounded-r-full bg-primary" />
+      )}
       <Link
         href={href}
         aria-label={label}
-        className={`flex h-12 w-12 items-center justify-center font-semibold transition-all duration-200 ${
+        className={`flex h-12 w-12 items-center justify-center rounded-full font-semibold transition-all duration-150 ${
           active
-            ? "rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20"
-            : "rounded-[24px] bg-card text-accent hover:rounded-2xl hover:bg-primary hover:text-primary-foreground"
+            ? "rounded-2xl bg-primary text-primary-foreground"
+            : "bg-background text-accent hover:rounded-2xl hover:bg-primary hover:text-primary-foreground"
         }`}
       >
         {children}
       </Link>
-      <div className="pointer-events-none absolute left-full top-1/2 z-20 ml-3 -translate-y-1/2 whitespace-nowrap rounded-lg border border-border bg-card-2 px-3 py-1.5 text-sm font-medium text-accent opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
+      <div className="pointer-events-none absolute left-full top-1/2 z-20 ml-3 -translate-y-1/2 whitespace-nowrap rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium text-accent opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
         {label}
       </div>
     </div>
@@ -150,12 +147,12 @@ function ServerIcon({
   }, [hovered, bando.id]);
 
   const shapeClasses = active
-    ? "rounded-2xl bg-secondary text-secondary-foreground shadow-lg shadow-secondary/20"
-    : "rounded-[24px] bg-card text-accent group-hover:rounded-2xl group-hover:bg-secondary group-hover:text-secondary-foreground";
+    ? "rounded-2xl bg-primary text-primary-foreground"
+    : "bg-background text-accent group-hover:rounded-2xl group-hover:bg-primary group-hover:text-primary-foreground";
 
   return (
     <div
-      className="group relative flex w-full items-center justify-center"
+      className="group relative"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onContextMenu={
@@ -167,14 +164,12 @@ function ServerIcon({
           : undefined
       }
     >
-      <span
-        className={`absolute left-0 w-1 rounded-r-full bg-secondary transition-all duration-200 ${
-          active ? "h-10" : "h-0 opacity-0 group-hover:h-5 group-hover:opacity-100"
-        }`}
-      />
+      {active && (
+        <span className="absolute -left-1 top-1/2 h-8 w-1 -translate-y-1/2 rounded-r-full bg-primary" />
+      )}
       <Link
         href={`/bandos/${bando.id}`}
-        className={`flex h-12 w-12 items-center justify-center overflow-hidden text-sm font-bold transition-all duration-200 ${shapeClasses}`}
+        className={`flex h-12 w-12 items-center justify-center overflow-hidden text-sm font-bold transition-all duration-150 ${shapeClasses}`}
       >
         {bando.photo_url ? (
           <img
@@ -188,7 +183,7 @@ function ServerIcon({
       </Link>
 
       {showTooltip && (
-        <div className="absolute left-full top-1/2 z-20 ml-3 min-w-[10rem] -translate-y-1/2 animate-modal-in rounded-xl border border-border bg-card-2 px-3 py-2 text-sm shadow-lg">
+        <div className="absolute left-full top-1/2 z-20 ml-3 min-w-[10rem] -translate-y-1/2 animate-modal-in rounded-xl border border-border bg-card px-3 py-2 text-sm shadow-lg">
           <p className="font-semibold text-accent">{bando.name}</p>
           {participants && participants.length > 0 && (
             <ul className="mt-1.5 flex flex-col gap-0.5">
@@ -199,7 +194,9 @@ function ServerIcon({
                 >
                   <span className="truncate">🐵 {p.name}</span>
                   {p.sharingScreen && (
-                    <MonitorUp className="h-3.5 w-3.5 shrink-0 text-amber-400" />
+                    <span title="Compartilhando tela" aria-label="Compartilhando tela">
+                      🖥️
+                    </span>
                   )}
                 </li>
               ))}
