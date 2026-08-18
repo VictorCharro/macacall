@@ -67,7 +67,7 @@ export function BandoMenu({
   return (
     <div
       ref={menuRef}
-      className="absolute left-full top-0 z-30 min-w-[13rem] animate-modal-in rounded-xl border border-border bg-card p-2 text-left shadow-lg"
+      className="absolute left-full top-0 z-40 min-w-[13rem] animate-modal-in rounded-xl border border-border bg-card p-2 text-left shadow-lg"
     >
       <form action={photoAction} className="hidden">
         <input

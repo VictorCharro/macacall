@@ -47,6 +47,7 @@ export async function createBando(formData: FormData) {
     );
   }
 
+  revalidatePath("/bandos", "layout");
   redirect(`/bandos/${data.id}`);
 }
 
@@ -165,6 +166,7 @@ export async function deleteBando(bandoId: string) {
     redirect(`/bandos?error=${encodeURIComponent(error.message)}`);
   }
 
+  revalidatePath("/bandos", "layout");
   redirect("/bandos");
 }
 
@@ -198,5 +200,6 @@ export async function joinBando(code: string) {
     redirect(`/bandos?error=${encodeURIComponent(joinError.message)}`);
   }
 
+  revalidatePath("/bandos", "layout");
   redirect(`/bandos/${bandoId}`);
 }

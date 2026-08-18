@@ -31,7 +31,7 @@ export function ServerRail({
   const pathname = usePathname();
 
   return (
-    <nav className="flex w-[76px] shrink-0 flex-col items-center gap-2 overflow-y-auto border-r border-border bg-card/60 py-3">
+    <nav className="flex w-[76px] shrink-0 flex-col items-center gap-2 border-r border-border bg-card/60 py-3">
       <RailIcon
         href="/bandos"
         active={pathname === "/bandos"}
