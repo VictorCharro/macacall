@@ -88,6 +88,9 @@ export function CallInterface({
   const participants = useParticipants();
   const videoTracks = useTracks([Track.Source.Camera, Track.Source.ScreenShare]);
 
+  const screenShareTrack = videoTracks.find((t) => t.source === Track.Source.ScreenShare);
+  const cameraTracks = videoTracks.filter((t) => t.source === Track.Source.Camera);
+
   const videoParticipantKeys = new Set(
     videoTracks.map((t) => `${t.participant.identity}:${t.source}`),
   );
@@ -110,24 +113,40 @@ export function CallInterface({
       )}
 
       <div className="flex overflow-hidden">
-        <div
-          className={
-            compact
-              ? "grid flex-1 auto-cols-[minmax(140px,180px)] grid-flow-col gap-3 overflow-x-auto p-3"
-              : "grid flex-1 auto-rows-fr grid-cols-2 gap-3 overflow-y-auto p-4 sm:grid-cols-3"
-          }
-        >
-          {videoTracks.map((trackRef) => (
-            <VideoTile
-              key={`${trackRef.participant.identity}:${trackRef.source}`}
-              trackRef={trackRef}
-              compact={compact}
-            />
-          ))}
-          {voiceOnlyParticipants.map((participant) => (
-            <AvatarTile key={participant.identity} participant={participant} compact={compact} />
-          ))}
-        </div>
+        {compact ? (
+          <div className="flex flex-1 flex-col gap-2 p-3">
+            {screenShareTrack && (
+              <VideoTile trackRef={screenShareTrack} size="focus" />
+            )}
+            {(cameraTracks.length > 0 || voiceOnlyParticipants.length > 0) && (
+              <div className="flex flex-wrap gap-2">
+                {cameraTracks.map((trackRef) => (
+                  <VideoTile
+                    key={`${trackRef.participant.identity}:${trackRef.source}`}
+                    trackRef={trackRef}
+                    size={screenShareTrack ? "thumb" : "medium"}
+                  />
+                ))}
+                {voiceOnlyParticipants.map((participant) => (
+                  <AvatarChip key={participant.identity} participant={participant} />
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="grid flex-1 auto-rows-fr grid-cols-2 gap-3 overflow-y-auto p-4 sm:grid-cols-3">
+            {videoTracks.map((trackRef) => (
+              <VideoTile
+                key={`${trackRef.participant.identity}:${trackRef.source}`}
+                trackRef={trackRef}
+                size="grid"
+              />
+            ))}
+            {voiceOnlyParticipants.map((participant) => (
+              <AvatarTile key={participant.identity} participant={participant} />
+            ))}
+          </div>
+        )}
 
         {!compact && chatOpen && (
           <div className="w-72 flex-shrink-0 border-l border-border bg-card">
@@ -201,21 +220,35 @@ function ControlButton({
   );
 }
 
+const VIDEO_TILE_SIZE = {
+  // large focused screen share, dm call strip
+  focus: "h-56 w-full sm:h-80",
+  // camera thumbnail next to a screen share focus, dm call strip
+  thumb: "h-20 w-32 sm:h-24 sm:w-40",
+  // camera tile with no screen share around, dm call strip
+  medium: "h-36 w-56 sm:h-48 sm:w-72",
+  // full voice-channel page grid (sized by the CSS grid itself)
+  grid: "h-full w-full",
+} as const;
+
 function VideoTile({
   trackRef,
-  compact,
+  size,
 }: {
   trackRef: TrackReference;
-  compact?: boolean;
+  size: keyof typeof VIDEO_TILE_SIZE;
 }) {
   const isScreenShare = trackRef.source === Track.Source.ScreenShare;
   return (
     <div
-      className={`relative overflow-hidden rounded-2xl border border-border bg-black ${
-        compact ? "aspect-video" : isScreenShare ? "col-span-2 row-span-2" : ""
+      className={`relative shrink-0 overflow-hidden rounded-2xl border border-border bg-black ${VIDEO_TILE_SIZE[size]} ${
+        size === "grid" && isScreenShare ? "col-span-2 row-span-2" : ""
       }`}
     >
-      <VideoTrack trackRef={trackRef} className="h-full w-full object-cover" />
+      <VideoTrack
+        trackRef={trackRef}
+        className={`h-full w-full ${size === "focus" ? "object-contain" : "object-cover"}`}
+      />
       <span className="absolute bottom-2 left-2 rounded-full bg-black/60 px-2.5 py-1 text-xs text-white">
         {isScreenShare
           ? `🖥️ Tela de ${trackRef.participant.name || trackRef.participant.identity}`
@@ -225,13 +258,7 @@ function VideoTile({
   );
 }
 
-function AvatarTile({
-  participant,
-  compact,
-}: {
-  participant: Participant;
-  compact?: boolean;
-}) {
+function AvatarTile({ participant }: { participant: Participant }) {
   const { isMuted } = useTrackMutedIndicator({
     participant,
     source: Track.Source.Microphone,
@@ -240,21 +267,42 @@ function AvatarTile({
 
   return (
     <div
-      className={`flex flex-col items-center justify-center gap-2 rounded-2xl border bg-card transition ${
-        compact ? "aspect-video p-2" : "p-6"
-      } ${isSpeaking ? "border-primary shadow-[0_0_0_3px_rgba(255,183,3,0.3)]" : "border-border"}`}
+      className={`flex flex-col items-center justify-center gap-2 rounded-2xl border bg-card p-6 transition ${
+        isSpeaking ? "border-primary shadow-[0_0_0_3px_rgba(255,183,3,0.3)]" : "border-border"
+      }`}
     >
-      <div
-        className={`flex items-center justify-center rounded-full bg-secondary/20 ${
-          compact ? "h-10 w-10 text-xl" : "h-16 w-16 text-3xl"
-        }`}
-      >
+      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-secondary/20 text-3xl">
         🐵
       </div>
       <span className="max-w-full truncate text-sm font-medium text-accent">
         {participant.name || participant.identity}
       </span>
       <span className="text-xs text-muted">{isMuted ? "🔇" : "🎙️"}</span>
+    </div>
+  );
+}
+
+/** Small circular chip for voice-only participants in the compact DM call strip. */
+function AvatarChip({ participant }: { participant: Participant }) {
+  const { isMuted } = useTrackMutedIndicator({
+    participant,
+    source: Track.Source.Microphone,
+  });
+  const isSpeaking = useIsSpeaking(participant);
+
+  return (
+    <div className="flex w-16 flex-col items-center gap-1">
+      <div
+        className={`flex h-14 w-14 items-center justify-center rounded-full bg-secondary/20 text-2xl transition ${
+          isSpeaking ? "ring-2 ring-primary ring-offset-2 ring-offset-card" : ""
+        }`}
+      >
+        🐵
+      </div>
+      <span className="flex max-w-full items-center gap-0.5 truncate text-xs text-muted">
+        {isMuted && <span aria-hidden="true">🔇</span>}
+        <span className="truncate">{participant.name || participant.identity}</span>
+      </span>
     </div>
   );
 }
