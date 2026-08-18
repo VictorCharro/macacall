@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { InviteLink } from "@/components/InviteLink";
+import { ServerHeaderMenu } from "@/components/ServerHeaderMenu";
 import { ChannelMenu } from "@/components/ChannelMenu";
 import { CreateChannelButton } from "@/components/CreateChannelButton";
 import { VoiceConnectedBar } from "@/components/VoiceConnectedBar";
@@ -58,10 +58,7 @@ export function ChannelSidebar({
 
   return (
     <nav className="flex w-72 shrink-0 flex-col border-r border-border bg-card/40">
-      <div className="flex flex-col gap-2 border-b border-border px-4 py-3">
-        <h1 className="break-words font-bold text-accent">{bandoName}</h1>
-        <InviteLink url={inviteUrl} />
-      </div>
+      <ServerHeaderMenu bandoName={bandoName} inviteUrl={inviteUrl} />
 
       <div className="flex flex-1 flex-col gap-4 px-2 py-3">
         <ChannelGroup label="Canais de Texto">
