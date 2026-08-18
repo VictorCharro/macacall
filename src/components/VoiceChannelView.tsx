@@ -1,10 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import {
-  LiveKitRoom,
-  RoomAudioRenderer,
   useParticipants,
   useTracks,
   useTrackToggle,
@@ -15,9 +12,9 @@ import {
 } from "@livekit/components-react";
 import { Track, type Participant } from "livekit-client";
 import type { TrackReference } from "@livekit/components-core";
-import "@livekit/components-styles";
+import { useCall } from "@/components/CallProvider";
 
-export function CallRoom({
+export function VoiceChannelView({
   bandoId,
   channelId,
   channelName,
@@ -26,51 +23,26 @@ export function CallRoom({
   channelId: string;
   channelName: string;
 }) {
-  const router = useRouter();
-  const [token, setToken] = useState<string | null>(null);
-  const [serverUrl, setServerUrl] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { activeCall, connected, error, joinCall } = useCall();
 
   useEffect(() => {
-    let cancelled = false;
-
-    fetch("/api/livekit/token", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ channelId }),
-    })
-      .then(async (res) => {
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error ?? "Falha ao entrar na call");
-        if (!cancelled) {
-          setToken(data.token);
-          setServerUrl(data.url);
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) setError(err.message);
-      });
-
-    return () => {
-      cancelled = true;
-    };
+    if (activeCall?.channelId !== channelId) {
+      joinCall(bandoId, channelId, channelName);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channelId]);
 
-  if (error) {
+  const isThisChannel = activeCall?.channelId === channelId;
+
+  if (isThisChannel && error) {
     return (
       <main className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
         <p className="text-danger">{error}</p>
-        <button
-          onClick={() => router.back()}
-          className="rounded-full border border-border px-4 py-2 font-semibold text-accent"
-        >
-          Voltar
-        </button>
       </main>
     );
   }
 
-  if (!token || !serverUrl) {
+  if (!isThisChannel || !connected) {
     return (
       <main className="flex flex-1 flex-col items-center justify-center gap-3">
         <span className="animate-bounce text-4xl">🐒</span>
@@ -81,32 +53,13 @@ export function CallRoom({
 
   return (
     <div className="macacall-call flex flex-1 flex-col overflow-hidden">
-      <LiveKitRoom
-        token={token}
-        serverUrl={serverUrl}
-        connect
-        audio
-        video={false}
-        style={{ height: "100%" }}
-        onDisconnected={() => router.push(`/bandos/${bandoId}/${channelId}`)}
-      >
-        <RoomAudioRenderer />
-        <CallInterface bandoId={bandoId} channelId={channelId} channelName={channelName} />
-      </LiveKitRoom>
+      <CallInterface channelName={channelName} />
     </div>
   );
 }
 
-function CallInterface({
-  bandoId,
-  channelId,
-  channelName,
-}: {
-  bandoId: string;
-  channelId: string;
-  channelName: string;
-}) {
-  const router = useRouter();
+function CallInterface({ channelName }: { channelName: string }) {
+  const { leaveCall } = useCall();
   const [chatOpen, setChatOpen] = useState(false);
   const participants = useParticipants();
   const videoTracks = useTracks([Track.Source.Camera, Track.Source.ScreenShare]);
@@ -174,7 +127,7 @@ function CallInterface({
           icon="💬"
         />
         <button
-          onClick={() => router.push(`/bandos/${bandoId}/${channelId}`)}
+          onClick={leaveCall}
           className="ml-2 rounded-full bg-danger px-5 py-2.5 text-sm font-semibold text-white transition hover:brightness-90"
         >
           Sair 🍌

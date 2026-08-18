@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ChatChannel } from "@/components/ChatChannel";
-import { CallRoom } from "@/components/CallRoom";
+import { VoiceChannelView } from "@/components/VoiceChannelView";
 import type { Profile } from "@/lib/types";
 
 export default async function ChannelPage({
@@ -28,7 +28,11 @@ export default async function ChannelPage({
 
   if (channel.type === "voice") {
     return (
-      <CallRoom bandoId={id} channelId={channel.id} channelName={channel.name} />
+      <VoiceChannelView
+        bandoId={id}
+        channelId={channel.id}
+        channelName={channel.name}
+      />
     );
   }
 
