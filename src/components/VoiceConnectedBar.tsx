@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTrackToggle } from "@livekit/components-react";
 import { Track } from "livekit-client";
+import { PhoneOff, Video, MonitorUp, Wand2 } from "lucide-react";
 import { useCall } from "@/components/CallProvider";
 import { PingIndicator } from "@/components/PingIndicator";
 import { VoiceIconButton } from "@/components/VoiceIconButton";
@@ -47,7 +48,7 @@ function ConnectedBarContent({
         </Link>
 
         <VoiceIconButton label="Supressor de ruído" sublabel="Em breve" disabled>
-          <NoiseWaveIcon />
+          <Wand2 className="h-4 w-4" />
         </VoiceIconButton>
 
         <VoiceIconButton
@@ -56,7 +57,7 @@ function ConnectedBarContent({
           label="Desconectar"
           sublabel={`Call · ${channelName}`}
         >
-          <span aria-hidden="true">📞</span>
+          <PhoneOff className="h-4 w-4" />
         </VoiceIconButton>
       </div>
 
@@ -66,34 +67,19 @@ function ConnectedBarContent({
           onClick={() => cam.toggle()}
           label={cam.enabled ? "Desligar câmera" : "Transmitir câmera"}
         >
-          <span aria-hidden="true">📷</span>
+          <Video className="h-4 w-4" />
         </VoiceIconButton>
         <VoiceIconButton
           active={screen.enabled}
           onClick={() => screen.toggle()}
           label={screen.enabled ? "Parar de compartilhar" : "Compartilhar a tela"}
         >
-          <span aria-hidden="true">🖥️</span>
+          <MonitorUp className="h-4 w-4" />
         </VoiceIconButton>
         <VoiceIconButton label="Filtro de voz" sublabel="Em breve" disabled>
           <span aria-hidden="true">🐵</span>
         </VoiceIconButton>
       </div>
     </div>
-  );
-}
-
-function NoiseWaveIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
-      <path
-        d="M1 8c1-2 2-3 3-3s2 4 3 4 1-6 2-6 2 6 3 6 2-3 3-1"
-        stroke="currentColor"
-        strokeWidth="1.3"
-        fill="none"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
   );
 }
