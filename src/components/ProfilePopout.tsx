@@ -88,7 +88,7 @@ export function ProfilePopout({
       <div className="h-16 w-full rounded-t-xl" style={{ backgroundColor: bannerColor }} />
 
       <div className="px-4 pb-4 pt-0">
-        <div className="-mt-8 flex items-end">
+        <div className="-mt-8 flex items-end gap-1.5">
           <div className="relative shrink-0">
             <img
               src={`https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(avatarSeed)}`}
@@ -101,51 +101,57 @@ export function ProfilePopout({
             />
           </div>
 
-          <div className="flex flex-1 justify-end pb-1">
+          {loaded && (
+            <>
+              <span
+                className="mb-1 h-3 w-3 shrink-0 rounded-full bg-[#111214]"
+                aria-hidden="true"
+              />
+              <span
+                className="mb-5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#111214]"
+                aria-hidden="true"
+              />
+            </>
+          )}
+
+          <div className="flex flex-1 justify-end pb-7">
             {loaded &&
               (editing ? (
-                <div className="relative">
-                  <input
-                    autoFocus
-                    value={draft}
-                    onChange={(e) => setDraft(e.target.value)}
-                    onBlur={saveStatusMessage}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        saveStatusMessage();
-                      }
-                      if (e.key === "Escape") {
-                        e.preventDefault();
-                        setEditing(false);
-                      }
-                    }}
-                    maxLength={100}
-                    placeholder="Escreva um status..."
-                    className="w-44 rounded-2xl border border-border bg-[#111214] px-3 py-2 text-xs text-white outline-none focus:border-primary"
-                  />
-                  <span
-                    aria-hidden="true"
-                    className="absolute -bottom-1 left-4 h-3 w-3 rotate-45 border-b border-r border-border bg-[#111214]"
-                  />
-                </div>
+                <input
+                  autoFocus
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onBlur={saveStatusMessage}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      saveStatusMessage();
+                    }
+                    if (e.key === "Escape") {
+                      e.preventDefault();
+                      setEditing(false);
+                    }
+                  }}
+                  maxLength={100}
+                  placeholder="Escreva um status..."
+                  className="w-48 rounded-[1.5rem] border border-border bg-[#111214] px-4 py-3 text-sm text-white outline-none focus:border-primary"
+                />
               ) : (
                 <button
                   type="button"
                   onClick={startEditing}
                   title="Clique para editar seu status"
-                  className="group relative flex max-w-[12rem] items-center gap-2 rounded-2xl bg-[#111214] py-1.5 pl-1.5 pr-3 shadow-lg transition hover:brightness-110"
+                  style={{
+                    borderRadius: "60% 70% 65% 75% / 70% 60% 75% 65%",
+                  }}
+                  className="group flex max-w-[14rem] items-center gap-2.5 bg-[#111214] px-4 py-3 shadow-lg transition hover:brightness-110"
                 >
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#2b2d31] text-[11px] text-white/70 group-hover:text-white">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#2b2d31] text-xs text-white/70 group-hover:text-white">
                     {statusMessage ? "✎" : "+"}
                   </span>
-                  <span className="truncate text-left text-xs text-white/90">
+                  <span className="truncate text-left text-sm text-white/90">
                     {displayedMessage}
                   </span>
-                  <span
-                    aria-hidden="true"
-                    className="absolute -bottom-1 left-4 h-3 w-3 rotate-45 bg-[#111214]"
-                  />
                 </button>
               ))}
           </div>
