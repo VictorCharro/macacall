@@ -56,9 +56,9 @@ export function ChannelSidebar({
   }, [bandoId]);
 
   return (
-    <nav className="flex w-60 shrink-0 flex-col border-r border-border bg-card/40">
-      <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
-        <h1 className="truncate font-bold text-accent">{bandoName}</h1>
+    <nav className="flex w-72 shrink-0 flex-col border-r border-border bg-card/40">
+      <div className="flex flex-col gap-2 border-b border-border px-4 py-3">
+        <h1 className="break-words font-bold text-accent">{bandoName}</h1>
         <InviteLink url={inviteUrl} />
       </div>
 

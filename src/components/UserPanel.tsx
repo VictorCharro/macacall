@@ -13,7 +13,7 @@ export function UserPanel({
     useCall();
 
   return (
-    <div className="flex items-center gap-2 border-t border-border bg-card/80 px-3 py-2">
+    <div className="flex items-center gap-1.5 border-t border-border bg-card/80 px-3 py-2">
       <img
         src={`https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(avatarSeed)}`}
         alt=""
