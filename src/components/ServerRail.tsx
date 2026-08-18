@@ -12,7 +12,7 @@ type RailBando = {
   photo_url: string | null;
 };
 
-type Participant = { identity: string; name: string };
+type Participant = { identity: string; name: string; sharingScreen: boolean };
 
 function getInitials(name: string) {
   const words = name.trim().split(/\s+/).filter(Boolean);
@@ -169,24 +169,23 @@ function ServerIcon({
       {showTooltip && (
         <div className="absolute left-full top-1/2 z-20 ml-3 min-w-[10rem] -translate-y-1/2 animate-modal-in rounded-xl border border-border bg-card px-3 py-2 text-sm shadow-lg">
           <p className="font-semibold text-accent">{bando.name}</p>
-          <div className="mt-1.5">
-            {participants === null ? (
-              <p className="text-xs text-muted">carregando...</p>
-            ) : participants.length === 0 ? (
-              <p className="text-xs text-muted">ninguém na call 🍃</p>
-            ) : (
-              <ul className="flex flex-col gap-0.5">
-                {participants.map((p) => (
-                  <li
-                    key={p.identity}
-                    className="text-xs font-medium text-secondary"
-                  >
-                    🐵 {p.name}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          {participants && participants.length > 0 && (
+            <ul className="mt-1.5 flex flex-col gap-0.5">
+              {participants.map((p) => (
+                <li
+                  key={p.identity}
+                  className="flex items-center justify-between gap-2 text-xs font-medium text-secondary"
+                >
+                  <span className="truncate">🐵 {p.name}</span>
+                  {p.sharingScreen && (
+                    <span title="Compartilhando tela" aria-label="Compartilhando tela">
+                      🖥️
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
 

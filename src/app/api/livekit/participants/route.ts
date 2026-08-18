@@ -1,8 +1,13 @@
-import { RoomServiceClient } from "livekit-server-sdk";
+import { RoomServiceClient, TrackSource } from "livekit-server-sdk";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
-type ParticipantInfo = { identity: string; name: string; channelId: string };
+type ParticipantInfo = {
+  identity: string;
+  name: string;
+  channelId: string;
+  sharingScreen: boolean;
+};
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -69,6 +74,9 @@ export async function GET(request: Request) {
               identity: p.identity,
               name: p.name || "Macaco anônimo",
               channelId: channel.id,
+              sharingScreen: p.tracks.some(
+                (t) => t.source === TrackSource.SCREEN_SHARE,
+              ),
             }),
           );
         } catch {
