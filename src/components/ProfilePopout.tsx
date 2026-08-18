@@ -104,33 +104,48 @@ export function ProfilePopout({
           <div className="flex flex-1 justify-end pb-1">
             {loaded &&
               (editing ? (
-                <input
-                  autoFocus
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  onBlur={saveStatusMessage}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      saveStatusMessage();
-                    }
-                    if (e.key === "Escape") {
-                      e.preventDefault();
-                      setEditing(false);
-                    }
-                  }}
-                  maxLength={100}
-                  placeholder="Escreva um status..."
-                  className="w-40 rounded-xl border border-border bg-background px-3 py-1.5 text-xs text-foreground outline-none focus:border-primary"
-                />
+                <div className="relative">
+                  <input
+                    autoFocus
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    onBlur={saveStatusMessage}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        saveStatusMessage();
+                      }
+                      if (e.key === "Escape") {
+                        e.preventDefault();
+                        setEditing(false);
+                      }
+                    }}
+                    maxLength={100}
+                    placeholder="Escreva um status..."
+                    className="w-44 rounded-2xl border border-border bg-[#111214] px-3 py-2 text-xs text-white outline-none focus:border-primary"
+                  />
+                  <span
+                    aria-hidden="true"
+                    className="absolute -bottom-1 left-4 h-3 w-3 rotate-45 border-b border-r border-border bg-[#111214]"
+                  />
+                </div>
               ) : (
                 <button
                   type="button"
                   onClick={startEditing}
                   title="Clique para editar seu status"
-                  className="max-w-[11rem] truncate rounded-xl bg-background px-3 py-1.5 text-left text-xs text-foreground shadow transition hover:brightness-95"
+                  className="group relative flex max-w-[12rem] items-center gap-2 rounded-2xl bg-[#111214] py-1.5 pl-1.5 pr-3 shadow-lg transition hover:brightness-110"
                 >
-                  {displayedMessage}
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#2b2d31] text-[11px] text-white/70 group-hover:text-white">
+                    {statusMessage ? "✎" : "+"}
+                  </span>
+                  <span className="truncate text-left text-xs text-white/90">
+                    {displayedMessage}
+                  </span>
+                  <span
+                    aria-hidden="true"
+                    className="absolute -bottom-1 left-4 h-3 w-3 rotate-45 bg-[#111214]"
+                  />
                 </button>
               ))}
           </div>
