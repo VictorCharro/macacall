@@ -10,6 +10,7 @@ export type Bando = {
   name: string;
   owner_id: string;
   invite_code: string;
+  photo_url: string | null;
   created_at: string;
 };
 

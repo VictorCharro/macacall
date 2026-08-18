@@ -1,119 +1,143 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { renameBando, deleteBando } from "@/app/actions/bandos";
+import { useActionState, useEffect, useRef, useState } from "react";
+import {
+  renameBando,
+  deleteBando,
+  updateBandoPhoto,
+  type BandoActionState,
+} from "@/app/actions/bandos";
 import { Modal } from "@/components/Modal";
 import { SubmitButton } from "@/components/SubmitButton";
+
+const initialState: BandoActionState = {};
 
 export function BandoMenu({
   bandoId,
   bandoName,
-  onOpenChange,
+  onClose,
 }: {
   bandoId: string;
   bandoName: string;
-  onOpenChange?: (open: boolean) => void;
+  onClose: () => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState(false);
+  const [mode, setMode] = useState<"menu" | "rename">("menu");
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const renameBandoWithId = renameBando.bind(null, bandoId);
+  const [renameState, renameAction] = useActionState(
+    renameBandoWithId,
+    initialState,
+  );
+
+  const updateBandoPhotoWithId = updateBandoPhoto.bind(null, bandoId);
+  const [photoState, photoAction, photoPending] = useActionState(
+    updateBandoPhotoWithId,
+    initialState,
+  );
+
+  const deleteBandoWithId = deleteBando.bind(null, bandoId);
 
   useEffect(() => {
-    onOpenChange?.(open || confirmingDelete);
-  }, [open, confirmingDelete, onOpenChange]);
+    if (renameState !== initialState && !renameState.error) {
+      onClose();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [renameState]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setOpen(false);
-        setEditing(false);
+        onClose();
       }
     }
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const renameBandoWithId = renameBando.bind(null, bandoId);
-  const deleteBandoWithId = deleteBando.bind(null, bandoId);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [onClose]);
 
   return (
-    <div ref={menuRef} className="relative shrink-0">
-      <button
-        type="button"
-        onClick={(e) => {
-          e.preventDefault();
-          setOpen((v) => !v);
-        }}
-        aria-label="Configurações do bando"
-        className="rounded-full p-2 text-muted transition hover:bg-border/40 hover:text-accent"
-      >
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="currentColor"
-          aria-hidden="true"
-        >
-          <circle cx="12" cy="5" r="2" />
-          <circle cx="12" cy="12" r="2" />
-          <circle cx="12" cy="19" r="2" />
-        </svg>
-      </button>
+    <div
+      ref={menuRef}
+      className="absolute left-full top-0 z-30 min-w-[13rem] animate-modal-in rounded-xl border border-border bg-card p-2 text-left shadow-lg"
+    >
+      <form action={photoAction} className="hidden">
+        <input
+          ref={fileInputRef}
+          type="file"
+          name="photo"
+          accept="image/png,image/jpeg,image/webp,image/gif"
+          onChange={(e) => {
+            if (e.target.files?.length) e.target.form?.requestSubmit();
+          }}
+        />
+      </form>
 
-      {open && (
-        <div className="absolute right-0 z-10 mt-2 w-56 rounded-xl border border-border bg-card p-2 shadow-lg">
-          {editing ? (
-            <form
-              action={renameBandoWithId}
-              className="flex flex-col gap-2 p-1"
-            >
-              <input
-                type="text"
-                name="name"
-                required
-                minLength={2}
-                defaultValue={bandoName}
-                autoFocus
-                className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
-              />
-              <div className="flex gap-2">
-                <SubmitButton
-                  pendingLabel="Salvando..."
-                  className="flex-1 rounded-full bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground hover:brightness-95"
-                >
-                  Salvar
-                </SubmitButton>
-                <button
-                  type="button"
-                  onClick={() => setEditing(false)}
-                  className="flex-1 rounded-full border border-border px-3 py-1.5 text-sm text-muted transition hover:bg-border/40"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </form>
-          ) : (
-            <div className="flex flex-col gap-1">
-              <button
-                type="button"
-                onClick={() => setEditing(true)}
-                className="rounded-lg px-3 py-2 text-left text-sm text-foreground transition hover:bg-border/40"
-              >
-                Editar nome
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setOpen(false);
-                  setConfirmingDelete(true);
-                }}
-                className="rounded-lg px-3 py-2 text-left text-sm text-danger transition hover:bg-danger/10"
-              >
-                Deletar bando
-              </button>
-            </div>
+      {mode === "rename" ? (
+        <form action={renameAction} className="flex flex-col gap-2 p-1">
+          <input
+            type="text"
+            name="name"
+            required
+            minLength={2}
+            defaultValue={bandoName}
+            autoFocus
+            className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+          />
+          {renameState.error && (
+            <p className="text-xs text-danger">{renameState.error}</p>
           )}
+          <div className="flex gap-2">
+            <SubmitButton
+              pendingLabel="Salvando..."
+              className="flex-1 rounded-full bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground hover:brightness-95"
+            >
+              Salvar
+            </SubmitButton>
+            <button
+              type="button"
+              onClick={() => setMode("menu")}
+              className="flex-1 rounded-full border border-border px-3 py-1.5 text-sm text-muted transition hover:bg-border/40"
+            >
+              Cancelar
+            </button>
+          </div>
+        </form>
+      ) : (
+        <div className="flex flex-col gap-1">
+          <button
+            type="button"
+            onClick={() => setMode("rename")}
+            className="rounded-lg px-3 py-2 text-left text-sm text-foreground transition hover:bg-border/40"
+          >
+            Editar nome
+          </button>
+          <button
+            type="button"
+            disabled={photoPending}
+            onClick={() => fileInputRef.current?.click()}
+            className="rounded-lg px-3 py-2 text-left text-sm text-foreground transition hover:bg-border/40 disabled:opacity-60"
+          >
+            {photoPending ? "Enviando foto..." : "Alterar foto"}
+          </button>
+          {photoState.error && (
+            <p className="px-3 text-xs text-danger">{photoState.error}</p>
+          )}
+          <button
+            type="button"
+            onClick={() => setConfirmingDelete(true)}
+            className="rounded-lg px-3 py-2 text-left text-sm text-danger transition hover:bg-danger/10"
+          >
+            Deletar bando
+          </button>
         </div>
       )}
 

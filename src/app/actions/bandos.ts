@@ -1,7 +1,10 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+
+export type BandoActionState = { error?: string };
 
 function generateInviteCode() {
   const chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
@@ -47,11 +50,15 @@ export async function createBando(formData: FormData) {
   redirect(`/bandos/${data.id}`);
 }
 
-export async function renameBando(bandoId: string, formData: FormData) {
+export async function renameBando(
+  bandoId: string,
+  _prevState: BandoActionState,
+  formData: FormData,
+): Promise<BandoActionState> {
   const name = String(formData.get("name")).trim();
 
   if (name.length < 2) {
-    redirect(`/bandos?error=${encodeURIComponent("Dê um nome ao seu bando")}`);
+    return { error: "Dê um nome ao seu bando" };
   }
 
   const supabase = await createClient();
@@ -68,10 +75,76 @@ export async function renameBando(bandoId: string, formData: FormData) {
     .eq("owner_id", user.id);
 
   if (error) {
-    redirect(`/bandos?error=${encodeURIComponent(error.message)}`);
+    return { error: error.message };
   }
 
-  redirect("/bandos");
+  revalidatePath("/bandos", "layout");
+  return {};
+}
+
+export async function updateBandoPhoto(
+  bandoId: string,
+  _prevState: BandoActionState,
+  formData: FormData,
+): Promise<BandoActionState> {
+  const file = formData.get("photo");
+
+  if (!(file instanceof File) || file.size === 0) {
+    return { error: "Escolha uma imagem" };
+  }
+
+  if (!file.type.startsWith("image/")) {
+    return { error: "O arquivo precisa ser uma imagem" };
+  }
+
+  if (file.size > 5 * 1024 * 1024) {
+    return { error: "A imagem precisa ter até 5MB" };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const { data: bando } = await supabase
+    .from("bandos")
+    .select("owner_id")
+    .eq("id", bandoId)
+    .maybeSingle();
+
+  if (!bando || bando.owner_id !== user.id) {
+    return { error: "Só o dono pode trocar a foto do bando" };
+  }
+
+  const ext = file.name.split(".").pop() || "png";
+  const path = `${bandoId}/icon-${Date.now()}.${ext}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("bando-photos")
+    .upload(path, file, { upsert: true });
+
+  if (uploadError) {
+    return { error: uploadError.message };
+  }
+
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from("bando-photos").getPublicUrl(path);
+
+  const { error: updateError } = await supabase
+    .from("bandos")
+    .update({ photo_url: publicUrl })
+    .eq("id", bandoId)
+    .eq("owner_id", user.id);
+
+  if (updateError) {
+    return { error: updateError.message };
+  }
+
+  revalidatePath("/bandos", "layout");
+  return {};
 }
 
 export async function deleteBando(bandoId: string) {

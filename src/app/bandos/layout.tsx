@@ -16,11 +16,19 @@ export default async function BandosLayout({
 
   const { data: memberships } = await supabase
     .from("bando_members")
-    .select("bandos(id, name, owner_id)")
+    .select("bandos(id, name, owner_id, photo_url)")
     .eq("user_id", user.id);
 
   const bandos = (memberships ?? [])
-    .map((m) => m.bandos as unknown as { id: string; name: string; owner_id: string })
+    .map(
+      (m) =>
+        m.bandos as unknown as {
+          id: string;
+          name: string;
+          owner_id: string;
+          photo_url: string | null;
+        },
+    )
     .filter(Boolean);
 
   return (

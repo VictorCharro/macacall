@@ -9,6 +9,7 @@ type RailBando = {
   id: string;
   name: string;
   owner_id: string;
+  photo_url: string | null;
 };
 
 type Participant = { identity: string; name: string };
@@ -105,11 +106,11 @@ function ServerIcon({
   isOwner: boolean;
 }) {
   const [hovered, setHovered] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [contextMenuOpen, setContextMenuOpen] = useState(false);
   const [participants, setParticipants] = useState<Participant[] | null>(
     null,
   );
-  const showTooltip = hovered || menuOpen;
+  const showTooltip = hovered && !contextMenuOpen;
 
   useEffect(() => {
     if (!hovered) return;
@@ -129,38 +130,45 @@ function ServerIcon({
     };
   }, [hovered, bando.id]);
 
+  const shapeClasses = active
+    ? "rounded-2xl bg-primary text-primary-foreground"
+    : "bg-background text-accent group-hover:rounded-2xl group-hover:bg-primary group-hover:text-primary-foreground";
+
   return (
     <div
       className="group relative"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onContextMenu={
+        isOwner
+          ? (e) => {
+              e.preventDefault();
+              setContextMenuOpen(true);
+            }
+          : undefined
+      }
     >
       {active && (
         <span className="absolute -left-1 top-1/2 h-8 w-1 -translate-y-1/2 rounded-r-full bg-primary" />
       )}
       <Link
         href={`/bandos/${bando.id}`}
-        className={`flex h-12 w-12 items-center justify-center rounded-full text-sm font-bold transition-all duration-150 ${
-          active
-            ? "rounded-2xl bg-primary text-primary-foreground"
-            : "bg-background text-accent hover:rounded-2xl hover:bg-primary hover:text-primary-foreground"
-        }`}
+        className={`flex h-12 w-12 items-center justify-center overflow-hidden text-sm font-bold transition-all duration-150 ${shapeClasses}`}
       >
-        {getInitials(bando.name)}
+        {bando.photo_url ? (
+          <img
+            src={bando.photo_url}
+            alt=""
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          getInitials(bando.name)
+        )}
       </Link>
 
       {showTooltip && (
         <div className="absolute left-full top-1/2 z-20 ml-3 min-w-[10rem] -translate-y-1/2 animate-modal-in rounded-xl border border-border bg-card px-3 py-2 text-sm shadow-lg">
-          <div className="flex items-center justify-between gap-2">
-            <p className="font-semibold text-accent">{bando.name}</p>
-            {isOwner && (
-              <BandoMenu
-                bandoId={bando.id}
-                bandoName={bando.name}
-                onOpenChange={setMenuOpen}
-              />
-            )}
-          </div>
+          <p className="font-semibold text-accent">{bando.name}</p>
           <div className="mt-1.5">
             {participants === null ? (
               <p className="text-xs text-muted">carregando...</p>
@@ -180,6 +188,14 @@ function ServerIcon({
             )}
           </div>
         </div>
+      )}
+
+      {isOwner && contextMenuOpen && (
+        <BandoMenu
+          bandoId={bando.id}
+          bandoName={bando.name}
+          onClose={() => setContextMenuOpen(false)}
+        />
       )}
     </div>
   );

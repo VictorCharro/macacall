@@ -4,7 +4,6 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { InviteLink } from "@/components/InviteLink";
 import { VoiceChannelPresence } from "@/components/VoiceChannelPresence";
-import type { Profile } from "@/lib/types";
 
 export default async function BandoPage({
   params,
@@ -40,15 +39,6 @@ export default async function BandoPage({
     .limit(1)
     .maybeSingle();
 
-  const { data: members } = await supabase
-    .from("bando_members")
-    .select("role, profiles(id, username, avatar_seed, created_at)")
-    .eq("bando_id", id);
-
-  const memberList = (members ?? [])
-    .map((m) => ({ role: m.role, profile: m.profiles as unknown as Profile }))
-    .filter((m) => m.profile);
-
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-8 px-6 py-10">
       <header className="flex items-center justify-between">
@@ -76,27 +66,6 @@ export default async function BandoPage({
           <VoiceChannelPresence bandoId={bando.id} />
         </section>
       )}
-
-      <section>
-        <h2 className="mb-3 text-lg font-semibold text-accent">
-          Membros do bando ({memberList.length})
-        </h2>
-        <ul className="flex flex-col gap-2">
-          {memberList.map(({ role, profile }) => (
-            <li
-              key={profile.id}
-              className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3"
-            >
-              <span className="font-medium text-accent">
-                {profile.username}
-              </span>
-              {role === "owner" && (
-                <span className="text-sm text-muted">👑 dono</span>
-              )}
-            </li>
-          ))}
-        </ul>
-      </section>
     </main>
   );
 }
