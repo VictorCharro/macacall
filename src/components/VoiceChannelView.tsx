@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   useParticipants,
   useTracks,
@@ -85,11 +85,12 @@ export function CallInterface({
 }) {
   const { leaveCall, micEnabled, toggleMic } = useCall();
   const [chatOpen, setChatOpen] = useState(false);
+  const [focusedKey, setFocusedKey] = useState<string | null>(null);
   const participants = useParticipants();
   const videoTracks = useTracks([Track.Source.Camera, Track.Source.ScreenShare]);
 
+  const trackKey = (t: TrackReference) => `${t.participant.identity}:${t.source}`;
   const screenShareTrack = videoTracks.find((t) => t.source === Track.Source.ScreenShare);
-  const cameraTracks = videoTracks.filter((t) => t.source === Track.Source.Camera);
 
   const videoParticipantKeys = new Set(
     videoTracks.map((t) => `${t.participant.identity}:${t.source}`),
@@ -97,6 +98,20 @@ export function CallInterface({
   const voiceOnlyParticipants = participants.filter(
     (p) => !videoParticipantKeys.has(`${p.identity}:${Track.Source.Camera}`),
   );
+
+  // Whoever the user last clicked stays focused; if that track disappears
+  // (they hung up / stopped sharing) fall back to the active screen share,
+  // then to the first video track, then no focus at all (voice-only).
+  const availableKeys = new Set(videoTracks.map(trackKey));
+  const resolvedFocusKey =
+    focusedKey && availableKeys.has(focusedKey)
+      ? focusedKey
+      : screenShareTrack
+        ? trackKey(screenShareTrack)
+        : (videoTracks[0] ? trackKey(videoTracks[0]) : null);
+
+  const focusedTrack = videoTracks.find((t) => trackKey(t) === resolvedFocusKey) ?? null;
+  const thumbnailTracks = videoTracks.filter((t) => trackKey(t) !== resolvedFocusKey);
 
   const cam = useTrackToggle({ source: Track.Source.Camera });
   const screen = useTrackToggle({ source: Track.Source.ScreenShare });
@@ -115,16 +130,17 @@ export function CallInterface({
       <div className="flex overflow-hidden">
         {compact ? (
           <div className="flex flex-1 flex-col gap-2 p-3">
-            {screenShareTrack && (
-              <VideoTile trackRef={screenShareTrack} size="focus" />
+            {focusedTrack && (
+              <VideoTile trackRef={focusedTrack} size="focus" allowFullscreen />
             )}
-            {(cameraTracks.length > 0 || voiceOnlyParticipants.length > 0) && (
+            {(thumbnailTracks.length > 0 || voiceOnlyParticipants.length > 0) && (
               <div className="flex flex-wrap gap-2">
-                {cameraTracks.map((trackRef) => (
+                {thumbnailTracks.map((trackRef) => (
                   <VideoTile
-                    key={`${trackRef.participant.identity}:${trackRef.source}`}
+                    key={trackKey(trackRef)}
                     trackRef={trackRef}
-                    size={screenShareTrack ? "thumb" : "medium"}
+                    size={focusedTrack ? "thumb" : "medium"}
+                    onFocus={() => setFocusedKey(trackKey(trackRef))}
                   />
                 ))}
                 {voiceOnlyParticipants.map((participant) => (
@@ -234,15 +250,45 @@ const VIDEO_TILE_SIZE = {
 function VideoTile({
   trackRef,
   size,
+  onFocus,
+  allowFullscreen,
 }: {
   trackRef: TrackReference;
   size: keyof typeof VIDEO_TILE_SIZE;
+  /** Present on thumbnails: clicking swaps this track into the focus spot. */
+  onFocus?: () => void;
+  allowFullscreen?: boolean;
 }) {
   const isScreenShare = trackRef.source === Track.Source.ScreenShare;
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    if (!allowFullscreen) return;
+    function onChange() {
+      setIsFullscreen(document.fullscreenElement === containerRef.current);
+    }
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, [allowFullscreen]);
+
+  function toggleFullscreen(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      containerRef.current?.requestFullscreen();
+    }
+  }
+
   return (
     <div
-      className={`relative shrink-0 overflow-hidden rounded-2xl border border-border bg-black ${VIDEO_TILE_SIZE[size]} ${
+      ref={containerRef}
+      onClick={onFocus}
+      className={`group relative shrink-0 overflow-hidden rounded-2xl border border-border bg-black ${VIDEO_TILE_SIZE[size]} ${
         size === "grid" && isScreenShare ? "col-span-2 row-span-2" : ""
+      } ${onFocus ? "cursor-pointer transition hover:border-primary" : ""} ${
+        isFullscreen ? "!h-screen !w-screen" : ""
       }`}
     >
       <VideoTrack
@@ -254,6 +300,16 @@ function VideoTile({
           ? `🖥️ Tela de ${trackRef.participant.name || trackRef.participant.identity}`
           : trackRef.participant.name || trackRef.participant.identity}
       </span>
+      {allowFullscreen && (
+        <button
+          onClick={toggleFullscreen}
+          title={isFullscreen ? "Sair da tela cheia" : "Tela cheia"}
+          aria-label={isFullscreen ? "Sair da tela cheia" : "Tela cheia"}
+          className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white opacity-0 transition group-hover:opacity-100"
+        >
+          {isFullscreen ? "⤢" : "⛶"}
+        </button>
+      )}
     </div>
   );
 }
