@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import type { BandoActionState } from "@/app/actions/bandos";
 
@@ -14,18 +15,15 @@ export type SendDmState = BandoActionState & {
   };
 };
 
-export async function startDm(friendId: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
-
+async function getOrCreateDmConversationId(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  friendId: string,
+): Promise<{ id: string } | { error: string }> {
   const { data: mine } = await supabase
     .from("dm_participants")
     .select("conversation_id")
-    .eq("user_id", user.id);
+    .eq("user_id", userId);
 
   const { data: theirs } = await supabase
     .from("dm_participants")
@@ -45,37 +43,103 @@ export async function startDm(friendId: string) {
       .eq("is_group", false)
       .maybeSingle();
 
-    if (existing) {
-      redirect(`/bandos/dm/${existing.id}`);
-    }
+    if (existing) return { id: existing.id };
   }
 
   const { data: created, error } = await supabase
     .from("dm_conversations")
-    .insert({ created_by: user.id, is_group: false })
+    .insert({ created_by: userId, is_group: false })
     .select("id")
     .single();
 
   if (error || !created) {
-    redirect(
-      `/bandos?error=${encodeURIComponent(error?.message ?? "Erro ao iniciar conversa")}`,
-    );
+    return { error: error?.message ?? "Erro ao iniciar conversa" };
   }
 
   const { error: participantsError } = await supabase
     .from("dm_participants")
     .insert([
-      { conversation_id: created.id, user_id: user.id },
+      { conversation_id: created.id, user_id: userId },
       { conversation_id: created.id, user_id: friendId },
     ]);
 
   if (participantsError) {
-    redirect(
-      `/bandos?error=${encodeURIComponent(participantsError.message)}`,
-    );
+    return { error: participantsError.message };
   }
 
-  redirect(`/bandos/dm/${created.id}`);
+  return { id: created.id };
+}
+
+export async function startDm(friendId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const result = await getOrCreateDmConversationId(supabase, user.id, friendId);
+
+  if ("error" in result) {
+    redirect(`/bandos?error=${encodeURIComponent(result.error)}`);
+  }
+
+  redirect(`/bandos/dm/${result.id}`);
+}
+
+export async function startDmCall(friendId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const result = await getOrCreateDmConversationId(supabase, user.id, friendId);
+
+  if ("error" in result) {
+    redirect(`/bandos?error=${encodeURIComponent(result.error)}`);
+  }
+
+  redirect(`/bandos/dm/${result.id}?call=1`);
+}
+
+export async function inviteFriendToBando(
+  friendId: string,
+  bandoId: string,
+): Promise<BandoActionState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const { data: bando } = await supabase
+    .from("bandos")
+    .select("name, invite_code")
+    .eq("id", bandoId)
+    .maybeSingle();
+
+  if (!bando) return { error: "Bando não encontrado" };
+
+  const result = await getOrCreateDmConversationId(supabase, user.id, friendId);
+  if ("error" in result) return { error: result.error };
+
+  const headerList = await headers();
+  const host = headerList.get("host") ?? "macacall.vercel.app";
+  const protocol = host.includes("localhost") ? "http" : "https";
+  const inviteUrl = `${protocol}://${host}/join/${bando.invite_code}`;
+
+  const { error } = await supabase.from("dm_messages").insert({
+    conversation_id: result.id,
+    user_id: user.id,
+    content: `🐒 Te chamei pro bando "${bando.name}"! ${inviteUrl}`,
+  });
+
+  if (error) return { error: error.message };
+
+  return {};
 }
 
 export async function createGroupDm(memberIds: string[]) {

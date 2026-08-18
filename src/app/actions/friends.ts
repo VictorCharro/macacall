@@ -37,6 +37,18 @@ export async function sendFriendRequest(
     return { error: "Você não pode adicionar a si mesmo" };
   }
 
+  const { data: blocked } = await supabase
+    .from("blocked_users")
+    .select("blocker_id")
+    .or(
+      `and(blocker_id.eq.${user.id},blocked_id.eq.${target.id}),and(blocker_id.eq.${target.id},blocked_id.eq.${user.id})`,
+    )
+    .maybeSingle();
+
+  if (blocked) {
+    return { error: "Não foi possível enviar o pedido pra esse usuário" };
+  }
+
   const { error } = await supabase
     .from("friendships")
     .insert({ requester_id: user.id, addressee_id: target.id });
@@ -97,6 +109,56 @@ export async function removeFriend(
     .from("friendships")
     .delete()
     .eq("id", friendshipId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/bandos");
+  return {};
+}
+
+export async function removeFriendByUserId(
+  otherUserId: string,
+): Promise<BandoActionState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const { error } = await supabase
+    .from("friendships")
+    .delete()
+    .or(
+      `and(requester_id.eq.${user.id},addressee_id.eq.${otherUserId}),and(requester_id.eq.${otherUserId},addressee_id.eq.${user.id})`,
+    );
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/bandos");
+  return {};
+}
+
+export async function blockUser(
+  otherUserId: string,
+): Promise<BandoActionState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  await supabase
+    .from("friendships")
+    .delete()
+    .or(
+      `and(requester_id.eq.${user.id},addressee_id.eq.${otherUserId}),and(requester_id.eq.${otherUserId},addressee_id.eq.${user.id})`,
+    );
+
+  const { error } = await supabase
+    .from("blocked_users")
+    .insert({ blocker_id: user.id, blocked_id: otherUserId });
 
   if (error) return { error: error.message };
 

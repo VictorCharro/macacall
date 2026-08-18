@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   sendDmMessage,
   toggleDmPinMessage,
@@ -59,6 +60,16 @@ export function DmChat({
 
   const displayName =
     groupName ?? (participants.map((p) => p.username).join(", ") || "Macaco");
+
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  useEffect(() => {
+    if (searchParams.get("call") === "1") {
+      joinCall(conversationId, displayName, `/bandos/dm/${conversationId}`);
+      router.replace(`/bandos/dm/${conversationId}`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const members: Record<string, Member> = Object.fromEntries([
     ...participants.map((p) => [p.id, { username: p.username, avatarSeed: p.avatarSeed }]),

@@ -265,7 +265,7 @@ function ConditionalFriendRow({
   if (filterOnline && !status) return null;
 
   return (
-    <FriendRow friend={friend}>
+    <FriendRow friend={friend} enableContextMenu>
       <form action={startDm.bind(null, friend.id)}>
         <button
           type="submit"

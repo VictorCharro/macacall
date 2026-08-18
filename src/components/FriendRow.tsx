@@ -1,6 +1,10 @@
 "use client";
 
 import { usePresence } from "@/components/PresenceProvider";
+import {
+  FriendContextMenu,
+  useFriendContextMenu,
+} from "@/components/FriendContextMenu";
 import { STATUS_META } from "@/lib/presence";
 import type { PresenceStatus } from "@/lib/types";
 
@@ -19,15 +23,21 @@ export function useEffectiveStatus(friendId: string) {
 
 export function FriendRow({
   friend,
+  enableContextMenu,
   children,
 }: {
   friend: FriendLike;
+  enableContextMenu?: boolean;
   children?: React.ReactNode;
 }) {
   const status = useEffectiveStatus(friend.id);
+  const menu = useFriendContextMenu();
 
   return (
-    <li className="flex items-center gap-3 rounded-xl border-t border-border/60 px-2 py-3 transition hover:bg-border/20">
+    <li
+      className="flex items-center gap-3 rounded-xl border-t border-border/60 px-2 py-3 transition hover:bg-border/20"
+      onContextMenu={enableContextMenu ? menu.open : undefined}
+    >
       <div className="relative shrink-0">
         <img
           src={`https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(friend.avatarSeed)}`}
@@ -50,6 +60,15 @@ export function FriendRow({
         </p>
       </div>
       {children && <div className="flex shrink-0 items-center gap-1.5">{children}</div>}
+
+      {menu.pos && (
+        <FriendContextMenu
+          friendId={friend.id}
+          friendUsername={friend.username}
+          pos={menu.pos}
+          onClose={menu.close}
+        />
+      )}
     </li>
   );
 }
