@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Users, MessageSquare, X } from "lucide-react";
 import {
   respondFriendRequest,
   removeFriend,
@@ -99,10 +100,10 @@ export function FriendsHome({
       />
 
       <div className="flex flex-1 flex-col overflow-hidden">
-        <header className="flex items-center gap-2 border-b border-border bg-card px-6 py-3">
-          <span aria-hidden="true">🐒</span>
-          <h1 className="font-semibold text-accent">Amigos</h1>
-          <div className="ml-4 h-5 w-px bg-border" />
+        <header className="flex h-12 items-center gap-2 border-b border-border-soft bg-card px-4">
+          <Users className="h-5 w-5 text-muted" />
+          <h1 className="text-sm font-bold text-accent">Amigos</h1>
+          <div className="ml-2 h-5 w-px bg-border-soft" />
           <div className="flex gap-1">
             {(
               [
@@ -115,10 +116,10 @@ export function FriendsHome({
                 key={key}
                 type="button"
                 onClick={() => setTab(key)}
-                className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+                className={`rounded-md px-2.5 py-1 text-xs font-semibold transition ${
                   tab === key
-                    ? "bg-border/60 text-accent"
-                    : "text-muted hover:bg-border/30 hover:text-accent"
+                    ? "bg-card-2 text-accent"
+                    : "text-muted hover:text-accent"
                 }`}
               >
                 {label}
@@ -127,10 +128,10 @@ export function FriendsHome({
             <button
               type="button"
               onClick={() => setTab("adicionar")}
-              className={`rounded-full px-3 py-1.5 text-sm font-semibold transition ${
+              className={`rounded-md px-2.5 py-1 text-xs font-bold transition ${
                 tab === "adicionar"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-secondary text-secondary-foreground hover:brightness-95"
+                  ? "bg-secondary text-secondary-foreground"
+                  : "text-secondary hover:bg-secondary/10"
               }`}
             >
               Adicionar amigo
@@ -271,9 +272,9 @@ function ConditionalFriendRow({
           type="submit"
           title="Enviar mensagem"
           aria-label="Enviar mensagem"
-          className="flex h-8 w-8 items-center justify-center rounded-full bg-background text-muted transition hover:bg-border/40 hover:text-accent"
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-card-2 text-muted transition hover:text-accent"
         >
-          💬
+          <MessageSquare className="h-4 w-4" />
         </button>
       </form>
       <button
@@ -284,9 +285,9 @@ function ConditionalFriendRow({
         }}
         title="Remover amigo"
         aria-label="Remover amigo"
-        className="flex h-8 w-8 items-center justify-center rounded-full bg-background text-muted transition hover:bg-danger/15 hover:text-danger"
+        className="flex h-9 w-9 items-center justify-center rounded-full bg-card-2 text-muted transition hover:bg-danger/15 hover:text-danger"
       >
-        ✕
+        <X className="h-4 w-4" />
       </button>
     </FriendRow>
   );

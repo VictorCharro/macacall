@@ -35,7 +35,7 @@ export function FriendRow({
 
   return (
     <li
-      className="flex items-center gap-3 rounded-xl border-t border-border/60 px-2 py-3 transition hover:bg-border/20"
+      className="flex items-center gap-3 rounded-xl border-t border-border-soft/60 px-2 py-3 transition hover:bg-card-2/60"
       onContextMenu={enableContextMenu ? menu.open : undefined}
     >
       <div className="relative shrink-0">

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Search } from "lucide-react";
 import { useEffectiveStatus } from "@/components/FriendRow";
 import { UserPanel } from "@/components/UserPanel";
 
@@ -24,12 +25,13 @@ export function FriendsSidebar({
   const pathname = usePathname();
 
   return (
-    <nav className="flex w-72 shrink-0 flex-col border-r border-border bg-card/40">
-      <div className="border-b border-border p-3">
+    <nav className="flex w-60 shrink-0 flex-col border-r border-border-soft bg-card">
+      <div className="border-b border-border-soft p-3">
         <button
           type="button"
-          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-left text-sm text-muted"
+          className="relative w-full rounded bg-card-3 py-1.5 pl-8 pr-3 text-left text-xs text-muted transition hover:bg-card-2"
         >
+          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" />
           Encontre ou comece uma conversa
         </button>
       </div>
@@ -39,8 +41,8 @@ export function FriendsSidebar({
           href="/bandos"
           className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition ${
             pathname === "/bandos"
-              ? "bg-border/40 text-accent"
-              : "text-muted hover:bg-border/30 hover:text-accent"
+              ? "bg-card-2 text-accent"
+              : "text-muted hover:bg-card-2 hover:text-accent"
           }`}
         >
           <span aria-hidden="true">🐒</span>
@@ -83,8 +85,8 @@ function DmListItem({ dm, active }: { dm: DmEntry; active: boolean }) {
         href={`/bandos/dm/${dm.conversationId}`}
         className={`flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium transition ${
           active
-            ? "bg-border/60 text-accent"
-            : "text-muted hover:bg-border/30 hover:text-accent"
+            ? "bg-card-2 text-accent"
+            : "text-muted hover:bg-card-2 hover:text-accent"
         }`}
       >
         <div className="relative shrink-0">

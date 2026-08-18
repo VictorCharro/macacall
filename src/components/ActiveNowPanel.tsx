@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Mic } from "lucide-react";
 import { usePresence } from "@/components/PresenceProvider";
 import { STATUS_META } from "@/lib/presence";
 
@@ -38,7 +39,7 @@ export function ActiveNowPanel({ friends }: { friends: Friend[] }) {
   );
 
   return (
-    <aside className="hidden w-72 shrink-0 flex-col overflow-y-auto border-l border-border bg-card/60 p-4 lg:flex">
+    <aside className="hidden w-72 shrink-0 flex-col overflow-y-auto border-l border-border-soft bg-card p-4 lg:flex">
       <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted">
         Ativo agora
       </h2>
@@ -55,7 +56,7 @@ export function ActiveNowPanel({ friends }: { friends: Friend[] }) {
             return (
               <li
                 key={friend.id}
-                className="flex items-center gap-3 rounded-xl border border-border bg-card p-2.5"
+                className="flex items-center gap-3 rounded-xl border border-border-soft bg-card-2 p-2.5"
               >
                 <div className="relative shrink-0">
                   <img
@@ -75,8 +76,9 @@ export function ActiveNowPanel({ friends }: { friends: Friend[] }) {
                     {friend.username}
                   </p>
                   {inCall ? (
-                    <p className="truncate text-xs text-secondary">
-                      🎙️ {inCall.bandoName} · {inCall.channelName}
+                    <p className="flex items-center gap-1 truncate text-xs text-secondary">
+                      <Mic className="h-3 w-3 shrink-0" />
+                      {inCall.bandoName} · {inCall.channelName}
                     </p>
                   ) : (
                     <p className="truncate text-xs text-muted">
