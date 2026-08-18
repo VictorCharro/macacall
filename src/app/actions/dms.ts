@@ -22,22 +22,31 @@ export async function startDm(friendId: string) {
 
   if (!user) redirect("/login");
 
-  const { data: myConversations } = await supabase
+  const { data: mine } = await supabase
     .from("dm_participants")
-    .select("conversation_id, dm_conversations!inner(id, is_group)")
-    .eq("user_id", user.id)
-    .eq("dm_conversations.is_group", false);
+    .select("conversation_id")
+    .eq("user_id", user.id);
 
-  for (const row of myConversations ?? []) {
-    const { data: otherParticipant } = await supabase
-      .from("dm_participants")
-      .select("user_id")
-      .eq("conversation_id", row.conversation_id)
-      .eq("user_id", friendId)
+  const { data: theirs } = await supabase
+    .from("dm_participants")
+    .select("conversation_id")
+    .eq("user_id", friendId);
+
+  const theirIds = new Set((theirs ?? []).map((r) => r.conversation_id));
+  const sharedIds = (mine ?? [])
+    .map((r) => r.conversation_id)
+    .filter((id) => theirIds.has(id));
+
+  if (sharedIds.length > 0) {
+    const { data: existing } = await supabase
+      .from("dm_conversations")
+      .select("id")
+      .in("id", sharedIds)
+      .eq("is_group", false)
       .maybeSingle();
 
-    if (otherParticipant) {
-      redirect(`/bandos/dm/${row.conversation_id}`);
+    if (existing) {
+      redirect(`/bandos/dm/${existing.id}`);
     }
   }
 
@@ -53,10 +62,18 @@ export async function startDm(friendId: string) {
     );
   }
 
-  await supabase.from("dm_participants").insert([
-    { conversation_id: created.id, user_id: user.id },
-    { conversation_id: created.id, user_id: friendId },
-  ]);
+  const { error: participantsError } = await supabase
+    .from("dm_participants")
+    .insert([
+      { conversation_id: created.id, user_id: user.id },
+      { conversation_id: created.id, user_id: friendId },
+    ]);
+
+  if (participantsError) {
+    redirect(
+      `/bandos?error=${encodeURIComponent(participantsError.message)}`,
+    );
+  }
 
   redirect(`/bandos/dm/${created.id}`);
 }
@@ -81,10 +98,18 @@ export async function createGroupDm(memberIds: string[]) {
     );
   }
 
-  await supabase.from("dm_participants").insert([
-    { conversation_id: created.id, user_id: user.id },
-    ...memberIds.map((id) => ({ conversation_id: created.id, user_id: id })),
-  ]);
+  const { error: participantsError } = await supabase
+    .from("dm_participants")
+    .insert([
+      { conversation_id: created.id, user_id: user.id },
+      ...memberIds.map((id) => ({ conversation_id: created.id, user_id: id })),
+    ]);
+
+  if (participantsError) {
+    redirect(
+      `/bandos?error=${encodeURIComponent(participantsError.message)}`,
+    );
+  }
 
   redirect(`/bandos/dm/${created.id}`);
 }
