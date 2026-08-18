@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
+import { useBandoParticipants } from "@/components/BandoParticipants";
 
 type Member = {
   id: string;
@@ -9,10 +10,7 @@ type Member = {
   isOwner: boolean;
 };
 
-type Participant = { identity: string; name: string; channelId: string };
-
 export function MembersSidebar({
-  bandoId,
   members,
   voiceChannelNames,
 }: {
@@ -20,33 +18,11 @@ export function MembersSidebar({
   members: Member[];
   voiceChannelNames: Record<string, string>;
 }) {
-  const [inCall, setInCall] = useState<Map<string, string>>(new Map());
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function poll() {
-      try {
-        const res = await fetch(`/api/livekit/participants?bandoId=${bandoId}`);
-        const data = await res.json();
-        if (!cancelled) {
-          const participants: Participant[] = data.participants ?? [];
-          setInCall(
-            new Map(participants.map((p) => [p.identity, p.channelId])),
-          );
-        }
-      } catch {
-        // silencioso: a lista de membros ainda funciona sem essa info
-      }
-    }
-
-    poll();
-    const interval = setInterval(poll, 2000);
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, [bandoId]);
+  const participants = useBandoParticipants();
+  const inCall = useMemo(
+    () => new Map(participants.map((p) => [p.identity, p.channelId])),
+    [participants],
+  );
 
   return (
     <aside className="hidden w-64 shrink-0 flex-col overflow-y-auto border-l border-border bg-card/60 p-4 sm:flex">

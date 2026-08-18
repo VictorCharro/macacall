@@ -2,22 +2,16 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ServerHeaderMenu } from "@/components/ServerHeaderMenu";
 import { ChannelMenu } from "@/components/ChannelMenu";
 import { CreateChannelButton } from "@/components/CreateChannelButton";
 import { VoiceConnectedBar } from "@/components/VoiceConnectedBar";
 import { UserPanel } from "@/components/UserPanel";
 import { useCall } from "@/components/CallProvider";
+import { useBandoParticipants } from "@/components/BandoParticipants";
 
 type ChannelInfo = { id: string; name: string };
-type Participant = {
-  identity: string;
-  name: string;
-  channelId: string;
-  micMuted: boolean;
-  deafened: boolean;
-};
 
 export function ChannelSidebar({
   bandoId,
@@ -39,28 +33,7 @@ export function ChannelSidebar({
   selfAvatarSeed: string;
 }) {
   const pathname = usePathname();
-  const [participants, setParticipants] = useState<Participant[]>([]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function poll() {
-      try {
-        const res = await fetch(`/api/livekit/participants?bandoId=${bandoId}`);
-        const data = await res.json();
-        if (!cancelled) setParticipants(data.participants ?? []);
-      } catch {
-        // silencioso
-      }
-    }
-
-    poll();
-    const interval = setInterval(poll, 2000);
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, [bandoId]);
+  const participants = useBandoParticipants();
 
   return (
     <nav className="flex w-72 shrink-0 flex-col border-r border-border bg-card/40">
