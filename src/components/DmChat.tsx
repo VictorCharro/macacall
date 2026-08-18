@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { sendDmMessage, type SendDmState } from "@/app/actions/dms";
-import { createClient } from "@/lib/supabase/client";
+import { createRealtimeClient } from "@/lib/supabase/realtimeClient";
 
 type DmMessage = {
   id: string;
@@ -51,28 +51,36 @@ export function DmChat({
   }
 
   useEffect(() => {
-    const supabase = createClient();
-    const channel = supabase
-      .channel(`dm_messages:${conversationId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "dm_messages",
-          filter: `conversation_id=eq.${conversationId}`,
-        },
-        (payload) => {
-          const row = payload.new as DmMessage;
-          setMessages((prev) =>
-            prev.some((m) => m.id === row.id) ? prev : [...prev, row],
-          );
-        },
-      )
-      .subscribe();
+    let cancelled = false;
+    let cleanup: (() => void) | undefined;
+
+    createRealtimeClient().then((supabase) => {
+      if (cancelled) return;
+      const channel = supabase
+        .channel(`dm_messages:${conversationId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "dm_messages",
+            filter: `conversation_id=eq.${conversationId}`,
+          },
+          (payload) => {
+            const row = payload.new as DmMessage;
+            setMessages((prev) =>
+              prev.some((m) => m.id === row.id) ? prev : [...prev, row],
+            );
+          },
+        )
+        .subscribe();
+
+      cleanup = () => supabase.removeChannel(channel);
+    });
 
     return () => {
-      supabase.removeChannel(channel);
+      cancelled = true;
+      cleanup?.();
     };
   }, [conversationId]);
 

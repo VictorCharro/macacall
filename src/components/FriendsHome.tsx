@@ -11,7 +11,7 @@ import { FriendRow, useEffectiveStatus } from "@/components/FriendRow";
 import { AddFriendForm } from "@/components/AddFriendForm";
 import { ActiveNowPanel } from "@/components/ActiveNowPanel";
 import { FriendsSidebar } from "@/components/FriendsSidebar";
-import { createClient } from "@/lib/supabase/client";
+import { createRealtimeClient } from "@/lib/supabase/realtimeClient";
 import type { PresenceStatus } from "@/lib/types";
 
 type FriendEntry = {
@@ -53,33 +53,41 @@ export function FriendsHome({
   const router = useRouter();
 
   useEffect(() => {
-    const supabase = createClient();
-    const channel = supabase
-      .channel(`friendships:${currentUserId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "friendships",
-          filter: `requester_id=eq.${currentUserId}`,
-        },
-        () => router.refresh(),
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "friendships",
-          filter: `addressee_id=eq.${currentUserId}`,
-        },
-        () => router.refresh(),
-      )
-      .subscribe();
+    let cancelled = false;
+    let cleanup: (() => void) | undefined;
+
+    createRealtimeClient().then((supabase) => {
+      if (cancelled) return;
+      const channel = supabase
+        .channel(`friendships:${currentUserId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "friendships",
+            filter: `requester_id=eq.${currentUserId}`,
+          },
+          () => router.refresh(),
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "friendships",
+            filter: `addressee_id=eq.${currentUserId}`,
+          },
+          () => router.refresh(),
+        )
+        .subscribe();
+
+      cleanup = () => supabase.removeChannel(channel);
+    });
 
     return () => {
-      supabase.removeChannel(channel);
+      cancelled = true;
+      cleanup?.();
     };
   }, [currentUserId, router]);
 

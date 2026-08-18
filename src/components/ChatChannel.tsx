@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { sendMessage, type SendMessageState } from "@/app/actions/messages";
-import { createClient } from "@/lib/supabase/client";
+import { createRealtimeClient } from "@/lib/supabase/realtimeClient";
 import { MessageActionsMenu } from "@/components/MessageActionsMenu";
 import { PinnedMessagesModal } from "@/components/PinnedMessagesModal";
 
@@ -58,43 +58,51 @@ export function ChatChannel({
   }
 
   useEffect(() => {
-    const supabase = createClient();
-    const channel = supabase
-      .channel(`messages:${channelId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "messages",
-          filter: `channel_id=eq.${channelId}`,
-        },
-        (payload) => {
-          const row = payload.new as ChatMessage;
-          setMessages((prev) =>
-            prev.some((m) => m.id === row.id) ? prev : [...prev, row],
-          );
-        },
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "messages",
-          filter: `channel_id=eq.${channelId}`,
-        },
-        (payload) => {
-          const row = payload.new as ChatMessage;
-          setMessages((prev) =>
-            prev.map((m) => (m.id === row.id ? { ...m, ...row } : m)),
-          );
-        },
-      )
-      .subscribe();
+    let cancelled = false;
+    let cleanup: (() => void) | undefined;
+
+    createRealtimeClient().then((supabase) => {
+      if (cancelled) return;
+      const channel = supabase
+        .channel(`messages:${channelId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "messages",
+            filter: `channel_id=eq.${channelId}`,
+          },
+          (payload) => {
+            const row = payload.new as ChatMessage;
+            setMessages((prev) =>
+              prev.some((m) => m.id === row.id) ? prev : [...prev, row],
+            );
+          },
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "messages",
+            filter: `channel_id=eq.${channelId}`,
+          },
+          (payload) => {
+            const row = payload.new as ChatMessage;
+            setMessages((prev) =>
+              prev.map((m) => (m.id === row.id ? { ...m, ...row } : m)),
+            );
+          },
+        )
+        .subscribe();
+
+      cleanup = () => supabase.removeChannel(channel);
+    });
 
     return () => {
-      supabase.removeChannel(channel);
+      cancelled = true;
+      cleanup?.();
     };
   }, [channelId]);
 
