@@ -7,6 +7,7 @@ import { InviteLink } from "@/components/InviteLink";
 import { ChannelMenu } from "@/components/ChannelMenu";
 import { CreateChannelButton } from "@/components/CreateChannelButton";
 import { VoiceConnectedBar } from "@/components/VoiceConnectedBar";
+import { UserPanel } from "@/components/UserPanel";
 
 type ChannelInfo = { id: string; name: string };
 type Participant = { identity: string; name: string; channelId: string };
@@ -18,6 +19,8 @@ export function ChannelSidebar({
   isOwner,
   textChannels,
   voiceChannels,
+  selfUsername,
+  selfAvatarSeed,
 }: {
   bandoId: string;
   bandoName: string;
@@ -25,6 +28,8 @@ export function ChannelSidebar({
   isOwner: boolean;
   textChannels: ChannelInfo[];
   voiceChannels: ChannelInfo[];
+  selfUsername: string;
+  selfAvatarSeed: string;
 }) {
   const pathname = usePathname();
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -115,6 +120,7 @@ export function ChannelSidebar({
       </div>
 
       <VoiceConnectedBar />
+      <UserPanel username={selfUsername} avatarSeed={selfAvatarSeed} />
     </nav>
   );
 }

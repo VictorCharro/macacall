@@ -31,7 +31,6 @@ function ConnectedBarContent({
   channelName: string;
 }) {
   const { leaveCall } = useCall();
-  const mic = useTrackToggle({ source: Track.Source.Microphone });
   const cam = useTrackToggle({ source: Track.Source.Camera });
   const screen = useTrackToggle({ source: Track.Source.ScreenShare });
 
@@ -57,12 +56,6 @@ function ConnectedBarContent({
       </div>
 
       <div className="flex items-center gap-1.5">
-        <IconToggle
-          active={mic.enabled}
-          onClick={() => mic.toggle()}
-          label={mic.enabled ? "Silenciar mic" : "Ativar mic"}
-          icon={mic.enabled ? "🎙️" : "🔇"}
-        />
         <IconToggle
           active={cam.enabled}
           onClick={() => cam.toggle()}

@@ -73,7 +73,7 @@ export function VoiceChannelView({
 }
 
 function CallInterface({ channelName }: { channelName: string }) {
-  const { leaveCall } = useCall();
+  const { leaveCall, micEnabled, toggleMic } = useCall();
   const [chatOpen, setChatOpen] = useState(false);
   const participants = useParticipants();
   const videoTracks = useTracks([Track.Source.Camera, Track.Source.ScreenShare]);
@@ -85,7 +85,6 @@ function CallInterface({ channelName }: { channelName: string }) {
     (p) => !videoParticipantKeys.has(`${p.identity}:${Track.Source.Camera}`),
   );
 
-  const mic = useTrackToggle({ source: Track.Source.Microphone });
   const cam = useTrackToggle({ source: Track.Source.Camera });
   const screen = useTrackToggle({ source: Track.Source.ScreenShare });
 
@@ -117,10 +116,10 @@ function CallInterface({ channelName }: { channelName: string }) {
 
       <div className="flex items-center justify-center gap-3 border-t border-border bg-card px-4 py-3">
         <ControlButton
-          active={mic.enabled}
-          onClick={() => mic.toggle()}
-          label={mic.enabled ? "Mic ligado" : "Mic mudo"}
-          icon={mic.enabled ? "🎙️" : "🔇"}
+          active={micEnabled}
+          onClick={toggleMic}
+          label={micEnabled ? "Mic ligado" : "Mic mudo"}
+          icon={micEnabled ? "🎙️" : "🔇"}
         />
         <ControlButton
           active={cam.enabled}

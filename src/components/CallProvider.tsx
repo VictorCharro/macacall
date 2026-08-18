@@ -8,7 +8,12 @@ import {
   useMemo,
   useState,
 } from "react";
-import { LiveKitRoom, RoomAudioRenderer } from "@livekit/components-react";
+import {
+  LiveKitRoom,
+  RoomAudioRenderer,
+  useLocalParticipant,
+  useRemoteParticipants,
+} from "@livekit/components-react";
 import "@livekit/components-styles";
 
 type ActiveCall = { bandoId: string; channelId: string; channelName: string };
@@ -17,8 +22,12 @@ type CallContextValue = {
   activeCall: ActiveCall | null;
   connected: boolean;
   error: string | null;
+  micEnabled: boolean;
+  deafened: boolean;
   joinCall: (bandoId: string, channelId: string, channelName: string) => void;
   leaveCall: () => void;
+  toggleMic: () => void;
+  toggleDeafen: () => void;
 };
 
 const CallContext = createContext<CallContextValue | null>(null);
@@ -37,6 +46,20 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     serverUrl: string;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [micEnabled, setMicEnabled] = useState(true);
+  const [deafened, setDeafened] = useState(false);
+
+  const toggleMic = useCallback(() => {
+    setMicEnabled((prev) => !prev);
+  }, []);
+
+  const toggleDeafen = useCallback(() => {
+    setDeafened((prev) => {
+      const next = !prev;
+      setMicEnabled(!next);
+      return next;
+    });
+  }, []);
 
   const joinCall = useCallback(
     (bandoId: string, channelId: string, channelName: string) => {
@@ -83,8 +106,28 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   );
 
   const value = useMemo<CallContextValue>(
-    () => ({ activeCall, connected, error, joinCall, leaveCall }),
-    [activeCall, connected, error, joinCall, leaveCall],
+    () => ({
+      activeCall,
+      connected,
+      error,
+      micEnabled,
+      deafened,
+      joinCall,
+      leaveCall,
+      toggleMic,
+      toggleDeafen,
+    }),
+    [
+      activeCall,
+      connected,
+      error,
+      micEnabled,
+      deafened,
+      joinCall,
+      leaveCall,
+      toggleMic,
+      toggleDeafen,
+    ],
   );
 
   if (connected) {
@@ -94,12 +137,13 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
           token={tokenInfo!.token}
           serverUrl={tokenInfo!.serverUrl}
           connect
-          audio
+          audio={micEnabled}
           video={false}
           style={{ display: "contents" }}
           onDisconnected={leaveCall}
         >
           <RoomAudioRenderer />
+          <CallDeviceSync micEnabled={micEnabled} deafened={deafened} />
           {children}
         </LiveKitRoom>
       </CallContext.Provider>
@@ -107,4 +151,25 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   }
 
   return <CallContext.Provider value={value}>{children}</CallContext.Provider>;
+}
+
+function CallDeviceSync({
+  micEnabled,
+  deafened,
+}: {
+  micEnabled: boolean;
+  deafened: boolean;
+}) {
+  const { localParticipant } = useLocalParticipant();
+  const remoteParticipants = useRemoteParticipants();
+
+  useEffect(() => {
+    localParticipant.setMicrophoneEnabled(micEnabled).catch(() => {});
+  }, [localParticipant, micEnabled]);
+
+  useEffect(() => {
+    remoteParticipants.forEach((p) => p.setVolume(deafened ? 0 : 1));
+  }, [remoteParticipants, deafened]);
+
+  return null;
 }

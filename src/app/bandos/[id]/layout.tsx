@@ -65,6 +65,7 @@ export default async function BandoLayout({
   );
 
   const isOwner = bando.owner_id === user.id;
+  const self = memberList.find((m) => m.id === user.id);
 
   return (
     <div className="flex flex-1 overflow-hidden">
@@ -75,6 +76,8 @@ export default async function BandoLayout({
         isOwner={isOwner}
         textChannels={textChannels}
         voiceChannels={voiceChannels}
+        selfUsername={self?.username ?? "Macaco"}
+        selfAvatarSeed={self?.avatarSeed ?? user.id}
       />
       <div className="flex flex-1 flex-col overflow-hidden">{children}</div>
       <MembersSidebar
