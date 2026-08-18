@@ -8,6 +8,7 @@ import { ChannelMenu } from "@/components/ChannelMenu";
 import { CreateChannelButton } from "@/components/CreateChannelButton";
 import { VoiceConnectedBar } from "@/components/VoiceConnectedBar";
 import { UserPanel } from "@/components/UserPanel";
+import { useCall } from "@/components/CallProvider";
 
 type ChannelInfo = { id: string; name: string };
 type Participant = { identity: string; name: string; channelId: string };
@@ -97,6 +98,7 @@ export function ChannelSidebar({
                   isOwner={isOwner}
                   active={pathname === `/bandos/${bandoId}/${channel.id}`}
                   asListItem={false}
+                  isVoice
                 >
                   <span className="text-muted">🔊</span>
                   <span className="truncate">{channel.name}</span>
@@ -146,6 +148,7 @@ function ChannelRow({
   isOwner,
   active,
   asListItem = true,
+  isVoice = false,
   children,
 }: {
   bandoId: string;
@@ -153,9 +156,11 @@ function ChannelRow({
   isOwner: boolean;
   active: boolean;
   asListItem?: boolean;
+  isVoice?: boolean;
   children: React.ReactNode;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const { joinCall } = useCall();
 
   const row = (
     <div
@@ -171,6 +176,11 @@ function ChannelRow({
     >
       <Link
         href={`/bandos/${bandoId}/${channel.id}`}
+        onDoubleClick={
+          isVoice
+            ? () => joinCall(bandoId, channel.id, channel.name)
+            : undefined
+        }
         className={`flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium transition ${
           active
             ? "bg-border/60 text-accent"
