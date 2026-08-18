@@ -8,14 +8,20 @@ import { SubmitButton } from "@/components/SubmitButton";
 export function BandoMenu({
   bandoId,
   bandoName,
+  onOpenChange,
 }: {
   bandoId: string;
   bandoName: string;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    onOpenChange?.(open || confirmingDelete);
+  }, [open, confirmingDelete, onOpenChange]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
