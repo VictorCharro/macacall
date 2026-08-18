@@ -5,6 +5,7 @@ export type Profile = {
   username: string;
   avatar_seed: string;
   status: PresenceStatus;
+  status_message: string | null;
   created_at: string;
 };
 
