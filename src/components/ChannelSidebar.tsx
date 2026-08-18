@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { InviteLink } from "@/components/InviteLink";
 import { ChannelMenu } from "@/components/ChannelMenu";
 import { CreateChannelButton } from "@/components/CreateChannelButton";
+import { VoiceConnectedBar } from "@/components/VoiceConnectedBar";
 
 type ChannelInfo = { id: string; name: string };
 type Participant = { identity: string; name: string; channelId: string };
@@ -112,6 +113,8 @@ export function ChannelSidebar({
           })}
         </ul>
       </div>
+
+      <VoiceConnectedBar />
     </nav>
   );
 }

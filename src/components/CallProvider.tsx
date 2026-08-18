@@ -11,7 +11,6 @@ import {
 import { usePathname, useRouter } from "next/navigation";
 import { LiveKitRoom, RoomAudioRenderer } from "@livekit/components-react";
 import "@livekit/components-styles";
-import { MiniCallBar } from "@/components/MiniCallBar";
 
 type ActiveCall = { bandoId: string; channelId: string; channelName: string };
 
@@ -111,7 +110,6 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
         >
           <RoomAudioRenderer />
           {children}
-          <MiniCallBar />
         </LiveKitRoom>
       </CallContext.Provider>
     );
