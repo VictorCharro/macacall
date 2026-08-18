@@ -50,7 +50,11 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   const [deafened, setDeafened] = useState(false);
 
   const toggleMic = useCallback(() => {
-    setMicEnabled((prev) => !prev);
+    setMicEnabled((prev) => {
+      const next = !prev;
+      if (next) setDeafened(false);
+      return next;
+    });
   }, []);
 
   const toggleDeafen = useCallback(() => {
