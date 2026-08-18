@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { Hash, Volume2, MicOff, VolumeX } from "lucide-react";
 import { ServerHeaderMenu } from "@/components/ServerHeaderMenu";
 import { ChannelMenu } from "@/components/ChannelMenu";
 import { CreateChannelButton } from "@/components/CreateChannelButton";
@@ -36,10 +37,10 @@ export function ChannelSidebar({
   const participants = useBandoParticipants();
 
   return (
-    <nav className="flex w-72 shrink-0 flex-col border-r border-border bg-card/40">
+    <nav className="flex w-60 shrink-0 flex-col border-r border-border-soft bg-card">
       <ServerHeaderMenu bandoName={bandoName} inviteUrl={inviteUrl} />
 
-      <div className="flex flex-1 flex-col gap-4 px-2 py-3">
+      <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-2 py-3">
         <ChannelGroup label="Canais de Texto">
           {isOwner && <CreateChannelButton bandoId={bandoId} type="text" />}
         </ChannelGroup>
@@ -52,7 +53,7 @@ export function ChannelSidebar({
               isOwner={isOwner}
               active={pathname === `/bandos/${bandoId}/${channel.id}`}
             >
-              <span className="text-muted">#</span>
+              <Hash className="h-4 w-4 shrink-0 text-muted" />
               <span className="truncate">{channel.name}</span>
             </ChannelRow>
           ))}
@@ -66,6 +67,7 @@ export function ChannelSidebar({
             const channelParticipants = participants.filter(
               (p) => p.channelId === channel.id,
             );
+            const isInThisCall = channelParticipants.length > 0;
             return (
               <li key={channel.id} className="flex flex-col">
                 <ChannelRow
@@ -76,7 +78,9 @@ export function ChannelSidebar({
                   asListItem={false}
                   isVoice
                 >
-                  <span className="text-muted">🔊</span>
+                  <Volume2
+                    className={`h-4 w-4 shrink-0 ${isInThisCall ? "text-secondary" : "text-muted"}`}
+                  />
                   <span className="truncate">{channel.name}</span>
                 </ChannelRow>
                 {channelParticipants.length > 0 && (
@@ -88,19 +92,16 @@ export function ChannelSidebar({
                       >
                         <span className="truncate">🐵 {p.name}</span>
                         {p.deafened ? (
-                          <span className="flex shrink-0 gap-0.5" title="Surdo e mudo">
-                            <span aria-hidden="true">🔇</span>
-                            <span aria-hidden="true">🔕</span>
-                          </span>
+                          <VolumeX
+                            className="h-3.5 w-3.5 shrink-0 text-danger"
+                            aria-label="Surdo e mudo"
+                          />
                         ) : (
                           p.micMuted && (
-                            <span
-                              className="shrink-0"
-                              title="Microfone mudo"
+                            <MicOff
+                              className="h-3.5 w-3.5 shrink-0 text-danger"
                               aria-label="Microfone mudo"
-                            >
-                              🔇
-                            </span>
+                            />
                           )
                         )}
                       </li>
@@ -127,7 +128,7 @@ function ChannelGroup({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between px-2 text-xs font-semibold uppercase tracking-wide text-muted">
+    <div className="flex items-center justify-between px-1 text-[11px] font-bold uppercase tracking-wider text-muted">
       <span>{label}</span>
       {children}
     </div>
@@ -173,10 +174,10 @@ function ChannelRow({
             ? () => joinCall(bandoId, channel.id, channel.name)
             : undefined
         }
-        className={`flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium transition ${
+        className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium transition ${
           active
-            ? "bg-border/60 text-accent"
-            : "text-muted hover:bg-border/30 hover:text-accent"
+            ? "bg-card-2 text-accent"
+            : "text-muted hover:bg-card-2/60 hover:text-accent"
         }`}
       >
         {children}

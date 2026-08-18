@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { ChevronDown, UserPlus } from "lucide-react";
 import { Modal } from "@/components/Modal";
 
 export function ServerHeaderMenu({
@@ -26,33 +27,30 @@ export function ServerHeaderMenu({
   }, []);
 
   return (
-    <div ref={menuRef} className="relative border-b border-border">
+    <div ref={menuRef} className="relative border-b border-border-soft">
       <button
         type="button"
         onClick={() => setMenuOpen((v) => !v)}
-        className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left font-bold text-accent transition hover:bg-border/30"
+        className="flex h-12 w-full items-center justify-between gap-2 px-4 text-left text-sm font-bold tracking-wide text-accent shadow-sm transition hover:bg-card-2"
       >
         <span className="truncate">{bandoName}</span>
-        <span
-          className={`shrink-0 text-xs text-muted transition-transform ${menuOpen ? "rotate-180" : ""}`}
-          aria-hidden="true"
-        >
-          ▾
-        </span>
+        <ChevronDown
+          className={`h-4 w-4 shrink-0 text-muted transition-transform ${menuOpen ? "rotate-180 text-accent" : ""}`}
+        />
       </button>
 
       {menuOpen && (
-        <div className="absolute left-2 right-2 top-full z-30 mt-1 animate-modal-in rounded-xl border border-border bg-card p-2 shadow-lg">
+        <div className="absolute left-2 right-2 top-full z-30 mt-1 animate-modal-in rounded-xl border border-border bg-card-2 p-2 shadow-lg">
           <button
             type="button"
             onClick={() => {
               setMenuOpen(false);
               setInviteOpen(true);
             }}
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-foreground transition hover:bg-border/40"
+            className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-secondary transition hover:bg-secondary/15"
           >
-            <span aria-hidden="true">🐒➕</span>
             Convidar para o bando
+            <UserPlus className="h-4 w-4" />
           </button>
         </div>
       )}

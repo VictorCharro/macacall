@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { Crown, Mic } from "lucide-react";
 import { useBandoParticipants } from "@/components/BandoParticipants";
 
 type Member = {
@@ -24,40 +25,54 @@ export function MembersSidebar({
     [participants],
   );
 
-  return (
-    <aside className="hidden w-64 shrink-0 flex-col overflow-y-auto border-l border-border bg-card/60 p-4 sm:flex">
-      <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted">
-        Membros — {members.length}
-      </h2>
-      <ul className="flex flex-col gap-1">
-        {members.map((member) => {
+  const leaders = members.filter((m) => m.isOwner);
+  const others = members.filter((m) => !m.isOwner);
+
+  const renderGroup = (title: string, list: Member[]) => {
+    if (list.length === 0) return null;
+    return (
+      <div className="space-y-1">
+        <div className="px-2 py-1 text-[11px] font-bold tracking-wider text-muted">
+          {title} — {list.length}
+        </div>
+        {list.map((member) => {
           const channelId = inCall.get(member.id);
           const channelName = channelId ? voiceChannelNames[channelId] : null;
           return (
-            <li
+            <div
               key={member.id}
-              className="flex items-center gap-3 rounded-lg px-2 py-2 transition hover:bg-border/40"
+              className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 transition hover:bg-card-2"
             >
               <img
                 src={`https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(member.avatarSeed)}`}
                 alt=""
-                className="h-9 w-9 shrink-0 rounded-full bg-background"
+                className="h-8 w-8 shrink-0 rounded-full border border-border-soft bg-background"
               />
               <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-foreground">
+                <p className="flex items-center gap-1 truncate text-xs font-bold text-foreground">
                   {member.username}
-                  {member.isOwner && " 👑"}
+                  {member.isOwner && <Crown className="h-3.5 w-3.5 shrink-0 text-primary" />}
                 </p>
-                {channelName && (
-                  <p className="truncate text-xs font-medium text-secondary">
-                    🎙️ Em {channelName}
+                {channelName ? (
+                  <p className="flex items-center gap-1 truncate text-[11px] font-medium text-secondary">
+                    <Mic className="h-3 w-3 shrink-0" />
+                    Em {channelName}
                   </p>
+                ) : (
+                  <p className="truncate text-[10px] text-muted">Na selva</p>
                 )}
               </div>
-            </li>
+            </div>
           );
         })}
-      </ul>
+      </div>
+    );
+  };
+
+  return (
+    <aside className="hidden w-60 shrink-0 flex-col gap-4 overflow-y-auto border-l border-border-soft bg-card p-3 sm:flex">
+      {renderGroup("Dono do bando", leaders)}
+      {renderGroup("Membros", others)}
     </aside>
   );
 }
