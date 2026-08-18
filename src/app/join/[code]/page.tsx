@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { joinBando } from "@/app/actions/bandos";
+import { joinBandoNoRevalidate } from "@/app/actions/bandos";
 import { guestSignIn } from "@/app/actions/auth";
 
 export default async function JoinPage({
@@ -21,7 +21,7 @@ export default async function JoinPage({
   } = await supabase.auth.getUser();
 
   if (user) {
-    await joinBando(code);
+    await joinBandoNoRevalidate(code);
   }
 
   const { data: preview } = await supabase

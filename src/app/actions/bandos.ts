@@ -170,12 +170,9 @@ export async function deleteBando(bandoId: string) {
   redirect("/bandos");
 }
 
-export async function joinBandoByCode(formData: FormData) {
-  const code = String(formData.get("code")).trim().toUpperCase();
-  await joinBando(code);
-}
-
-export async function joinBando(code: string) {
+async function joinBandoCore(
+  code: string,
+): Promise<{ bandoId: string } | { error: string }> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -189,7 +186,7 @@ export async function joinBando(code: string) {
   );
 
   if (bandoError || !bandoId) {
-    redirect(`/bandos?error=${encodeURIComponent("Código de convite inválido")}`);
+    return { error: "Código de convite inválido" };
   }
 
   const { error: joinError } = await supabase
@@ -197,9 +194,34 @@ export async function joinBando(code: string) {
     .insert({ bando_id: bandoId, user_id: user.id });
 
   if (joinError && joinError.code !== "23505") {
-    redirect(`/bandos?error=${encodeURIComponent(joinError.message)}`);
+    return { error: joinError.message };
+  }
+
+  return { bandoId };
+}
+
+export async function joinBandoByCode(formData: FormData) {
+  const code = String(formData.get("code")).trim().toUpperCase();
+  const result = await joinBandoCore(code);
+
+  if (!("bandoId" in result)) {
+    redirect(`/bandos?error=${encodeURIComponent(result.error)}`);
   }
 
   revalidatePath("/bandos", "layout");
-  redirect(`/bandos/${bandoId}`);
+  redirect(`/bandos/${result.bandoId}`);
+}
+
+// Used directly from the /join/[code] server component's render (an
+// already-logged-in user hitting an invite link). revalidatePath is not
+// supported during render, so this variant skips it — the redirect below
+// lands on a freshly rendered route anyway.
+export async function joinBandoNoRevalidate(code: string) {
+  const result = await joinBandoCore(code);
+
+  if (!("bandoId" in result)) {
+    redirect(`/bandos?error=${encodeURIComponent(result.error)}`);
+  }
+
+  redirect(`/bandos/${result.bandoId}`);
 }
