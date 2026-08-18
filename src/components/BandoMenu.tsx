@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { renameBando, deleteBando } from "@/app/actions/bandos";
+import { Modal } from "@/components/Modal";
+import { SubmitButton } from "@/components/SubmitButton";
 
 export function BandoMenu({
   bandoId,
@@ -12,6 +14,7 @@ export function BandoMenu({
 }) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -69,12 +72,12 @@ export function BandoMenu({
                 className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
               />
               <div className="flex gap-2">
-                <button
-                  type="submit"
-                  className="flex-1 rounded-full bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground transition hover:brightness-95"
+                <SubmitButton
+                  pendingLabel="Salvando..."
+                  className="flex-1 rounded-full bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground hover:brightness-95"
                 >
                   Salvar
-                </button>
+                </SubmitButton>
                 <button
                   type="button"
                   onClick={() => setEditing(false)}
@@ -93,28 +96,50 @@ export function BandoMenu({
               >
                 Editar nome
               </button>
-              <form
-                action={deleteBandoWithId}
-                onSubmit={(e) => {
-                  if (
-                    !window.confirm(
-                      `Tem certeza que quer deletar o bando "${bandoName}"? Essa ação não pode ser desfeita.`,
-                    )
-                  ) {
-                    e.preventDefault();
-                  }
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  setConfirmingDelete(true);
                 }}
+                className="rounded-lg px-3 py-2 text-left text-sm text-danger transition hover:bg-danger/10"
               >
-                <button
-                  type="submit"
-                  className="w-full rounded-lg px-3 py-2 text-left text-sm text-danger transition hover:bg-danger/10"
-                >
-                  Deletar bando
-                </button>
-              </form>
+                Deletar bando
+              </button>
             </div>
           )}
         </div>
+      )}
+
+      {confirmingDelete && (
+        <Modal onClose={() => setConfirmingDelete(false)}>
+          <h3 className="text-lg font-bold text-accent">Deletar bando?</h3>
+          <p className="mt-2 text-sm text-muted">
+            Tem certeza que quer deletar o bando{" "}
+            <span className="font-semibold text-foreground">
+              &quot;{bandoName}&quot;
+            </span>
+            ? Essa ação não pode ser desfeita.
+          </p>
+          <form
+            action={deleteBandoWithId}
+            className="mt-5 flex justify-end gap-2"
+          >
+            <button
+              type="button"
+              onClick={() => setConfirmingDelete(false)}
+              className="rounded-full border border-border px-4 py-2 text-sm font-semibold text-muted transition hover:bg-border/40"
+            >
+              Cancelar
+            </button>
+            <SubmitButton
+              pendingLabel="Deletando..."
+              className="rounded-full bg-danger px-4 py-2 text-sm font-semibold text-white hover:brightness-95"
+            >
+              Deletar
+            </SubmitButton>
+          </form>
+        </Modal>
       )}
     </div>
   );

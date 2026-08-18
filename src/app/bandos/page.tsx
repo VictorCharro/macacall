@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createBando, joinBandoByCode } from "@/app/actions/bandos";
 import { logOut } from "@/app/actions/auth";
 import { BandoMenu } from "@/components/BandoMenu";
+import { SubmitButton } from "@/components/SubmitButton";
 import type { Bando } from "@/lib/types";
 
 export default async function BandosPage({
@@ -46,9 +47,12 @@ export default async function BandosPage({
           </h1>
         </div>
         <form action={logOut}>
-          <button className="rounded-full border border-border px-4 py-2 text-sm font-semibold text-muted transition hover:bg-border/40">
+          <SubmitButton
+            pendingLabel="Saindo..."
+            className="rounded-full border border-border px-4 py-2 text-sm font-semibold text-muted hover:bg-border/40"
+          >
             Sair
-          </button>
+          </SubmitButton>
         </form>
       </header>
 
@@ -104,12 +108,12 @@ export default async function BandosPage({
               placeholder="Nome do bando"
               className="rounded-lg border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-primary"
             />
-            <button
-              type="submit"
-              className="rounded-full bg-primary px-4 py-2 font-semibold text-primary-foreground transition hover:brightness-95"
+            <SubmitButton
+              pendingLabel="Criando..."
+              className="rounded-full bg-primary px-4 py-2 font-semibold text-primary-foreground hover:brightness-95"
             >
               Criar
-            </button>
+            </SubmitButton>
           </form>
         </div>
 
@@ -127,12 +131,12 @@ export default async function BandosPage({
               placeholder="Código de convite"
               className="rounded-lg border border-border bg-background px-3 py-2 uppercase text-foreground outline-none focus:border-primary"
             />
-            <button
-              type="submit"
-              className="rounded-full bg-secondary px-4 py-2 font-semibold text-secondary-foreground transition hover:brightness-95"
+            <SubmitButton
+              pendingLabel="Entrando..."
+              className="rounded-full bg-secondary px-4 py-2 font-semibold text-secondary-foreground hover:brightness-95"
             >
               Entrar
-            </button>
+            </SubmitButton>
           </form>
         </div>
       </section>
