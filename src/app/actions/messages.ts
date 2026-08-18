@@ -10,6 +10,7 @@ export async function sendMessage(
   formData: FormData,
 ): Promise<BandoActionState> {
   const content = String(formData.get("content")).trim();
+  const replyToId = formData.get("replyToId");
 
   if (!content) {
     return {};
@@ -26,9 +27,35 @@ export async function sendMessage(
 
   if (!user) redirect("/login");
 
+  const { error } = await supabase.from("messages").insert({
+    channel_id: channelId,
+    user_id: user.id,
+    content,
+    reply_to_id: typeof replyToId === "string" && replyToId ? replyToId : null,
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return {};
+}
+
+export async function togglePinMessage(
+  messageId: string,
+  pinned: boolean,
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
   const { error } = await supabase
     .from("messages")
-    .insert({ channel_id: channelId, user_id: user.id, content });
+    .update({ pinned })
+    .eq("id", messageId);
 
   if (error) {
     return { error: error.message };

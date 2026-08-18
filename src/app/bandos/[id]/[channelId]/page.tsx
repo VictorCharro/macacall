@@ -26,6 +26,14 @@ export default async function ChannelPage({
 
   if (!channel) notFound();
 
+  const { data: bando } = await supabase
+    .from("bandos")
+    .select("owner_id")
+    .eq("id", id)
+    .maybeSingle();
+
+  const canPin = bando?.owner_id === user.id;
+
   if (channel.type === "voice") {
     return (
       <VoiceChannelView
@@ -38,7 +46,7 @@ export default async function ChannelPage({
 
   const { data: messages } = await supabase
     .from("messages")
-    .select("id, content, created_at, user_id")
+    .select("id, content, created_at, user_id, reply_to_id, pinned")
     .eq("channel_id", channelId)
     .order("created_at")
     .limit(100);
@@ -71,6 +79,7 @@ export default async function ChannelPage({
       channelName={channel.name}
       initialMessages={messages ?? []}
       members={members}
+      canPin={canPin}
     />
   );
 }
