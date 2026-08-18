@@ -73,7 +73,16 @@ export function VoiceChannelView({
   );
 }
 
-export function CallInterface({ channelName }: { channelName: string }) {
+export function CallInterface({
+  channelName,
+  compact = false,
+}: {
+  channelName: string;
+  /** Used when a persistent text chat already exists alongside the call
+   * (DMs): docks a shorter call strip with no header/in-call chat, since
+   * that would just duplicate the DM's own message thread. */
+  compact?: boolean;
+}) {
   const { leaveCall, micEnabled, toggleMic } = useCall();
   const [chatOpen, setChatOpen] = useState(false);
   const participants = useParticipants();
@@ -90,32 +99,44 @@ export function CallInterface({ channelName }: { channelName: string }) {
   const screen = useTrackToggle({ source: Track.Source.ScreenShare });
 
   return (
-    <div className="flex h-full flex-col">
-      <header className="flex items-center justify-between border-b border-border bg-card px-6 py-3">
-        <h1 className="font-semibold text-accent">
-          🌴 {channelName} · {participants.length}{" "}
-          {participants.length === 1 ? "macaco" : "macacos"}
-        </h1>
-      </header>
+    <div className={compact ? "flex flex-col border-b border-border bg-card/60" : "flex h-full flex-col"}>
+      {!compact && (
+        <header className="flex items-center justify-between border-b border-border bg-card px-6 py-3">
+          <h1 className="font-semibold text-accent">
+            🌴 {channelName} · {participants.length}{" "}
+            {participants.length === 1 ? "macaco" : "macacos"}
+          </h1>
+        </header>
+      )}
 
-      <div className="flex flex-1 overflow-hidden">
-        <div className="grid flex-1 auto-rows-fr grid-cols-2 gap-3 overflow-y-auto p-4 sm:grid-cols-3">
+      <div className="flex overflow-hidden">
+        <div
+          className={
+            compact
+              ? "grid flex-1 auto-cols-[minmax(140px,180px)] grid-flow-col gap-3 overflow-x-auto p-3"
+              : "grid flex-1 auto-rows-fr grid-cols-2 gap-3 overflow-y-auto p-4 sm:grid-cols-3"
+          }
+        >
           {videoTracks.map((trackRef) => (
-            <VideoTile key={`${trackRef.participant.identity}:${trackRef.source}`} trackRef={trackRef} />
+            <VideoTile
+              key={`${trackRef.participant.identity}:${trackRef.source}`}
+              trackRef={trackRef}
+              compact={compact}
+            />
           ))}
           {voiceOnlyParticipants.map((participant) => (
-            <AvatarTile key={participant.identity} participant={participant} />
+            <AvatarTile key={participant.identity} participant={participant} compact={compact} />
           ))}
         </div>
 
-        {chatOpen && (
+        {!compact && chatOpen && (
           <div className="w-72 flex-shrink-0 border-l border-border bg-card">
             <Chat style={{ height: "100%" }} />
           </div>
         )}
       </div>
 
-      <div className="flex items-center justify-center gap-3 border-t border-border bg-card px-4 py-3">
+      <div className="flex items-center justify-center gap-3 border-t border-border bg-card px-4 py-2.5">
         <ControlButton
           active={micEnabled}
           onClick={toggleMic}
@@ -134,12 +155,14 @@ export function CallInterface({ channelName }: { channelName: string }) {
           label={screen.enabled ? "Parar tela" : "Compartilhar tela"}
           icon="🖥️"
         />
-        <ControlButton
-          active={chatOpen}
-          onClick={() => setChatOpen((v) => !v)}
-          label="Chat"
-          icon="💬"
-        />
+        {!compact && (
+          <ControlButton
+            active={chatOpen}
+            onClick={() => setChatOpen((v) => !v)}
+            label="Chat"
+            icon="💬"
+          />
+        )}
         <button
           onClick={leaveCall}
           className="ml-2 rounded-full bg-danger px-5 py-2.5 text-sm font-semibold text-white transition hover:brightness-90"
@@ -178,12 +201,18 @@ function ControlButton({
   );
 }
 
-function VideoTile({ trackRef }: { trackRef: TrackReference }) {
+function VideoTile({
+  trackRef,
+  compact,
+}: {
+  trackRef: TrackReference;
+  compact?: boolean;
+}) {
   const isScreenShare = trackRef.source === Track.Source.ScreenShare;
   return (
     <div
       className={`relative overflow-hidden rounded-2xl border border-border bg-black ${
-        isScreenShare ? "col-span-2 row-span-2" : ""
+        compact ? "aspect-video" : isScreenShare ? "col-span-2 row-span-2" : ""
       }`}
     >
       <VideoTrack trackRef={trackRef} className="h-full w-full object-cover" />
@@ -196,7 +225,13 @@ function VideoTile({ trackRef }: { trackRef: TrackReference }) {
   );
 }
 
-function AvatarTile({ participant }: { participant: Participant }) {
+function AvatarTile({
+  participant,
+  compact,
+}: {
+  participant: Participant;
+  compact?: boolean;
+}) {
   const { isMuted } = useTrackMutedIndicator({
     participant,
     source: Track.Source.Microphone,
@@ -205,11 +240,15 @@ function AvatarTile({ participant }: { participant: Participant }) {
 
   return (
     <div
-      className={`flex flex-col items-center justify-center gap-2 rounded-2xl border bg-card p-6 transition ${
-        isSpeaking ? "border-primary shadow-[0_0_0_3px_rgba(255,183,3,0.3)]" : "border-border"
-      }`}
+      className={`flex flex-col items-center justify-center gap-2 rounded-2xl border bg-card transition ${
+        compact ? "aspect-video p-2" : "p-6"
+      } ${isSpeaking ? "border-primary shadow-[0_0_0_3px_rgba(255,183,3,0.3)]" : "border-border"}`}
     >
-      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-secondary/20 text-3xl">
+      <div
+        className={`flex items-center justify-center rounded-full bg-secondary/20 ${
+          compact ? "h-10 w-10 text-xl" : "h-16 w-16 text-3xl"
+        }`}
+      >
         🐵
       </div>
       <span className="max-w-full truncate text-sm font-medium text-accent">

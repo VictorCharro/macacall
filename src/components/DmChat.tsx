@@ -197,18 +197,17 @@ export function DmChat({
           </div>
         </header>
 
-        {isThisCall && connected ? (
-          <CallInterface channelName={displayName} />
-        ) : isThisCall ? (
-          <main className="flex flex-1 flex-col items-center justify-center gap-3">
-            <span className="animate-bounce text-4xl">🐒</span>
-            <p className="text-muted">
-              Balançando de galho em galho até a call...
-            </p>
-          </main>
-        ) : (
-          <>
-            <div className="flex-1 overflow-y-auto px-6 py-4">
+        {isThisCall && connected && (
+          <CallInterface channelName={displayName} compact />
+        )}
+        {isThisCall && !connected && (
+          <div className="flex items-center gap-3 border-b border-border bg-card/60 px-6 py-3">
+            <span className="animate-bounce text-xl">🐒</span>
+            <p className="text-sm text-muted">Conectando à call...</p>
+          </div>
+        )}
+
+        <div className="flex-1 overflow-y-auto px-6 py-4">
               {messages.length === 0 ? (
                 <p className="text-center text-sm text-muted">
                   Comece a conversa com {displayName} 🍌
@@ -263,27 +262,25 @@ export function DmChat({
                 </ul>
               )}
               <div ref={bottomRef} />
-            </div>
+        </div>
 
-            <form
-              action={formAction}
-              key={inputKey}
-              className="border-t border-border p-4"
-            >
-              <input
-                type="text"
-                name="content"
-                maxLength={2000}
-                placeholder={`Conversar com ${displayName}`}
-                autoComplete="off"
-                className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-foreground outline-none focus:border-primary"
-              />
-              {state.error && (
-                <p className="mt-1 text-xs text-danger">{state.error}</p>
-              )}
-            </form>
-          </>
-        )}
+        <form
+          action={formAction}
+          key={inputKey}
+          className="border-t border-border p-4"
+        >
+          <input
+            type="text"
+            name="content"
+            maxLength={2000}
+            placeholder={`Conversar com ${displayName}`}
+            autoComplete="off"
+            className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-foreground outline-none focus:border-primary"
+          />
+          {state.error && (
+            <p className="mt-1 text-xs text-danger">{state.error}</p>
+          )}
+        </form>
       </div>
 
       {profileOpen && (
