@@ -25,7 +25,7 @@ export function FriendsSidebar({
   const pathname = usePathname();
 
   return (
-    <nav className="flex w-60 shrink-0 flex-col border-r border-border-soft bg-card">
+    <nav className="flex w-72 shrink-0 flex-col border-r border-border-soft bg-card">
       <div className="border-b border-border-soft p-3">
         <button
           type="button"
