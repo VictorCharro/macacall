@@ -116,7 +116,7 @@ export function ChatChannel({
   }, [messages]);
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <header className="flex h-12 items-center justify-between gap-2 border-b border-border-soft bg-card px-4">
         <div className="flex items-center gap-2">
           <Hash className="h-5 w-5 shrink-0 text-muted" />

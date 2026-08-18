@@ -34,7 +34,7 @@ export function ServerRail({
   const [createModalOpen, setCreateModalOpen] = useState(false);
 
   return (
-    <nav className="flex w-[72px] shrink-0 flex-col items-center gap-1.5 border-r border-border-soft bg-card-3 py-3">
+    <nav className="flex w-[72px] shrink-0 flex-col items-center gap-1.5 overflow-y-auto border-r border-border-soft bg-card-3 py-3">
       <RailIcon
         href="/bandos"
         active={pathname === "/bandos"}
