@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   respondFriendRequest,
   removeFriend,
@@ -10,6 +11,7 @@ import { FriendRow, useEffectiveStatus } from "@/components/FriendRow";
 import { AddFriendForm } from "@/components/AddFriendForm";
 import { ActiveNowPanel } from "@/components/ActiveNowPanel";
 import { FriendsSidebar } from "@/components/FriendsSidebar";
+import { createClient } from "@/lib/supabase/client";
 import type { PresenceStatus } from "@/lib/types";
 
 type FriendEntry = {
@@ -31,6 +33,7 @@ type DmEntry = {
 type Tab = "online" | "todos" | "pendente" | "adicionar";
 
 export function FriendsHome({
+  currentUserId,
   selfUsername,
   selfAvatarSeed,
   friends,
@@ -47,6 +50,38 @@ export function FriendsHome({
   dms: DmEntry[];
 }) {
   const [tab, setTab] = useState<Tab>("online");
+  const router = useRouter();
+
+  useEffect(() => {
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`friendships:${currentUserId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "friendships",
+          filter: `requester_id=eq.${currentUserId}`,
+        },
+        () => router.refresh(),
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "friendships",
+          filter: `addressee_id=eq.${currentUserId}`,
+        },
+        () => router.refresh(),
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentUserId, router]);
 
   return (
     <div className="flex flex-1 overflow-hidden">
