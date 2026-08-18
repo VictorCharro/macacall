@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { BandoMenu } from "@/components/BandoMenu";
+import { CreateOrJoinBandoModal } from "@/components/CreateOrJoinBandoModal";
 
 type RailBando = {
   id: string;
@@ -29,13 +30,14 @@ export function ServerRail({
   currentUserId: string;
 }) {
   const pathname = usePathname();
+  const [createModalOpen, setCreateModalOpen] = useState(false);
 
   return (
     <nav className="flex w-[76px] shrink-0 flex-col items-center gap-2 border-r border-border bg-card/60 py-3">
       <RailIcon
         href="/bandos"
         active={pathname === "/bandos"}
-        label="Início"
+        label="Amigos"
       >
         <span className="text-xl">🍌</span>
       </RailIcon>
@@ -55,9 +57,23 @@ export function ServerRail({
 
       <div className="my-1 h-px w-8 shrink-0 bg-border" />
 
-      <RailIcon href="/bandos" active={false} label="Criar ou entrar num bando">
-        <span className="text-xl leading-none text-secondary">+</span>
-      </RailIcon>
+      <div className="group relative">
+        <button
+          type="button"
+          onClick={() => setCreateModalOpen(true)}
+          aria-label="Criar ou entrar num bando"
+          className="flex h-12 w-12 items-center justify-center rounded-full bg-background text-xl leading-none text-secondary transition-all duration-150 hover:rounded-2xl hover:bg-primary hover:text-primary-foreground"
+        >
+          +
+        </button>
+        <div className="pointer-events-none absolute left-full top-1/2 z-20 ml-3 -translate-y-1/2 whitespace-nowrap rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium text-accent opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
+          Criar ou entrar num bando
+        </div>
+      </div>
+
+      {createModalOpen && (
+        <CreateOrJoinBandoModal onClose={() => setCreateModalOpen(false)} />
+      )}
     </nav>
   );
 }

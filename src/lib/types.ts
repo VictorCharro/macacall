@@ -1,7 +1,10 @@
+export type PresenceStatus = "online" | "idle" | "dnd" | "invisible";
+
 export type Profile = {
   id: string;
   username: string;
   avatar_seed: string;
+  status: PresenceStatus;
   created_at: string;
 };
 
@@ -37,4 +40,28 @@ export type Message = {
   created_at: string;
   reply_to_id: string | null;
   pinned: boolean;
+};
+
+export type Friendship = {
+  id: string;
+  requester_id: string;
+  addressee_id: string;
+  status: "pending" | "accepted";
+  created_at: string;
+  responded_at: string | null;
+};
+
+export type DmConversation = {
+  id: string;
+  user_a_id: string;
+  user_b_id: string;
+  created_at: string;
+};
+
+export type DmMessage = {
+  id: string;
+  conversation_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
 };
