@@ -177,3 +177,26 @@ export async function updateStatus(status: PresenceStatus) {
   await supabase.from("profiles").update({ status }).eq("id", user.id);
   revalidatePath("/bandos", "layout");
 }
+
+export async function updateStatusMessage(
+  message: string,
+): Promise<BandoActionState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const trimmed = message.trim().slice(0, 100);
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ status_message: trimmed || null })
+    .eq("id", user.id);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/bandos", "layout");
+  return {};
+}
