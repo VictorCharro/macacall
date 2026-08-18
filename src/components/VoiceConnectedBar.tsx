@@ -77,6 +77,9 @@ function ConnectedBarContent({
         >
           <span aria-hidden="true">🖥️</span>
         </VoiceIconButton>
+        <VoiceIconButton label="Filtro de voz" sublabel="Em breve" disabled>
+          <span aria-hidden="true">🐵</span>
+        </VoiceIconButton>
       </div>
     </div>
   );
