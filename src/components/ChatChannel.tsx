@@ -1,9 +1,8 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { sendMessage } from "@/app/actions/messages";
+import { sendMessage, type SendMessageState } from "@/app/actions/messages";
 import { createClient } from "@/lib/supabase/client";
-import type { BandoActionState } from "@/app/actions/bandos";
 import { MessageActionsMenu } from "@/components/MessageActionsMenu";
 import { PinnedMessagesModal } from "@/components/PinnedMessagesModal";
 
@@ -17,7 +16,7 @@ type ChatMessage = {
   pinned: boolean;
 };
 
-const initialState: BandoActionState = {};
+const initialState: SendMessageState = {};
 
 export function ChatChannel({
   channelId,
@@ -50,6 +49,12 @@ export function ChatChannel({
     setHandledState(state);
     setInputKey((k) => k + 1);
     setReplyingTo(null);
+    if (state.message) {
+      const sent = state.message;
+      setMessages((prev) =>
+        prev.some((m) => m.id === sent.id) ? prev : [...prev, sent],
+      );
+    }
   }
 
   useEffect(() => {
