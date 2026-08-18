@@ -240,7 +240,7 @@ const VIDEO_TILE_SIZE = {
   // large focused screen share, dm call strip -- aspect-video instead of a
   // fixed height keeps the box in the same proportions as the video itself,
   // so object-contain never has to crop it
-  focus: "w-full aspect-video max-h-[60vh]",
+  focus: "w-full aspect-video max-h-[42vh]",
   // camera thumbnail next to a screen share focus, dm call strip
   thumb: "h-20 w-32 sm:h-24 sm:w-40",
   // camera tile with no screen share around, dm call strip

@@ -70,7 +70,7 @@ export default async function BandoLayout({
 
   return (
     <BandoParticipantsProvider bandoId={id}>
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex min-h-0 flex-1 overflow-hidden">
         <ChannelSidebar
           bandoId={id}
           bandoName={bando.name}
@@ -81,7 +81,7 @@ export default async function BandoLayout({
           selfUsername={self?.username ?? "Macaco"}
           selfAvatarSeed={self?.avatarSeed ?? user.id}
         />
-        <div className="flex flex-1 flex-col overflow-hidden">{children}</div>
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
         <MembersSidebar
           bandoId={id}
           members={memberList}

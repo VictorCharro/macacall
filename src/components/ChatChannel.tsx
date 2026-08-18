@@ -132,7 +132,7 @@ export function ChatChannel({
         </button>
       </header>
 
-      <div className="flex-1 overflow-y-auto px-6 py-4">
+      <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
         {messages.length === 0 ? (
           <p className="text-center text-sm text-muted">
             Ninguém falou nada por aqui ainda 🍌

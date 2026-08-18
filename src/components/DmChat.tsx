@@ -150,8 +150,8 @@ export function DmChat({
   }, [messages]);
 
   return (
-    <div className="flex flex-1 overflow-hidden">
-      <div className="flex flex-1 flex-col overflow-hidden">
+    <div className="flex min-h-0 flex-1 overflow-hidden">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <header className="flex items-center gap-2 border-b border-border bg-card px-6 py-3">
           <img
             src={`https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(participants[0]?.avatarSeed ?? conversationId)}`}
@@ -207,7 +207,7 @@ export function DmChat({
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
               {messages.length === 0 ? (
                 <p className="text-center text-sm text-muted">
                   Comece a conversa com {displayName} 🍌
