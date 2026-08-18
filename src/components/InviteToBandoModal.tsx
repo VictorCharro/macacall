@@ -53,7 +53,7 @@ export function InviteToBandoModal({
           {bandos.map((bando) => (
             <li
               key={bando.id}
-              className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-border/30"
+              className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-card-2"
             >
               <span className="flex-1 truncate text-sm font-medium text-foreground">
                 {bando.name}

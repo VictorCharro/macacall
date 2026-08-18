@@ -60,7 +60,7 @@ export function CreateChannelButton({
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="rounded-full border border-border px-4 py-2 text-sm font-semibold text-muted transition hover:bg-border/40"
+                className="rounded-full border border-border px-4 py-2 text-sm font-semibold text-muted transition hover:bg-card-2"
               >
                 Cancelar
               </button>

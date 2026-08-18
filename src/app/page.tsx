@@ -27,7 +27,7 @@ export default async function Home() {
         </Link>
         <Link
           href="/login"
-          className="rounded-full border border-border bg-card px-6 py-3 font-semibold text-accent transition hover:bg-border/40"
+          className="rounded-full border border-border bg-card px-6 py-3 font-semibold text-accent transition hover:bg-card-2"
         >
           Já tenho conta
         </Link>

@@ -87,7 +87,7 @@ export function ChannelMenu({
             <button
               type="button"
               onClick={() => setMode("menu")}
-              className="flex-1 rounded-full border border-border px-3 py-1.5 text-sm text-muted transition hover:bg-border/40"
+              className="flex-1 rounded-full border border-border px-3 py-1.5 text-sm text-muted transition hover:bg-card-2"
             >
               Cancelar
             </button>
@@ -98,7 +98,7 @@ export function ChannelMenu({
           <button
             type="button"
             onClick={() => setMode("rename")}
-            className="rounded-lg px-3 py-2 text-left text-sm text-foreground transition hover:bg-border/40"
+            className="rounded-lg px-3 py-2 text-left text-sm text-foreground transition hover:bg-card-2"
           >
             Editar nome
           </button>
@@ -126,7 +126,7 @@ export function ChannelMenu({
             <button
               type="button"
               onClick={() => setConfirmingDelete(false)}
-              className="rounded-full border border-border px-4 py-2 text-sm font-semibold text-muted transition hover:bg-border/40"
+              className="rounded-full border border-border px-4 py-2 text-sm font-semibold text-muted transition hover:bg-card-2"
             >
               Cancelar
             </button>

@@ -33,7 +33,7 @@ export function DmProfilePanel({
             {participants.map((p) => (
               <li
                 key={p.id}
-                className="flex items-center gap-3 rounded-lg px-2 py-2 transition hover:bg-border/40"
+                className="flex items-center gap-3 rounded-lg px-2 py-2 transition hover:bg-card-2"
               >
                 <img
                   src={`https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(p.avatarSeed)}`}

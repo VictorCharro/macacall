@@ -29,7 +29,7 @@ export function VoiceIconButton({
             ? "bg-danger/15 text-danger hover:brightness-90"
             : active
               ? "bg-secondary/20 text-secondary"
-              : "text-muted hover:bg-border/40 hover:text-accent"
+              : "text-muted hover:bg-card-2 hover:text-accent"
         }`}
       >
         {children}

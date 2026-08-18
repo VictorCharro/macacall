@@ -182,7 +182,7 @@ export function FriendsHome({
                             await respondFriendRequest(f.friendshipId, false);
                             router.refresh();
                           }}
-                          className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-muted hover:bg-border/40"
+                          className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-muted hover:bg-card-2"
                         >
                           Recusar
                         </button>
@@ -208,7 +208,7 @@ export function FriendsHome({
                             await removeFriend(f.friendshipId);
                             router.refresh();
                           }}
-                          className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-muted hover:bg-border/40"
+                          className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-muted hover:bg-card-2"
                         >
                           Cancelar
                         </button>

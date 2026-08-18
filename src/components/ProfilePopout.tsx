@@ -210,7 +210,7 @@ export function ProfilePopout({
               onClick={() =>
                 statusFlyoutPos ? setStatusFlyoutPos(null) : openStatusFlyout()
               }
-              className="flex w-full items-center gap-2 rounded-lg bg-background px-3 py-2 text-left text-sm text-foreground transition hover:bg-border/40"
+              className="flex w-full items-center gap-2 rounded-lg bg-background px-3 py-2 text-left text-sm text-foreground transition hover:bg-card-2"
             >
               <span
                 className={`h-2.5 w-2.5 rounded-full ${STATUS_META[myStatus].dotClass}`}
@@ -242,7 +242,7 @@ export function ProfilePopout({
                   setMyStatus(status);
                   setStatusFlyoutPos(null);
                 }}
-                className={`flex w-full items-start gap-2 rounded-lg px-3 py-2 text-left text-sm transition hover:bg-border/40 ${
+                className={`flex w-full items-start gap-2 rounded-lg px-3 py-2 text-left text-sm transition hover:bg-card-2 ${
                   status === myStatus ? "font-semibold text-accent" : "text-foreground"
                 }`}
               >

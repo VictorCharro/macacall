@@ -109,7 +109,7 @@ export function FriendContextMenu({
             <button
               type="button"
               onClick={() => setUnfriendOpen(false)}
-              className="rounded-full border border-border px-4 py-2 text-sm font-semibold text-muted transition hover:bg-border/40"
+              className="rounded-full border border-border px-4 py-2 text-sm font-semibold text-muted transition hover:bg-card-2"
             >
               Cancelar
             </button>
@@ -140,7 +140,7 @@ export function FriendContextMenu({
             <button
               type="button"
               onClick={() => setBlockOpen(false)}
-              className="rounded-full border border-border px-4 py-2 text-sm font-semibold text-muted transition hover:bg-border/40"
+              className="rounded-full border border-border px-4 py-2 text-sm font-semibold text-muted transition hover:bg-card-2"
             >
               Cancelar
             </button>
@@ -176,7 +176,7 @@ function MenuItem({
     <button
       type="button"
       onClick={onClick}
-      className={`flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-sm transition hover:bg-border/40 ${
+      className={`flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-sm transition hover:bg-card-2 ${
         danger ? "text-danger" : "text-foreground"
       }`}
     >

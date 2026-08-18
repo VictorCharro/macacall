@@ -31,7 +31,7 @@ export function AddDmParticipantModal({
           {availableFriends.map((friend) => (
             <li
               key={friend.id}
-              className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-border/30"
+              className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-card-2"
             >
               <img
                 src={`https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(friend.avatarSeed)}`}
