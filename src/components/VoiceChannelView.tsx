@@ -38,15 +38,36 @@ export function VoiceChannelView({
     return (
       <main className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
         <p className="text-danger">{error}</p>
+        <button
+          onClick={() => joinCall(bandoId, channelId, channelName)}
+          className="rounded-full border border-border px-4 py-2 font-semibold text-accent"
+        >
+          Tentar de novo
+        </button>
       </main>
     );
   }
 
-  if (!isThisChannel || !connected) {
+  if (isThisChannel && !connected) {
     return (
       <main className="flex flex-1 flex-col items-center justify-center gap-3">
         <span className="animate-bounce text-4xl">🐒</span>
         <p className="text-muted">Balançando de galho em galho até a call...</p>
+      </main>
+    );
+  }
+
+  if (!isThisChannel) {
+    return (
+      <main className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
+        <span className="text-4xl">🌴</span>
+        <p className="text-accent">Pronto pra entrar em {channelName}</p>
+        <button
+          onClick={() => joinCall(bandoId, channelId, channelName)}
+          className="rounded-full bg-secondary px-6 py-3 font-semibold text-secondary-foreground transition hover:brightness-95"
+        >
+          Entrar na call
+        </button>
       </main>
     );
   }

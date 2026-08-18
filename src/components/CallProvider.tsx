@@ -8,7 +8,6 @@ import {
   useMemo,
   useState,
 } from "react";
-import { usePathname, useRouter } from "next/navigation";
 import { LiveKitRoom, RoomAudioRenderer } from "@livekit/components-react";
 import "@livekit/components-styles";
 
@@ -31,8 +30,6 @@ export function useCall() {
 }
 
 export function CallProvider({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
-  const pathname = usePathname();
   const [activeCall, setActiveCall] = useState<ActiveCall | null>(null);
   const [tokenInfo, setTokenInfo] = useState<{
     channelId: string;
@@ -50,16 +47,10 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   );
 
   const leaveCall = useCallback(() => {
-    if (
-      activeCall &&
-      pathname === `/bandos/${activeCall.bandoId}/${activeCall.channelId}`
-    ) {
-      router.push(`/bandos/${activeCall.bandoId}`);
-    }
     setActiveCall(null);
     setTokenInfo(null);
     setError(null);
-  }, [activeCall, pathname, router]);
+  }, []);
 
   useEffect(() => {
     if (!activeCall) return;
