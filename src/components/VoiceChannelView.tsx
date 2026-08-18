@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   useParticipants,
   useTracks,
@@ -24,13 +24,6 @@ export function VoiceChannelView({
   channelName: string;
 }) {
   const { activeCall, connected, error, joinCall } = useCall();
-
-  useEffect(() => {
-    if (activeCall?.channelId !== channelId) {
-      joinCall(bandoId, channelId, channelName);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [channelId]);
 
   const isThisChannel = activeCall?.channelId === channelId;
 
