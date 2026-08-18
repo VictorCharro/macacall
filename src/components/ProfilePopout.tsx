@@ -114,7 +114,7 @@ export function ProfilePopout({
             </>
           )}
 
-          <div className="flex flex-1 justify-end pb-7">
+          <div className="flex pb-7">
             {loaded &&
               (editing ? (
                 <input
