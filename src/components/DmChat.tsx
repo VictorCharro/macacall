@@ -54,6 +54,7 @@ export function DmChat({
   const [pinnedOpen, setPinnedOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [chatHidden, setChatHidden] = useState(false);
 
   const { activeCall, connected, joinCall } = useCall();
   const isThisCall = activeCall?.roomId === conversationId;
@@ -198,7 +199,12 @@ export function DmChat({
         </header>
 
         {isThisCall && connected && (
-          <CallInterface channelName={displayName} compact />
+          <CallInterface
+            channelName={displayName}
+            compact
+            chatHidden={chatHidden}
+            onToggleChatHidden={() => setChatHidden((v) => !v)}
+          />
         )}
         {isThisCall && !connected && (
           <div className="flex items-center gap-3 border-b border-border bg-card/60 px-6 py-3">
@@ -207,6 +213,8 @@ export function DmChat({
           </div>
         )}
 
+        {!chatHidden && (
+        <>
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
               {messages.length === 0 ? (
                 <p className="text-center text-sm text-muted">
@@ -281,6 +289,8 @@ export function DmChat({
             <p className="mt-1 text-xs text-danger">{state.error}</p>
           )}
         </form>
+        </>
+        )}
       </div>
 
       {profileOpen && (

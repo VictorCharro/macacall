@@ -73,15 +73,28 @@ export function VoiceChannelView({
   );
 }
 
+type StageItem = {
+  key: string;
+  trackRef?: TrackReference;
+  participant: Participant;
+};
+
 export function CallInterface({
   channelName,
   compact = false,
+  chatHidden = false,
+  onToggleChatHidden,
 }: {
   channelName: string;
   /** Used when a persistent text chat already exists alongside the call
    * (DMs): docks a shorter, self-scrolling call strip with no header/
    * in-call chat, since that would just duplicate the DM's own thread. */
   compact?: boolean;
+  /** DM-only: whether the caller has hidden the message thread to give the
+   * call more room -- when true this component expands to fill the space. */
+  chatHidden?: boolean;
+  /** DM-only: show a control-bar button to hide/show the message thread. */
+  onToggleChatHidden?: () => void;
 }) {
   const { leaveCall, micEnabled, toggleMic } = useCall();
   const [chatOpen, setChatOpen] = useState(false);
@@ -89,56 +102,83 @@ export function CallInterface({
   const participants = useParticipants();
   const videoTracks = useTracks([Track.Source.Camera, Track.Source.ScreenShare]);
 
-  const trackKey = (t: TrackReference) => `${t.participant.identity}:${t.source}`;
-  const screenShareTrack = videoTracks.find((t) => t.source === Track.Source.ScreenShare);
-
-  const videoParticipantKeys = new Set(videoTracks.map(trackKey));
+  const videoParticipantKeys = new Set(
+    videoTracks.map((t) => `${t.participant.identity}:${t.source}`),
+  );
   const voiceOnlyParticipants = participants.filter(
     (p) => !videoParticipantKeys.has(`${p.identity}:${Track.Source.Camera}`),
   );
 
-  // A screen share always claims the spotlight; otherwise whoever the user
-  // last clicked stays focused there. No click and no screen share means no
-  // spotlight at all -- everyone sits together in the even grid instead,
-  // same as Discord's default view.
-  const availableKeys = new Set(videoTracks.map(trackKey));
-  const spotlightKey = screenShareTrack
-    ? trackKey(screenShareTrack)
-    : focusedKey && availableKeys.has(focusedKey)
+  const stageItems: StageItem[] = [
+    ...videoTracks.map((t) => ({
+      key: `${t.participant.identity}:${t.source}`,
+      trackRef: t,
+      participant: t.participant,
+    })),
+    ...voiceOnlyParticipants.map((p) => ({ key: `${p.identity}:avatar`, participant: p })),
+  ];
+
+  // Clicking any tile pins it, overriding the default; an active screen
+  // share is only the *default* spotlight, so people can still click away
+  // to look at someone else while it's running. Once the pinned item
+  // disappears (they hang up / stop sharing) it falls back to the share,
+  // then to nothing at all -- the plain even grid, same as Discord's
+  // default view.
+  const screenShareItem = stageItems.find((i) => i.trackRef?.source === Track.Source.ScreenShare);
+  const spotlightKey =
+    focusedKey && stageItems.some((i) => i.key === focusedKey)
       ? focusedKey
-      : null;
-  const spotlightTrack = videoTracks.find((t) => trackKey(t) === spotlightKey) ?? null;
+      : (screenShareItem?.key ?? null);
+  const spotlightItem = stageItems.find((i) => i.key === spotlightKey) ?? null;
+  const otherItems = stageItems.filter((i) => i.key !== spotlightKey);
 
   const cam = useTrackToggle({ source: Track.Source.Camera });
   const screen = useTrackToggle({ source: Track.Source.ScreenShare });
 
-  const stageContent = spotlightTrack ? (
+  const stageContent = spotlightItem ? (
     <div className="flex h-full flex-col gap-2">
-      <Tile trackRef={spotlightTrack} size="focus" allowFullscreen />
-      <div className="flex flex-wrap gap-2">
-        {videoTracks
-          .filter((t) => trackKey(t) !== spotlightKey)
-          .map((t) => (
-            <Tile key={trackKey(t)} trackRef={t} size="thumb" onFocus={() => setFocusedKey(trackKey(t))} />
+      <Tile
+        trackRef={spotlightItem.trackRef}
+        participant={spotlightItem.trackRef ? undefined : spotlightItem.participant}
+        size="focus"
+        allowFullscreen
+      />
+      {otherItems.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {otherItems.map((i) => (
+            <Tile
+              key={i.key}
+              trackRef={i.trackRef}
+              participant={i.trackRef ? undefined : i.participant}
+              size="thumb"
+              onFocus={() => setFocusedKey(i.key)}
+            />
           ))}
-        {voiceOnlyParticipants.map((p) => (
-          <Tile key={p.identity} participant={p} size="thumb" />
-        ))}
-      </div>
+        </div>
+      )}
     </div>
   ) : (
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-      {videoTracks.map((t) => (
-        <Tile key={trackKey(t)} trackRef={t} size="grid" onFocus={() => setFocusedKey(trackKey(t))} />
-      ))}
-      {voiceOnlyParticipants.map((p) => (
-        <Tile key={p.identity} participant={p} size="grid" />
+      {stageItems.map((i) => (
+        <Tile
+          key={i.key}
+          trackRef={i.trackRef}
+          participant={i.trackRef ? undefined : i.participant}
+          size="grid"
+          onFocus={() => setFocusedKey(i.key)}
+        />
       ))}
     </div>
   );
 
   return (
-    <div className={compact ? "flex flex-col border-b border-border bg-card/60" : "flex min-h-0 flex-1 flex-col"}>
+    <div
+      className={
+        compact
+          ? `flex flex-col bg-card/60 ${chatHidden ? "min-h-0 flex-1" : "border-b border-border"}`
+          : "flex min-h-0 flex-1 flex-col"
+      }
+    >
       {!compact && (
         <header className="flex items-center justify-between border-b border-border bg-card px-6 py-3">
           <h1 className="font-semibold text-accent">
@@ -148,11 +188,11 @@ export function CallInterface({
         </header>
       )}
 
-      <div className={compact ? "flex" : "flex min-h-0 flex-1"}>
+      <div className={compact ? "flex min-h-0 flex-1" : "flex min-h-0 flex-1"}>
         <div
           className={
             compact
-              ? "max-h-[45vh] flex-1 overflow-y-auto p-3"
+              ? `${chatHidden ? "min-h-0 flex-1" : "max-h-[45vh] flex-1"} overflow-y-auto p-3`
               : "min-h-0 flex-1 overflow-y-auto p-4"
           }
         >
@@ -190,6 +230,14 @@ export function CallInterface({
             active={chatOpen}
             onClick={() => setChatOpen((v) => !v)}
             label="Chat"
+            icon="💬"
+          />
+        )}
+        {onToggleChatHidden && (
+          <ControlButton
+            active={!chatHidden}
+            onClick={onToggleChatHidden}
+            label={chatHidden ? "Mostrar chat" : "Minimizar chat"}
             icon="💬"
           />
         )}
