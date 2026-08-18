@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Phone, Video, Pin, UserPlus, Globe, Send } from "lucide-react";
 import {
   sendDmMessage,
   toggleDmPinMessage,
@@ -153,13 +154,13 @@ export function DmChat({
   return (
     <div className="flex min-h-0 flex-1 overflow-hidden">
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <header className="flex items-center gap-2 border-b border-border bg-card px-6 py-3">
+        <header className="flex h-12 items-center gap-2 border-b border-border-soft bg-card px-4">
           <img
             src={`https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(participants[0]?.avatarSeed ?? conversationId)}`}
             alt=""
             className="h-7 w-7 rounded-full bg-background"
           />
-          <h1 className="min-w-0 flex-1 truncate font-semibold text-accent">
+          <h1 className="min-w-0 flex-1 truncate text-sm font-bold text-accent">
             {displayName}
           </h1>
 
@@ -169,7 +170,7 @@ export function DmChat({
               disabled={isThisCall}
               onClick={() => joinCall(conversationId, displayName, `/bandos/dm/${conversationId}`)}
             >
-              📞
+              <Phone className="h-4 w-4" />
             </HeaderIcon>
             <HeaderIcon
               label="Chamada de vídeo"
@@ -180,20 +181,20 @@ export function DmChat({
                 })
               }
             >
-              🎥
+              <Video className="h-4 w-4" />
             </HeaderIcon>
             <HeaderIcon label="Mensagens fixadas" onClick={() => setPinnedOpen(true)}>
-              📌
+              <Pin className="h-4 w-4" />
             </HeaderIcon>
             <HeaderIcon label="Adicionar pessoas" onClick={() => setAddOpen(true)}>
-              👤➕
+              <UserPlus className="h-4 w-4" />
             </HeaderIcon>
             <HeaderIcon
               label={profileOpen ? "Esconder perfil" : "Mostrar perfil"}
               active={profileOpen}
               onClick={() => setProfileOpen((v) => !v)}
             >
-              🌐
+              <Globe className="h-4 w-4" />
             </HeaderIcon>
           </div>
         </header>
@@ -227,7 +228,7 @@ export function DmChat({
                     return (
                       <li
                         key={message.id}
-                        className="group relative -mx-2 flex items-start gap-3 rounded-lg px-2 py-1 hover:bg-border/20"
+                        className="group relative -mx-2 flex items-start gap-3 rounded-lg px-2 py-1 hover:bg-card-2/60"
                       >
                         <img
                           src={`https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(member?.avatarSeed ?? message.user_id)}`}
@@ -246,9 +247,7 @@ export function DmChat({
                               )}
                             </span>
                             {message.pinned && (
-                              <span title="Mensagem fixada" className="text-xs text-muted">
-                                📌
-                              </span>
+                              <Pin className="h-3.5 w-3.5 shrink-0 text-muted" aria-label="Mensagem fixada" />
                             )}
                           </div>
                           <p className="whitespace-pre-wrap break-words text-sm text-foreground">
@@ -272,19 +271,24 @@ export function DmChat({
               <div ref={bottomRef} />
         </div>
 
-        <form
-          action={formAction}
-          key={inputKey}
-          className="border-t border-border p-4"
-        >
-          <input
-            type="text"
-            name="content"
-            maxLength={2000}
-            placeholder={`Conversar com ${displayName}`}
-            autoComplete="off"
-            className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-foreground outline-none focus:border-primary"
-          />
+        <form action={formAction} key={inputKey} className="p-4 pt-1">
+          <div className="flex items-center gap-3 rounded-xl border border-border-soft bg-card-2 px-4 py-2.5 shadow-inner transition focus-within:border-primary/70">
+            <input
+              type="text"
+              name="content"
+              maxLength={2000}
+              placeholder={`Conversar com ${displayName}`}
+              autoComplete="off"
+              className="flex-1 bg-transparent text-sm text-foreground placeholder-muted outline-none"
+            />
+            <button
+              type="submit"
+              aria-label="Enviar mensagem"
+              className="shrink-0 rounded-lg p-1 text-primary transition hover:brightness-110"
+            >
+              <Send className="h-5 w-5" />
+            </button>
+          </div>
           {state.error && (
             <p className="mt-1 text-xs text-danger">{state.error}</p>
           )}
@@ -336,10 +340,10 @@ function HeaderIcon({
       disabled={disabled}
       title={label}
       aria-label={label}
-      className={`flex h-9 w-9 items-center justify-center rounded-lg text-base transition disabled:cursor-default disabled:opacity-40 ${
+      className={`flex h-9 w-9 items-center justify-center rounded-lg transition disabled:cursor-default disabled:opacity-40 ${
         active
           ? "bg-secondary/20 text-secondary"
-          : "text-muted hover:bg-border/40 hover:text-accent"
+          : "text-muted hover:bg-card-2 hover:text-accent"
       }`}
     >
       {children}

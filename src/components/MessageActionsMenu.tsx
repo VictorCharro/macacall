@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { MoreHorizontal, Pin, PinOff, CornerDownRight, Copy } from "lucide-react";
 
 export function MessageActionsMenu({
   content,
@@ -40,13 +41,13 @@ export function MessageActionsMenu({
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-label="Mais opções"
-        className="flex h-7 w-7 items-center justify-center rounded-lg border border-border bg-card text-muted shadow-sm transition hover:text-accent"
+        className="flex h-7 w-7 items-center justify-center rounded-lg border border-border bg-card-2 text-muted shadow-sm transition hover:text-accent"
       >
-        ⋯
+        <MoreHorizontal className="h-4 w-4" />
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-30 mt-1 min-w-[11rem] animate-modal-in rounded-xl border border-border bg-card p-1.5 shadow-lg">
+        <div className="absolute right-0 top-full z-30 mt-1 min-w-[11rem] animate-modal-in rounded-xl border border-border bg-card-2 p-1.5 shadow-lg">
           {canPin && (
             <button
               type="button"
@@ -54,9 +55,9 @@ export function MessageActionsMenu({
                 setOpen(false);
                 onTogglePin();
               }}
-              className="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-sm text-foreground transition hover:bg-border/40"
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-sm text-foreground transition hover:bg-card"
             >
-              <span aria-hidden="true">📌</span>
+              {pinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
               {pinned ? "Desafixar mensagem" : "Fixar mensagem"}
             </button>
           )}
@@ -67,9 +68,9 @@ export function MessageActionsMenu({
                 setOpen(false);
                 onReply();
               }}
-              className="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-sm text-foreground transition hover:bg-border/40"
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-sm text-foreground transition hover:bg-card"
             >
-              <span aria-hidden="true">↩️</span>
+              <CornerDownRight className="h-4 w-4" />
               Responder
             </button>
           )}
@@ -79,9 +80,9 @@ export function MessageActionsMenu({
               setOpen(false);
               navigator.clipboard.writeText(content);
             }}
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-sm text-foreground transition hover:bg-border/40"
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-sm text-foreground transition hover:bg-card"
           >
-            <span aria-hidden="true">📋</span>
+            <Copy className="h-4 w-4" />
             Copiar mensagem
           </button>
         </div>

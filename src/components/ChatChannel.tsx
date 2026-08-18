@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
+import { Hash, Pin, Send } from "lucide-react";
 import {
   sendMessage,
   togglePinMessage,
@@ -116,19 +117,19 @@ export function ChatChannel({
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      <header className="flex items-center justify-between gap-2 border-b border-border bg-card px-6 py-3">
+      <header className="flex h-12 items-center justify-between gap-2 border-b border-border-soft bg-card px-4">
         <div className="flex items-center gap-2">
-          <span className="text-muted">#</span>
-          <h1 className="font-semibold text-accent">{channelName}</h1>
+          <Hash className="h-5 w-5 shrink-0 text-muted" />
+          <h1 className="text-sm font-bold text-accent">{channelName}</h1>
         </div>
         <button
           type="button"
           onClick={() => setPinnedModalOpen(true)}
           title="Mensagens fixadas"
           aria-label="Mensagens fixadas"
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition hover:bg-border/40 hover:text-accent"
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition hover:bg-card-2 hover:text-accent"
         >
-          📌
+          <Pin className="h-4 w-4" />
         </button>
       </header>
 
@@ -151,7 +152,7 @@ export function ChatChannel({
               return (
                 <li
                   key={message.id}
-                  className="group relative flex items-start gap-3 rounded-lg px-2 py-1 -mx-2 hover:bg-border/20"
+                  className="group relative flex items-start gap-3 rounded-lg px-2 py-1 -mx-2 hover:bg-card-2/60"
                 >
                   <img
                     src={`https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(member?.avatarSeed ?? message.user_id)}`}
@@ -189,13 +190,10 @@ export function ChatChannel({
                         )}
                       </span>
                       {message.pinned && (
-                        <span
-                          title="Mensagem fixada"
-                          className="text-xs text-muted"
+                        <Pin
+                          className="h-3.5 w-3.5 shrink-0 text-muted"
                           aria-label="Mensagem fixada"
-                        >
-                          📌
-                        </span>
+                        />
                       )}
                     </div>
                     <p className="whitespace-pre-wrap break-words text-sm text-foreground">
@@ -226,10 +224,10 @@ export function ChatChannel({
       <form
         action={formAction}
         key={inputKey}
-        className="border-t border-border p-4"
+        className="p-4 pt-1"
       >
         {replyingTo && (
-          <div className="mb-2 flex items-center justify-between gap-2 rounded-lg bg-border/30 px-3 py-1.5 text-xs text-muted">
+          <div className="mb-2 flex items-center justify-between gap-2 rounded-lg bg-card-2 px-3 py-1.5 text-xs text-muted">
             <span className="truncate">
               Respondendo a{" "}
               <span className="font-semibold text-secondary">
@@ -247,15 +245,24 @@ export function ChatChannel({
           </div>
         )}
         <input type="hidden" name="replyToId" value={replyingTo?.id ?? ""} />
-        <input
-          ref={inputRef}
-          type="text"
-          name="content"
-          maxLength={2000}
-          placeholder={`Conversar em #${channelName}`}
-          autoComplete="off"
-          className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-foreground outline-none focus:border-primary"
-        />
+        <div className="flex items-center gap-3 rounded-xl border border-border-soft bg-card-2 px-4 py-2.5 shadow-inner transition focus-within:border-primary/70">
+          <input
+            ref={inputRef}
+            type="text"
+            name="content"
+            maxLength={2000}
+            placeholder={`Conversar em #${channelName}`}
+            autoComplete="off"
+            className="flex-1 bg-transparent text-sm text-foreground placeholder-muted outline-none"
+          />
+          <button
+            type="submit"
+            aria-label="Enviar mensagem"
+            className="shrink-0 rounded-lg p-1 text-primary transition hover:brightness-110"
+          >
+            <Send className="h-5 w-5" />
+          </button>
+        </div>
         {state.error && (
           <p className="mt-1 text-xs text-danger">{state.error}</p>
         )}
