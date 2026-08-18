@@ -237,8 +237,10 @@ function ControlButton({
 }
 
 const VIDEO_TILE_SIZE = {
-  // large focused screen share, dm call strip
-  focus: "h-56 w-full sm:h-80",
+  // large focused screen share, dm call strip -- aspect-video instead of a
+  // fixed height keeps the box in the same proportions as the video itself,
+  // so object-contain never has to crop it
+  focus: "w-full aspect-video max-h-[60vh]",
   // camera thumbnail next to a screen share focus, dm call strip
   thumb: "h-20 w-32 sm:h-24 sm:w-40",
   // camera tile with no screen share around, dm call strip
@@ -288,7 +290,7 @@ function VideoTile({
       className={`group relative shrink-0 overflow-hidden rounded-2xl border border-border bg-black ${VIDEO_TILE_SIZE[size]} ${
         size === "grid" && isScreenShare ? "col-span-2 row-span-2" : ""
       } ${onFocus ? "cursor-pointer transition hover:border-primary" : ""} ${
-        isFullscreen ? "!h-screen !w-screen" : ""
+        isFullscreen ? "!aspect-auto !h-screen !w-screen !max-h-none" : ""
       }`}
     >
       <VideoTrack
