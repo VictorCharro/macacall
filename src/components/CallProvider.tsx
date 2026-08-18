@@ -171,5 +171,11 @@ function CallDeviceSync({
     remoteParticipants.forEach((p) => p.setVolume(deafened ? 0 : 1));
   }, [remoteParticipants, deafened]);
 
+  useEffect(() => {
+    localParticipant
+      .setAttributes({ deafened: deafened ? "true" : "false" })
+      .catch(() => {});
+  }, [localParticipant, deafened]);
+
   return null;
 }

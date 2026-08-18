@@ -7,6 +7,8 @@ type ParticipantInfo = {
   name: string;
   channelId: string;
   sharingScreen: boolean;
+  micMuted: boolean;
+  deafened: boolean;
 };
 
 export async function GET(request: Request) {
@@ -69,16 +71,21 @@ export async function GET(request: Request) {
       voiceChannels.map(async (channel) => {
         try {
           const participants = await roomService.listParticipants(channel.id);
-          return participants.map(
-            (p): ParticipantInfo => ({
+          return participants.map((p): ParticipantInfo => {
+            const micTrack = p.tracks.find(
+              (t) => t.source === TrackSource.MICROPHONE,
+            );
+            return {
               identity: p.identity,
               name: p.name || "Macaco anônimo",
               channelId: channel.id,
               sharingScreen: p.tracks.some(
                 (t) => t.source === TrackSource.SCREEN_SHARE,
               ),
-            }),
-          );
+              micMuted: micTrack ? micTrack.muted : true,
+              deafened: p.attributes?.deafened === "true",
+            };
+          });
         } catch {
           return [];
         }

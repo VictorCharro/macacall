@@ -11,7 +11,13 @@ import { UserPanel } from "@/components/UserPanel";
 import { useCall } from "@/components/CallProvider";
 
 type ChannelInfo = { id: string; name: string };
-type Participant = { identity: string; name: string; channelId: string };
+type Participant = {
+  identity: string;
+  name: string;
+  channelId: string;
+  micMuted: boolean;
+  deafened: boolean;
+};
 
 export function ChannelSidebar({
   bandoId,
@@ -105,9 +111,25 @@ export function ChannelSidebar({
                     {channelParticipants.map((p) => (
                       <li
                         key={p.identity}
-                        className="truncate text-xs text-muted"
+                        className="flex items-center justify-between gap-2 text-xs text-muted"
                       >
-                        🐵 {p.name}
+                        <span className="truncate">🐵 {p.name}</span>
+                        {p.deafened ? (
+                          <span className="flex shrink-0 gap-0.5" title="Surdo e mudo">
+                            <span aria-hidden="true">🔇</span>
+                            <span aria-hidden="true">🔕</span>
+                          </span>
+                        ) : (
+                          p.micMuted && (
+                            <span
+                              className="shrink-0"
+                              title="Microfone mudo"
+                              aria-label="Microfone mudo"
+                            >
+                              🔇
+                            </span>
+                          )
+                        )}
                       </li>
                     ))}
                   </ul>
