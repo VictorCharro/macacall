@@ -7,6 +7,7 @@ import { usePresence } from "@/components/PresenceProvider";
 import { colorFromSeed } from "@/lib/colorFromSeed";
 import { randomStatusQuote } from "@/lib/statusQuotes";
 import { STATUS_META } from "@/lib/presence";
+import { ContextMenuPortal } from "@/components/ContextMenuPortal";
 import type { PresenceStatus } from "@/lib/types";
 
 export function ProfilePopout({
@@ -20,13 +21,22 @@ export function ProfilePopout({
 }) {
   const { myStatus, setMyStatus } = usePresence();
   const popoutRef = useRef<HTMLDivElement>(null);
+  const statusRowRef = useRef<HTMLDivElement>(null);
 
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [fallbackQuote] = useState(() => randomStatusQuote());
-  const [statusFlyoutOpen, setStatusFlyoutOpen] = useState(false);
+  const [statusFlyoutPos, setStatusFlyoutPos] = useState<{ x: number; y: number } | null>(
+    null,
+  );
+
+  function openStatusFlyout() {
+    const rect = statusRowRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setStatusFlyoutPos({ x: rect.right + 8, y: rect.top });
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -191,13 +201,15 @@ export function ProfilePopout({
           </button>
 
           <div
-            className="relative"
-            onMouseEnter={() => setStatusFlyoutOpen(true)}
-            onMouseLeave={() => setStatusFlyoutOpen(false)}
+            ref={statusRowRef}
+            onMouseEnter={openStatusFlyout}
+            onMouseLeave={() => setStatusFlyoutPos(null)}
           >
             <button
               type="button"
-              onClick={() => setStatusFlyoutOpen((v) => !v)}
+              onClick={() =>
+                statusFlyoutPos ? setStatusFlyoutPos(null) : openStatusFlyout()
+              }
               className="flex w-full items-center gap-2 rounded-lg bg-background px-3 py-2 text-left text-sm text-foreground transition hover:bg-border/40"
             >
               <span
@@ -207,40 +219,50 @@ export function ProfilePopout({
               {STATUS_META[myStatus].label}
               <span className="ml-auto text-muted">›</span>
             </button>
-
-            {statusFlyoutOpen && (
-              <div className="absolute left-full top-0 z-40 ml-2 w-64 animate-modal-in rounded-xl border border-border bg-card p-1.5 shadow-lg">
-                {(Object.keys(STATUS_META) as PresenceStatus[]).map((status) => (
-                  <button
-                    key={status}
-                    type="button"
-                    onClick={() => {
-                      setMyStatus(status);
-                      setStatusFlyoutOpen(false);
-                    }}
-                    className={`flex w-full items-start gap-2 rounded-lg px-3 py-2 text-left text-sm transition hover:bg-border/40 ${
-                      status === myStatus ? "font-semibold text-accent" : "text-foreground"
-                    }`}
-                  >
-                    <span
-                      className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${STATUS_META[status].dotClass}`}
-                      aria-hidden="true"
-                    />
-                    <span>
-                      <span className="block">{STATUS_META[status].label}</span>
-                      {STATUS_META[status].subtitle && (
-                        <span className="block text-xs text-muted">
-                          {STATUS_META[status].subtitle}
-                        </span>
-                      )}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
         </div>
       </div>
+
+      {statusFlyoutPos && (
+        <ContextMenuPortal
+          x={statusFlyoutPos.x}
+          y={statusFlyoutPos.y}
+          onClose={() => setStatusFlyoutPos(null)}
+        >
+          <div
+            onMouseEnter={() => openStatusFlyout()}
+            onMouseLeave={() => setStatusFlyoutPos(null)}
+            className="w-64"
+          >
+            {(Object.keys(STATUS_META) as PresenceStatus[]).map((status) => (
+              <button
+                key={status}
+                type="button"
+                onClick={() => {
+                  setMyStatus(status);
+                  setStatusFlyoutPos(null);
+                }}
+                className={`flex w-full items-start gap-2 rounded-lg px-3 py-2 text-left text-sm transition hover:bg-border/40 ${
+                  status === myStatus ? "font-semibold text-accent" : "text-foreground"
+                }`}
+              >
+                <span
+                  className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${STATUS_META[status].dotClass}`}
+                  aria-hidden="true"
+                />
+                <span>
+                  <span className="block">{STATUS_META[status].label}</span>
+                  {STATUS_META[status].subtitle && (
+                    <span className="block text-xs text-muted">
+                      {STATUS_META[status].subtitle}
+                    </span>
+                  )}
+                </span>
+              </button>
+            ))}
+          </div>
+        </ContextMenuPortal>
+      )}
     </div>
   );
 }
