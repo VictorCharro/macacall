@@ -16,7 +16,7 @@ import {
 } from "@livekit/components-react";
 import "@livekit/components-styles";
 
-type ActiveCall = { bandoId: string; channelId: string; channelName: string };
+type ActiveCall = { roomId: string; roomName: string; href: string };
 
 type CallContextValue = {
   activeCall: ActiveCall | null;
@@ -24,7 +24,12 @@ type CallContextValue = {
   error: string | null;
   micEnabled: boolean;
   deafened: boolean;
-  joinCall: (bandoId: string, channelId: string, channelName: string) => void;
+  joinCall: (
+    roomId: string,
+    roomName: string,
+    href: string,
+    options?: { camera?: boolean },
+  ) => void;
   leaveCall: () => void;
   toggleMic: () => void;
   toggleDeafen: () => void;
@@ -40,8 +45,9 @@ export function useCall() {
 
 export function CallProvider({ children }: { children: React.ReactNode }) {
   const [activeCall, setActiveCall] = useState<ActiveCall | null>(null);
+  const [camOnJoin, setCamOnJoin] = useState(false);
   const [tokenInfo, setTokenInfo] = useState<{
-    channelId: string;
+    roomId: string;
     token: string;
     serverUrl: string;
   } | null>(null);
@@ -66,9 +72,15 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const joinCall = useCallback(
-    (bandoId: string, channelId: string, channelName: string) => {
+    (
+      roomId: string,
+      roomName: string,
+      href: string,
+      options?: { camera?: boolean },
+    ) => {
       setError(null);
-      setActiveCall({ bandoId, channelId, channelName });
+      setCamOnJoin(Boolean(options?.camera));
+      setActiveCall({ roomId, roomName, href });
     },
     [],
   );
@@ -82,18 +94,18 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!activeCall) return;
     let cancelled = false;
-    const channelId = activeCall.channelId;
+    const roomId = activeCall.roomId;
 
     fetch("/api/livekit/token", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ channelId }),
+      body: JSON.stringify({ roomId }),
     })
       .then(async (res) => {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? "Falha ao entrar na call");
         if (!cancelled) {
-          setTokenInfo({ channelId, token: data.token, serverUrl: data.url });
+          setTokenInfo({ roomId, token: data.token, serverUrl: data.url });
         }
       })
       .catch((err) => {
@@ -106,7 +118,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   }, [activeCall]);
 
   const connected = Boolean(
-    activeCall && tokenInfo && tokenInfo.channelId === activeCall.channelId,
+    activeCall && tokenInfo && tokenInfo.roomId === activeCall.roomId,
   );
 
   const value = useMemo<CallContextValue>(
@@ -142,7 +154,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
           serverUrl={tokenInfo!.serverUrl}
           connect
           audio={micEnabled}
-          video={false}
+          video={camOnJoin}
           style={{ display: "contents" }}
           onDisconnected={leaveCall}
         >

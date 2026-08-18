@@ -1,7 +1,11 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { sendMessage, type SendMessageState } from "@/app/actions/messages";
+import {
+  sendMessage,
+  togglePinMessage,
+  type SendMessageState,
+} from "@/app/actions/messages";
 import { createRealtimeClient } from "@/lib/supabase/realtimeClient";
 import { MessageActionsMenu } from "@/components/MessageActionsMenu";
 import { PinnedMessagesModal } from "@/components/PinnedMessagesModal";
@@ -200,10 +204,12 @@ export function ChatChannel({
                   </div>
 
                   <MessageActionsMenu
-                    messageId={message.id}
                     content={message.content}
                     pinned={message.pinned}
                     canPin={canPin}
+                    onTogglePin={() =>
+                      togglePinMessage(message.id, !message.pinned)
+                    }
                     onReply={() => {
                       setReplyingTo(message);
                       inputRef.current?.focus();

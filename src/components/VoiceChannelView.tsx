@@ -24,15 +24,16 @@ export function VoiceChannelView({
   channelName: string;
 }) {
   const { activeCall, connected, error, joinCall } = useCall();
+  const href = `/bandos/${bandoId}/${channelId}`;
 
-  const isThisChannel = activeCall?.channelId === channelId;
+  const isThisChannel = activeCall?.roomId === channelId;
 
   if (isThisChannel && error) {
     return (
       <main className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
         <p className="text-danger">{error}</p>
         <button
-          onClick={() => joinCall(bandoId, channelId, channelName)}
+          onClick={() => joinCall(channelId, channelName, href)}
           className="rounded-full border border-border px-4 py-2 font-semibold text-accent"
         >
           Tentar de novo
@@ -56,7 +57,7 @@ export function VoiceChannelView({
         <span className="text-4xl">🌴</span>
         <p className="text-accent">Pronto pra entrar em {channelName}</p>
         <button
-          onClick={() => joinCall(bandoId, channelId, channelName)}
+          onClick={() => joinCall(channelId, channelName, href)}
           className="rounded-full bg-secondary px-6 py-3 font-semibold text-secondary-foreground transition hover:brightness-95"
         >
           Entrar na call
@@ -72,7 +73,7 @@ export function VoiceChannelView({
   );
 }
 
-function CallInterface({ channelName }: { channelName: string }) {
+export function CallInterface({ channelName }: { channelName: string }) {
   const { leaveCall, micEnabled, toggleMic } = useCall();
   const [chatOpen, setChatOpen] = useState(false);
   const participants = useParticipants();

@@ -3,10 +3,10 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
-  const { channelId } = await request.json();
+  const { roomId } = await request.json();
 
-  if (!channelId) {
-    return NextResponse.json({ error: "channelId é obrigatório" }, { status: 400 });
+  if (!roomId) {
+    return NextResponse.json({ error: "roomId é obrigatório" }, { status: 400 });
   }
 
   const supabase = await createClient();
@@ -27,13 +27,25 @@ export async function POST(request: Request) {
   const { data: channel } = await supabase
     .from("channels")
     .select("id")
-    .eq("id", channelId)
+    .eq("id", roomId)
     .eq("type", "voice")
     .maybeSingle();
 
-  if (!channel) {
+  let authorized = Boolean(channel);
+
+  if (!authorized) {
+    const { data: participant } = await supabase
+      .from("dm_participants")
+      .select("conversation_id")
+      .eq("conversation_id", roomId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    authorized = Boolean(participant);
+  }
+
+  if (!authorized) {
     return NextResponse.json(
-      { error: "canal de voz não encontrado ou você não é membro deste bando" },
+      { error: "sala não encontrada ou você não tem acesso a ela" },
       { status: 404 },
     );
   }
@@ -55,7 +67,7 @@ export async function POST(request: Request) {
   });
 
   token.addGrant({
-    room: channel.id,
+    room: roomId,
     roomJoin: true,
     canPublish: true,
     canSubscribe: true,

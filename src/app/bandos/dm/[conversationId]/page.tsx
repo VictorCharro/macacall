@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { FriendsSidebar } from "@/components/FriendsSidebar";
 import { DmChat } from "@/components/DmChat";
+import { buildDmSidebarEntries } from "@/lib/dm-helpers";
 import type { Profile } from "@/lib/types";
 
 type ProfileRow = Pick<Profile, "id" | "username" | "avatar_seed">;
@@ -29,53 +30,59 @@ export default async function DmPage({
 
   const { data: conversation } = await supabase
     .from("dm_conversations")
-    .select(
-      "id, user_a_id, user_b_id, user_a:profiles!dm_conversations_user_a_id_fkey(id, username, avatar_seed), user_b:profiles!dm_conversations_user_b_id_fkey(id, username, avatar_seed)",
-    )
+    .select("id, name, is_group")
     .eq("id", conversationId)
     .maybeSingle();
 
-  if (
-    !conversation ||
-    (conversation.user_a_id !== user.id && conversation.user_b_id !== user.id)
-  ) {
-    notFound();
-  }
+  if (!conversation) notFound();
 
-  const otherProfile = (
-    conversation.user_a_id === user.id
-      ? conversation.user_b
-      : conversation.user_a
-  ) as unknown as ProfileRow;
+  const { data: participantRows } = await supabase
+    .from("dm_participants")
+    .select("user_id, profiles(id, username, avatar_seed)")
+    .eq("conversation_id", conversationId);
+
+  const allParticipants = (participantRows ?? [])
+    .map((p) => p.profiles as unknown as ProfileRow)
+    .filter(Boolean);
+
+  const isMember = allParticipants.some((p) => p.id === user.id);
+  if (!isMember) notFound();
+
+  const otherParticipants = allParticipants
+    .filter((p) => p.id !== user.id)
+    .map((p) => ({ id: p.id, username: p.username, avatarSeed: p.avatar_seed }));
 
   const { data: messages } = await supabase
     .from("dm_messages")
-    .select("id, content, created_at, user_id")
+    .select("id, content, created_at, user_id, pinned")
     .eq("conversation_id", conversationId)
     .order("created_at")
     .limit(100);
 
-  const { data: dms } = await supabase
-    .from("dm_conversations")
+  const { data: friendships } = await supabase
+    .from("friendships")
     .select(
-      "id, user_a_id, user_b_id, user_a:profiles!dm_conversations_user_a_id_fkey(id, username, avatar_seed), user_b:profiles!dm_conversations_user_b_id_fkey(id, username, avatar_seed)",
+      "requester_id, addressee_id, requester:profiles!friendships_requester_id_fkey(id, username, avatar_seed), addressee:profiles!friendships_addressee_id_fkey(id, username, avatar_seed)",
     )
-    .or(`user_a_id.eq.${user.id},user_b_id.eq.${user.id}`);
+    .eq("status", "accepted")
+    .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`);
 
-  const dmEntries = (dms ?? [])
-    .map((d) => {
-      const other = (
-        d.user_a_id === user.id ? d.user_b : d.user_a
-      ) as unknown as ProfileRow;
-      if (!other) return null;
-      return {
-        conversationId: d.id,
-        id: other.id,
-        username: other.username,
-        avatarSeed: other.avatar_seed,
-      };
-    })
-    .filter((d): d is NonNullable<typeof d> => Boolean(d));
+  const participantIds = new Set(allParticipants.map((p) => p.id));
+  const availableFriendsToAdd = (friendships ?? [])
+    .map((f) =>
+      (f.requester_id === user.id ? f.addressee : f.requester) as unknown as ProfileRow,
+    )
+    .filter((p) => p && !participantIds.has(p.id))
+    .map((p) => ({ id: p.id, username: p.username, avatarSeed: p.avatar_seed }));
+
+  const { data: dmRows } = await supabase
+    .from("dm_participants")
+    .select(
+      "conversation_id, dm_conversations(id, name, is_group)",
+    )
+    .eq("user_id", user.id);
+
+  const dmEntries = await buildDmSidebarEntries(supabase, user.id, dmRows ?? []);
 
   return (
     <div className="flex flex-1 overflow-hidden">
@@ -87,12 +94,15 @@ export default async function DmPage({
       <DmChat
         key={conversationId}
         conversationId={conversationId}
-        otherUsername={otherProfile.username}
-        otherAvatarSeed={otherProfile.avatar_seed}
+        isGroup={conversation.is_group}
+        groupName={conversation.name}
+        participants={otherParticipants}
         currentUserId={user.id}
         currentAvatarSeed={profile.avatar_seed}
         initialMessages={messages ?? []}
+        availableFriendsToAdd={availableFriendsToAdd}
       />
     </div>
   );
 }
+

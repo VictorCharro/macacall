@@ -27,7 +27,6 @@ type DmEntry = {
   id: string;
   username: string;
   avatarSeed: string;
-  status: PresenceStatus;
 };
 
 type Tab = "online" | "todos" | "pendente" | "adicionar";

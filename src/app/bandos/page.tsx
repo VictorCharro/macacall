@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { FriendsHome } from "@/components/FriendsHome";
+import { buildDmSidebarEntries } from "@/lib/dm-helpers";
 import type { PresenceStatus, Profile } from "@/lib/types";
 
 type ProfileRow = Pick<Profile, "id" | "username" | "avatar_seed" | "status">;
@@ -48,24 +49,12 @@ export default async function BandosPage() {
     }
   }
 
-  const { data: dms } = await supabase
-    .from("dm_conversations")
-    .select(
-      "id, user_a_id, user_b_id, user_a:profiles!dm_conversations_user_a_id_fkey(id, username, avatar_seed, status), user_b:profiles!dm_conversations_user_b_id_fkey(id, username, avatar_seed, status)",
-    )
-    .or(`user_a_id.eq.${user.id},user_b_id.eq.${user.id}`);
+  const { data: dmRows } = await supabase
+    .from("dm_participants")
+    .select("conversation_id")
+    .eq("user_id", user.id);
 
-  const dmEntries = (dms ?? [])
-    .map((d) => {
-      const other = (
-        d.user_a_id === user.id ? d.user_b : d.user_a
-      ) as unknown as ProfileRow;
-      if (!other) return null;
-      return { conversationId: d.id, profile: other };
-    })
-    .filter((d): d is { conversationId: string; profile: ProfileRow } =>
-      Boolean(d),
-    );
+  const dmEntries = await buildDmSidebarEntries(supabase, user.id, dmRows ?? []);
 
   return (
     <FriendsHome
@@ -93,13 +82,7 @@ export default async function BandosPage() {
         avatarSeed: f.profile.avatar_seed,
         status: f.profile.status as PresenceStatus,
       }))}
-      dms={dmEntries.map((d) => ({
-        conversationId: d.conversationId,
-        id: d.profile.id,
-        username: d.profile.username,
-        avatarSeed: d.profile.avatar_seed,
-        status: d.profile.status as PresenceStatus,
-      }))}
+      dms={dmEntries}
     />
   );
 }

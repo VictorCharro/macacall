@@ -13,14 +13,12 @@ export function VoiceConnectedBar() {
   const pathname = usePathname();
 
   if (!connected || !activeCall) return null;
-
-  const channelHref = `/bandos/${activeCall.bandoId}/${activeCall.channelId}`;
-  if (pathname === channelHref) return null;
+  if (pathname === activeCall.href) return null;
 
   return (
     <ConnectedBarContent
-      channelHref={channelHref}
-      channelName={activeCall.channelName}
+      channelHref={activeCall.href}
+      channelName={activeCall.roomName}
     />
   );
 }

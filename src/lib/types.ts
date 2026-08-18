@@ -53,9 +53,16 @@ export type Friendship = {
 
 export type DmConversation = {
   id: string;
-  user_a_id: string;
-  user_b_id: string;
+  name: string | null;
+  is_group: boolean;
+  created_by: string;
   created_at: string;
+};
+
+export type DmParticipant = {
+  conversation_id: string;
+  user_id: string;
+  joined_at: string;
 };
 
 export type DmMessage = {
@@ -64,4 +71,5 @@ export type DmMessage = {
   user_id: string;
   content: string;
   created_at: string;
+  pinned: boolean;
 };

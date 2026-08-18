@@ -1,20 +1,19 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { togglePinMessage } from "@/app/actions/messages";
 
 export function MessageActionsMenu({
-  messageId,
   content,
   pinned,
   canPin,
+  onTogglePin,
   onReply,
 }: {
-  messageId: string;
   content: string;
   pinned: boolean;
   canPin: boolean;
-  onReply: () => void;
+  onTogglePin: () => void;
+  onReply?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -53,7 +52,7 @@ export function MessageActionsMenu({
               type="button"
               onClick={() => {
                 setOpen(false);
-                togglePinMessage(messageId, !pinned);
+                onTogglePin();
               }}
               className="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-sm text-foreground transition hover:bg-border/40"
             >
@@ -61,17 +60,19 @@ export function MessageActionsMenu({
               {pinned ? "Desafixar mensagem" : "Fixar mensagem"}
             </button>
           )}
-          <button
-            type="button"
-            onClick={() => {
-              setOpen(false);
-              onReply();
-            }}
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-sm text-foreground transition hover:bg-border/40"
-          >
-            <span aria-hidden="true">↩️</span>
-            Responder
-          </button>
+          {onReply && (
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                onReply();
+              }}
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-sm text-foreground transition hover:bg-border/40"
+            >
+              <span aria-hidden="true">↩️</span>
+              Responder
+            </button>
+          )}
           <button
             type="button"
             onClick={() => {
