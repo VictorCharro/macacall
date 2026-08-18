@@ -19,10 +19,12 @@ import "@livekit/components-styles";
 
 export function CallRoom({
   bandoId,
-  bandoName,
+  channelId,
+  channelName,
 }: {
   bandoId: string;
-  bandoName: string;
+  channelId: string;
+  channelName: string;
 }) {
   const router = useRouter();
   const [token, setToken] = useState<string | null>(null);
@@ -35,7 +37,7 @@ export function CallRoom({
     fetch("/api/livekit/token", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ bandoId }),
+      body: JSON.stringify({ channelId }),
     })
       .then(async (res) => {
         const data = await res.json();
@@ -52,7 +54,7 @@ export function CallRoom({
     return () => {
       cancelled = true;
     };
-  }, [bandoId]);
+  }, [channelId]);
 
   if (error) {
     return (
@@ -86,10 +88,10 @@ export function CallRoom({
         audio
         video={false}
         style={{ height: "100%" }}
-        onDisconnected={() => router.push(`/bandos/${bandoId}`)}
+        onDisconnected={() => router.push(`/bandos/${bandoId}/${channelId}`)}
       >
         <RoomAudioRenderer />
-        <CallInterface bandoId={bandoId} bandoName={bandoName} />
+        <CallInterface bandoId={bandoId} channelId={channelId} channelName={channelName} />
       </LiveKitRoom>
     </div>
   );
@@ -97,10 +99,12 @@ export function CallRoom({
 
 function CallInterface({
   bandoId,
-  bandoName,
+  channelId,
+  channelName,
 }: {
   bandoId: string;
-  bandoName: string;
+  channelId: string;
+  channelName: string;
 }) {
   const router = useRouter();
   const [chatOpen, setChatOpen] = useState(false);
@@ -122,7 +126,7 @@ function CallInterface({
     <div className="flex h-full flex-col">
       <header className="flex items-center justify-between border-b border-border bg-card px-6 py-3">
         <h1 className="font-semibold text-accent">
-          🌴 {bandoName} · {participants.length}{" "}
+          🌴 {channelName} · {participants.length}{" "}
           {participants.length === 1 ? "macaco" : "macacos"}
         </h1>
       </header>
@@ -170,7 +174,7 @@ function CallInterface({
           icon="💬"
         />
         <button
-          onClick={() => router.push(`/bandos/${bandoId}`)}
+          onClick={() => router.push(`/bandos/${bandoId}/${channelId}`)}
           className="ml-2 rounded-full bg-danger px-5 py-2.5 text-sm font-semibold text-white transition hover:brightness-90"
         >
           Sair 🍌

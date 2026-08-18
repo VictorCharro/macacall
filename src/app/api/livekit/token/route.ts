@@ -3,10 +3,10 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
-  const { bandoId } = await request.json();
+  const { channelId } = await request.json();
 
-  if (!bandoId) {
-    return NextResponse.json({ error: "bandoId é obrigatório" }, { status: 400 });
+  if (!channelId) {
+    return NextResponse.json({ error: "channelId é obrigatório" }, { status: 400 });
   }
 
   const supabase = await createClient();
@@ -27,9 +27,8 @@ export async function POST(request: Request) {
   const { data: channel } = await supabase
     .from("channels")
     .select("id")
-    .eq("bando_id", bandoId)
+    .eq("id", channelId)
     .eq("type", "voice")
-    .limit(1)
     .maybeSingle();
 
   if (!channel) {

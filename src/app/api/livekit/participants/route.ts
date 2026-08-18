@@ -2,11 +2,18 @@ import { RoomServiceClient } from "livekit-server-sdk";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
-export async function GET(request: Request) {
-  const bandoId = new URL(request.url).searchParams.get("bandoId");
+type ParticipantInfo = { identity: string; name: string; channelId: string };
 
-  if (!bandoId) {
-    return NextResponse.json({ error: "bandoId é obrigatório" }, { status: 400 });
+export async function GET(request: Request) {
+  const url = new URL(request.url);
+  const bandoId = url.searchParams.get("bandoId");
+  const channelId = url.searchParams.get("channelId");
+
+  if (!bandoId && !channelId) {
+    return NextResponse.json(
+      { error: "bandoId ou channelId é obrigatório" },
+      { status: 400 },
+    );
   }
 
   const supabase = await createClient();
@@ -18,15 +25,26 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "não autenticado" }, { status: 401 });
   }
 
-  const { data: channel } = await supabase
-    .from("channels")
-    .select("id")
-    .eq("bando_id", bandoId)
-    .eq("type", "voice")
-    .limit(1)
-    .maybeSingle();
+  let voiceChannels: { id: string }[] = [];
 
-  if (!channel) {
+  if (channelId) {
+    const { data: channel } = await supabase
+      .from("channels")
+      .select("id")
+      .eq("id", channelId)
+      .eq("type", "voice")
+      .maybeSingle();
+    if (channel) voiceChannels = [channel];
+  } else if (bandoId) {
+    const { data: channels } = await supabase
+      .from("channels")
+      .select("id")
+      .eq("bando_id", bandoId)
+      .eq("type", "voice");
+    voiceChannels = channels ?? [];
+  }
+
+  if (voiceChannels.length === 0) {
     return NextResponse.json({ participants: [] });
   }
 
@@ -42,13 +60,24 @@ export async function GET(request: Request) {
   const roomService = new RoomServiceClient(httpUrl, apiKey, apiSecret);
 
   try {
-    const participants = await roomService.listParticipants(channel.id);
-    return NextResponse.json({
-      participants: participants.map((p) => ({
-        identity: p.identity,
-        name: p.name || "Macaco anônimo",
-      })),
-    });
+    const results = await Promise.all(
+      voiceChannels.map(async (channel) => {
+        try {
+          const participants = await roomService.listParticipants(channel.id);
+          return participants.map(
+            (p): ParticipantInfo => ({
+              identity: p.identity,
+              name: p.name || "Macaco anônimo",
+              channelId: channel.id,
+            }),
+          );
+        } catch {
+          return [];
+        }
+      }),
+    );
+
+    return NextResponse.json({ participants: results.flat() });
   } catch {
     return NextResponse.json({ participants: [] });
   }

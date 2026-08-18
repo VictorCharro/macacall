@@ -9,14 +9,18 @@ type Member = {
   isOwner: boolean;
 };
 
+type Participant = { identity: string; name: string; channelId: string };
+
 export function MembersSidebar({
   bandoId,
   members,
+  voiceChannelNames,
 }: {
   bandoId: string;
   members: Member[];
+  voiceChannelNames: Record<string, string>;
 }) {
-  const [inCall, setInCall] = useState<Set<string>>(new Set());
+  const [inCall, setInCall] = useState<Map<string, string>>(new Map());
 
   useEffect(() => {
     let cancelled = false;
@@ -26,12 +30,9 @@ export function MembersSidebar({
         const res = await fetch(`/api/livekit/participants?bandoId=${bandoId}`);
         const data = await res.json();
         if (!cancelled) {
+          const participants: Participant[] = data.participants ?? [];
           setInCall(
-            new Set(
-              (data.participants ?? []).map(
-                (p: { identity: string }) => p.identity,
-              ),
-            ),
+            new Map(participants.map((p) => [p.identity, p.channelId])),
           );
         }
       } catch {
@@ -53,29 +54,33 @@ export function MembersSidebar({
         Membros — {members.length}
       </h2>
       <ul className="flex flex-col gap-1">
-        {members.map((member) => (
-          <li
-            key={member.id}
-            className="flex items-center gap-3 rounded-lg px-2 py-2 transition hover:bg-border/40"
-          >
-            <img
-              src={`https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(member.avatarSeed)}`}
-              alt=""
-              className="h-9 w-9 shrink-0 rounded-full bg-background"
-            />
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-foreground">
-                {member.username}
-                {member.isOwner && " 👑"}
-              </p>
-              {inCall.has(member.id) && (
-                <p className="text-xs font-medium text-secondary">
-                  🎙️ Em canal de voz
+        {members.map((member) => {
+          const channelId = inCall.get(member.id);
+          const channelName = channelId ? voiceChannelNames[channelId] : null;
+          return (
+            <li
+              key={member.id}
+              className="flex items-center gap-3 rounded-lg px-2 py-2 transition hover:bg-border/40"
+            >
+              <img
+                src={`https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(member.avatarSeed)}`}
+                alt=""
+                className="h-9 w-9 shrink-0 rounded-full bg-background"
+              />
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-foreground">
+                  {member.username}
+                  {member.isOwner && " 👑"}
                 </p>
-              )}
-            </div>
-          </li>
-        ))}
+                {channelName && (
+                  <p className="truncate text-xs font-medium text-secondary">
+                    🎙️ Em {channelName}
+                  </p>
+                )}
+              </div>
+            </li>
+          );
+        })}
       </ul>
     </aside>
   );
