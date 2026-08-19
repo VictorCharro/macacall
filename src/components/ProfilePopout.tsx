@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Pencil } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { EditProfileModal } from "@/components/EditProfileModal";
 import { updateStatusMessage } from "@/app/actions/friends";
 import { usePresence } from "@/components/PresenceProvider";
 import { colorFromSeed } from "@/lib/colorFromSeed";
@@ -24,8 +26,11 @@ export function ProfilePopout({
   const statusRowRef = useRef<HTMLDivElement>(null);
 
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [bio, setBio] = useState<string | null>(null);
+  const [bannerColorOverride, setBannerColorOverride] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [draft, setDraft] = useState("");
   const [fallbackQuote] = useState(() => randomStatusQuote());
   const [statusFlyoutPos, setStatusFlyoutPos] = useState<{ x: number; y: number } | null>(
@@ -45,11 +50,13 @@ export function ProfilePopout({
       if (!user) return;
       const { data } = await supabase
         .from("profiles")
-        .select("status_message")
+        .select("status_message, bio, banner_color")
         .eq("id", user.id)
         .maybeSingle();
       if (!cancelled) {
         setStatusMessage(data?.status_message ?? null);
+        setBio(data?.bio ?? null);
+        setBannerColorOverride(data?.banner_color ?? null);
         setLoaded(true);
       }
     });
@@ -87,7 +94,7 @@ export function ProfilePopout({
     await updateStatusMessage(next);
   }
 
-  const bannerColor = colorFromSeed(avatarSeed);
+  const bannerColor = bannerColorOverride ?? colorFromSeed(avatarSeed);
   const displayedMessage = statusMessage || fallbackQuote;
 
   return (
@@ -170,8 +177,13 @@ export function ProfilePopout({
         <p className="mt-3 truncate text-lg font-bold text-foreground">{username}</p>
         <p className="truncate text-xs text-muted">@{username.toLowerCase()}</p>
 
-        {/* espaço reservado para bio (futuro) */}
-        <div className="h-2" />
+        {bio ? (
+          <p className="mt-2 whitespace-pre-wrap break-words text-xs leading-relaxed text-muted">
+            {bio}
+          </p>
+        ) : (
+          <div className="h-2" />
+        )}
 
         <div className="my-3 h-px bg-border" />
 
@@ -189,11 +201,10 @@ export function ProfilePopout({
         <div className="mt-3 flex flex-col gap-1">
           <button
             type="button"
-            disabled
-            title="Em breve"
-            className="flex w-full items-center gap-2 rounded-lg bg-background px-3 py-2 text-left text-sm text-muted"
+            onClick={() => setEditProfileOpen(true)}
+            className="flex w-full items-center gap-2 rounded-lg bg-background px-3 py-2 text-left text-sm text-foreground transition hover:bg-card-2"
           >
-            <span aria-hidden="true">✏️</span>
+            <Pencil className="h-4 w-4 text-muted" />
             Editar perfil
             <span className="ml-auto rounded bg-primary px-1.5 py-0.5 text-[10px] font-bold uppercase text-primary-foreground">
               Novo
@@ -262,6 +273,20 @@ export function ProfilePopout({
             ))}
           </div>
         </ContextMenuPortal>
+      )}
+
+      {editProfileOpen && (
+        <EditProfileModal
+          username={username}
+          avatarSeed={avatarSeed}
+          initialBio={bio}
+          initialBannerColor={bannerColorOverride}
+          onSaved={(nextBio, nextBanner) => {
+            setBio(nextBio);
+            setBannerColorOverride(nextBanner);
+          }}
+          onClose={() => setEditProfileOpen(false)}
+        />
       )}
     </div>
   );

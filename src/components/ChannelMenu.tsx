@@ -8,8 +8,10 @@ import {
 } from "@/app/actions/channels";
 import type { BandoActionState } from "@/app/actions/bandos";
 import { ContextMenuPortal } from "@/components/ContextMenuPortal";
+import { ChannelPermissionsModal } from "@/components/ChannelPermissionsModal";
 import { Modal } from "@/components/Modal";
 import { SubmitButton } from "@/components/SubmitButton";
+import type { Role } from "@/lib/types";
 
 const initialState: BandoActionState = {};
 
@@ -18,6 +20,7 @@ export function ChannelMenu({
   channelId,
   channelName,
   channelTopic,
+  roles,
   x,
   y,
   onClose,
@@ -26,12 +29,14 @@ export function ChannelMenu({
   channelId: string;
   channelName: string;
   channelTopic?: string | null;
+  roles: Role[];
   x: number;
   y: number;
   onClose: () => void;
 }) {
   const [mode, setMode] = useState<"menu" | "rename" | "topic">("menu");
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [permissionsOpen, setPermissionsOpen] = useState(false);
 
   const renameChannelWithId = renameChannel.bind(null, channelId);
   const [renameState, renameAction] = useActionState(
@@ -141,12 +146,29 @@ export function ChannelMenu({
           </button>
           <button
             type="button"
+            onClick={() => setPermissionsOpen(true)}
+            className="rounded-lg px-3 py-2 text-left text-sm text-foreground transition hover:bg-card-2"
+          >
+            Permissões
+          </button>
+          <button
+            type="button"
             onClick={() => setConfirmingDelete(true)}
             className="rounded-lg px-3 py-2 text-left text-sm text-danger transition hover:bg-danger/10"
           >
             Deletar canal
           </button>
         </div>
+      )}
+
+      {permissionsOpen && (
+        <ChannelPermissionsModal
+          bandoId={bandoId}
+          channelId={channelId}
+          channelName={channelName}
+          roles={roles}
+          onClose={() => setPermissionsOpen(false)}
+        />
       )}
 
       {confirmingDelete && (

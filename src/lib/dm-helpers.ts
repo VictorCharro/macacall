@@ -40,6 +40,9 @@ export async function buildDmSidebarEntries(
             ? others.map((o) => o.username).join(", ")
             : first.username,
         avatarSeed: first.avatar_seed,
+        // A group DM has no single "other person", so anything that acts on
+        // one specific user (the right-click menu) stays off for those.
+        isGroup: others.length > 1,
       };
     })
     .filter((d): d is NonNullable<typeof d> => Boolean(d));

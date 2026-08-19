@@ -4,6 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Search } from "lucide-react";
 import { useEffectiveStatus } from "@/components/FriendRow";
+import {
+  FriendContextMenu,
+  useFriendContextMenu,
+} from "@/components/FriendContextMenu";
 import { UserPanel } from "@/components/UserPanel";
 
 type DmEntry = {
@@ -11,6 +15,7 @@ type DmEntry = {
   id: string;
   username: string;
   avatarSeed: string;
+  isGroup?: boolean;
 };
 
 export function FriendsSidebar({
@@ -78,9 +83,10 @@ export function FriendsSidebar({
 
 function DmListItem({ dm, active }: { dm: DmEntry; active: boolean }) {
   const status = useEffectiveStatus(dm.id);
+  const menu = useFriendContextMenu();
 
   return (
-    <li>
+    <li onContextMenu={dm.isGroup ? undefined : menu.open}>
       <Link
         href={`/bandos/dm/${dm.conversationId}`}
         className={`flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium transition ${
@@ -104,6 +110,15 @@ function DmListItem({ dm, active }: { dm: DmEntry; active: boolean }) {
         </div>
         <span className="truncate">{dm.username}</span>
       </Link>
+
+      {menu.pos && (
+        <FriendContextMenu
+          friendId={dm.id}
+          friendUsername={dm.username}
+          pos={menu.pos}
+          onClose={menu.close}
+        />
+      )}
     </li>
   );
 }

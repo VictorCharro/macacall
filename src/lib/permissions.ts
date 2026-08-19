@@ -65,6 +65,21 @@ export const PERMISSION_LABELS: Record<PermissionKey, { label: string; descripti
 
 export const ALL_PERMISSION_KEYS = Object.keys(PERMISSIONS) as PermissionKey[];
 
+/**
+ * Permissions that can be overridden per channel. Server-wide powers
+ * (managing the bando, roles, kicking, banning) deliberately aren't here —
+ * they have no meaning scoped to a single channel, same as in Discord.
+ */
+export const CHANNEL_PERMISSION_KEYS: PermissionKey[] = [
+  "MANAGE_CHANNELS",
+  "MANAGE_MESSAGES",
+  "CREATE_INVITE",
+  "MENTION_EVERYONE",
+  "CONNECT",
+  "SPEAK",
+  "STREAM",
+];
+
 type MaskInput = number | bigint | string;
 
 export function hasPermission(mask: MaskInput, key: PermissionKey): boolean {

@@ -96,11 +96,14 @@ ações. Resumo:
   atribuição de cargo + kick/ban no popup de perfil de membro
   (`MembersSidebar`). Cor do cargo mais alto do usuário aparece no nome, no
   chat e na lista de membros (`BandoRolesProvider`).
-- **Não implementado ainda:** tela pra editar overrides por canal (a tabela
-  `channel_permission_overrides` e as actions `setChannelOverride` /
-  `removeChannelOverride` já existem, só falta a UI chamando isso). Também não
-  tem cache de permissão calculada — não é necessário no tamanho atual dos
-  bandos (poucos membros), calcular na leitura é barato.
+- **Overrides por canal**: botão direito num canal → "Permissões"
+  (`ChannelPermissionsModal`). Só expõe as permissões que fazem sentido
+  escopadas a um canal (`CHANNEL_PERMISSION_KEYS` em `lib/permissions.ts`) —
+  poderes server-wide (banir, gerenciar bando/cargos) ficam de fora, igual no
+  Discord. Um override que fica sem nenhum bit é apagado, pro canal voltar a
+  herdar limpo do cargo.
+- **Não tem cache de permissão calculada** — não é necessário no tamanho atual
+  dos bandos (poucos membros), calcular na leitura é barato.
 
 ## Chamadas de voz/vídeo (LiveKit)
 
@@ -146,7 +149,14 @@ ações. Resumo:
    da lista. Toda área com scroll próprio usa `overscroll-y-contain` (classe
    `scroll-hover` em `globals.css` já inclui isso junto com a scrollbar fina
    estilo Discord que só aparece no hover).
-5. **RLS de INSERT com `.select()`**: `insert(...).select()` no Supabase
+5. **`ON CONFLICT` não funciona com índice único parcial**: os índices de
+   unicidade de `channel_permission_overrides` são parciais (`where role_id is
+   not null` / `where user_id is not null`, já que as duas colunas são
+   nullable). O Postgres não consegue inferir isso num `ON CONFLICT`, então
+   `.upsert()` do Supabase falha com "no unique or exclusion constraint
+   matching". `setChannelOverride` faz select-depois-update/insert por isso —
+   não trocar por upsert.
+6. **RLS de INSERT com `.select()`**: `insert(...).select()` no Supabase
    exige passar pela policy de SELECT também (por causa do `RETURNING`). Se a
    policy de SELECT só libera quem já é participante de algo que está sendo
    criado na mesma query, o próprio criador não consegue ver a linha que
@@ -168,6 +178,8 @@ ações. Resumo:
 
 ## Histórico resumido (mais recente primeiro)
 
+- Editar perfil (bio + cor do banner), menu de contexto nas DMs 1:1 da
+  sidebar, e UI de permissões por canal.
 - Sistema de cargos e permissões estilo Discord (hierarquia, overrides por
   canal no backend, cor por cargo).
 - Correção estrutural de scroll (a página inteira rolava em vez do painel;

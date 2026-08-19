@@ -179,16 +179,32 @@ export async function setChannelOverride(
 ): Promise<BandoActionState> {
   const { supabase } = await requireUser();
 
-  const { error } = await supabase.from("channel_permission_overrides").upsert(
-    {
-      channel_id: channelId,
-      role_id: target.roleId ?? null,
-      user_id: target.userId ?? null,
-      allow,
-      deny,
-    },
-    { onConflict: target.roleId ? "channel_id,role_id" : "channel_id,user_id" },
-  );
+  // The uniqueness of (channel_id, role_id) / (channel_id, user_id) is enforced
+  // by *partial* indexes (role_id and user_id are each nullable), which
+  // ON CONFLICT cannot infer — so upsert() is not an option here. Look the row
+  // up first and update it, falling back to an insert.
+  const targetColumn = target.roleId ? "role_id" : "user_id";
+  const targetValue = target.roleId ?? target.userId;
+
+  const { data: existing } = await supabase
+    .from("channel_permission_overrides")
+    .select("id")
+    .eq("channel_id", channelId)
+    .eq(targetColumn, targetValue!)
+    .maybeSingle();
+
+  const { error } = existing
+    ? await supabase
+        .from("channel_permission_overrides")
+        .update({ allow, deny })
+        .eq("id", existing.id)
+    : await supabase.from("channel_permission_overrides").insert({
+        channel_id: channelId,
+        role_id: target.roleId ?? null,
+        user_id: target.userId ?? null,
+        allow,
+        deny,
+      });
 
   if (error) return { error: error.message };
 

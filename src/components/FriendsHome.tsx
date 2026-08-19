@@ -29,6 +29,7 @@ type DmEntry = {
   id: string;
   username: string;
   avatarSeed: string;
+  isGroup?: boolean;
 };
 
 type Tab = "online" | "todos" | "pendente" | "adicionar";

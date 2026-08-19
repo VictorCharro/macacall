@@ -111,6 +111,7 @@ export function ChannelSidebar({
                     bandoId={bandoId}
                     channel={channel}
                     isOwner={canManageChannels}
+                    roles={roles}
                     active={pathname === `/bandos/${bandoId}/${channel.id}`}
                   >
                     <Hash className="h-4 w-4 shrink-0 text-muted" />
@@ -148,6 +149,7 @@ export function ChannelSidebar({
                         bandoId={bandoId}
                         channel={channel}
                         isOwner={canManageChannels}
+                        roles={roles}
                         active={pathname === `/bandos/${bandoId}/${channel.id}`}
                         live={isInThisCall}
                         asListItem={false}
@@ -245,6 +247,7 @@ function ChannelRow({
   bandoId,
   channel,
   isOwner,
+  roles,
   active,
   live = false,
   asListItem = true,
@@ -254,6 +257,7 @@ function ChannelRow({
   bandoId: string;
   channel: ChannelInfo;
   isOwner: boolean;
+  roles: Role[];
   active: boolean;
   live?: boolean;
   asListItem?: boolean;
@@ -303,6 +307,7 @@ function ChannelRow({
           channelId={channel.id}
           channelName={channel.name}
           channelTopic={channel.topic}
+          roles={roles}
           x={menuPos.x}
           y={menuPos.y}
           onClose={() => setMenuPos(null)}
