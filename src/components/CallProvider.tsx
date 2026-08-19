@@ -14,7 +14,7 @@ import {
   useLocalParticipant,
   useRemoteParticipants,
 } from "@livekit/components-react";
-import { ParticipantEvent } from "livekit-client";
+import { ParticipantEvent, Track } from "livekit-client";
 import "@livekit/components-styles";
 
 type ActiveCall = { roomId: string; roomName: string; href: string };
@@ -220,7 +220,21 @@ function CallDeviceSync({
 
       const nowForceMuted = attrs.forceMuted === "true";
       setForceMuted(nowForceMuted);
-      if (nowForceMuted) setMicEnabled(false);
+      if (nowForceMuted) {
+        setMicEnabled(false);
+        // LocalParticipant reconciles its published tracks against every
+        // ParticipantInfo update it receives from the server — if the
+        // publication's own `isMuted` doesn't already agree with the
+        // server-side mute LiveKit just applied (mutePublishedTrack), the
+        // SDK "corrects" it by immediately telling the server to unmute
+        // again. Muting the publication directly (not just flipping React
+        // state, which only calls setMicrophoneEnabled on a later effect)
+        // keeps that reconcile from fighting — and racing — the mod-mute.
+        localParticipant
+          .getTrackPublication(Track.Source.Microphone)
+          ?.mute()
+          .catch(() => {});
+      }
 
       const movedToChannelId = attrs.movedToChannelId;
       const movedToChannelName = attrs.movedToChannelName;

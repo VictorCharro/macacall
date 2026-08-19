@@ -166,6 +166,27 @@ ações. Resumo:
   moderador, e checa `res.ok` (antes falhava silenciosamente, sem
   feedback nenhum se a permissão fosse negada ou a chamada LiveKit
   desse erro).
+- **Causa raiz real do mute não "pegar" (confirmado via runtime logs da
+  Vercel: a rota `/api/livekit/moderate` sempre respondia 200, então os
+  dois bugs acima não eram o problema de verdade)**: o `LocalParticipant`
+  do `livekit-client` reconcilia sozinho, a cada `ParticipantInfo` que
+  recebe do servidor, o estado de mute de cada track publicado contra o
+  que ele acha que é o estado local (`LocalParticipant.updateInfo`, ver
+  `node_modules/livekit-client`) — se `mutePublishedTrack` muta o track
+  no servidor mas a publicação local continua achando que não está
+  mutada (porque só reagíamos ao atributo `forceMuted` via
+  `setMicEnabled(false)`, que só desabilita o mic num efeito React
+  *depois*), o SDK detecta esse "descompasso" e manda `sendMuteTrack`
+  de volta pro servidor com o estado local (desmutado) — desfazendo o
+  mute forçado quase instantaneamente. Fix: `CallDeviceSync` agora muta a
+  publicação do microfone diretamente (
+  `localParticipant.getTrackPublication(Track.Source.Microphone)?.mute()`)
+  assim que vê `forceMuted: "true"`, em vez de só desabilitar via estado
+  React — aí a reconciliação do SDK já concorda com o servidor e não some
+  o mute. Lição: qualquer mute/estado imposto pelo servidor num
+  participante LiveKit tem que ser refletido na *publicação* local
+  também, não só num atributo ou numa flag de UI — senão o SDK "corrige"
+  sozinho.
 
 ## Realtime
 
