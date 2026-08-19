@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import {
@@ -203,6 +204,7 @@ function CallDeviceSync({
 }) {
   const { localParticipant } = useLocalParticipant();
   const remoteParticipants = useRemoteParticipants();
+  const prevForceMutedRef = useRef(false);
 
   useEffect(() => {
     localParticipant.setMicrophoneEnabled(micEnabled).catch(() => {});
@@ -234,7 +236,18 @@ function CallDeviceSync({
           .getTrackPublication(Track.Source.Microphone)
           ?.mute()
           .catch(() => {});
+      } else if (prevForceMutedRef.current) {
+        // Force-mute was just lifted. We muted the publication directly
+        // above (not through setMicrophoneEnabled), so the effect that
+        // syncs `micEnabled` never reruns on its own here — without this,
+        // the publication stays muted forever and every future reconcile
+        // keeps "correcting" the server back to muted, even after an
+        // admin unmute. Re-sync it to whatever the user's own mic state
+        // should be (usually still off, same as real Discord: lifting a
+        // server mute doesn't turn your mic back on by itself).
+        localParticipant.setMicrophoneEnabled(micEnabled).catch(() => {});
       }
+      prevForceMutedRef.current = nowForceMuted;
 
       const movedToChannelId = attrs.movedToChannelId;
       const movedToChannelName = attrs.movedToChannelName;
@@ -265,7 +278,7 @@ function CallDeviceSync({
         handleAttributesChanged,
       );
     };
-  }, [localParticipant, activeCall, setForceMuted, setMicEnabled, joinCall]);
+  }, [localParticipant, activeCall, setForceMuted, setMicEnabled, joinCall, micEnabled]);
 
   useEffect(() => {
     localParticipant

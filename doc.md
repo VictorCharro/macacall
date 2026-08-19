@@ -206,7 +206,26 @@ ações. Resumo:
   "Desmutar membro" (ou o participante desconectar da call). Se um
   ícone ficar vermelho sem explicação aparente, o mais provável é que
   alguém (inclusive a própria pessoa, testando a moderação em si mesma)
-  se auto-mutou via o menu de moderação e nunca desfez.
+  se auto-mutou via o menu de moderação e nunca desfez. Confirmado via
+  runtime logs da Vercel numa sessão real: 4 chamadas a
+  `/api/livekit/moderate` de teste às 21:33-21:34 e nenhuma depois — o
+  ícone continuou vermelho por mais de uma hora simplesmente porque
+  ninguém clicou "Desmutar membro" depois daqueles testes, não por bug.
+- **Bug real encontrado nessa mesma investigação**: faltava a metade
+  "desmutar" do fix da reconciliação do SDK (ver duas notas acima). Ao
+  mutar a publicação do mic diretamente (`.mute()`) em reação a
+  `forceMuted: "true"`, nada revertia isso quando `forceMuted` voltava
+  pra `"false"` — o efeito que sincroniza a publicação com `micEnabled`
+  só roda quando `micEnabled` muda, e ele não muda nesse caso (o usuário
+  continua "desejando" o mic desligado). Sem reverter, a publicação
+  ficava mutada pra sempre e a reconciliação do SDK ia ficar
+  "corrigindo" o servidor de volta pra mutado a cada updateInfo, mesmo
+  depois de um unmute de moderador legítimo. Fix: `CallDeviceSync` guarda
+  o `forceMuted` anterior num ref e, na transição true→false, chama
+  `setMicrophoneEnabled(micEnabled)` de novo pra ressincronizar a
+  publicação local com o que o usuário realmente quer (o áudio continua
+  desligado até ele mesmo reativar — só o travamento do moderador é que
+  some).
 
 ## Realtime
 
