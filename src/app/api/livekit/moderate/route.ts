@@ -95,35 +95,13 @@ export async function POST(request: Request) {
     if (action === "deafen" || action === "undeafen") {
       const shouldDeafen = action === "deafen";
 
-      // Same as Discord: server-deafening someone also server-mutes them
-      // (you can't meaningfully talk while forcibly deaf). Undeafening
-      // doesn't automatically lift that mute — matches real Discord, where
-      // the two are separate toggles once both have been applied.
-      if (shouldDeafen) {
-        try {
-          const participants = await roomService.listParticipants(channelId);
-          const target = participants.find((p) => p.identity === targetUserId);
-          const micTrack = target?.tracks.find(
-            (t) => t.source === TrackSource.MICROPHONE,
-          );
-          if (micTrack) {
-            await roomService.mutePublishedTrack(
-              channelId,
-              targetUserId,
-              micTrack.sid,
-              true,
-            );
-          }
-        } catch {
-          // best-effort: o atributo abaixo ainda é aplicado
-        }
-      }
-
+      // Deliberately doesn't touch the mic/forceMuted at all — ensurdecer
+      // only affects what the target can hear, not their own mic. Mute and
+      // deafen are independent actions here (unlike a moment-ago attempt
+      // that copied Discord's "server deafen also server mutes" behavior,
+      // which turned out not to be wanted for this app).
       await roomService.updateParticipant(channelId, targetUserId, {
-        attributes: {
-          forceDeafened: shouldDeafen ? "true" : "false",
-          ...(shouldDeafen ? { forceMuted: "true" } : {}),
-        },
+        attributes: { forceDeafened: shouldDeafen ? "true" : "false" },
       });
 
       return NextResponse.json({ ok: true });

@@ -133,12 +133,14 @@ ações. Resumo:
   pro mute forçado: `mutePublishedTrack` mais o atributo `forceMuted`.
   "Ensurdecer" é o mesmo padrão de sinal via atributo (`forceDeafened`),
   já que forçar alguém a não ouvir só pode ser feito no cliente dela
-  (setar volume 0 dos remotos é local); igual o Discord de verdade,
-  ensurdecer também força mute (o servidor já manda `forceMuted: "true"`
-  junto), mas desensurdecer **não** desfaz o mute automaticamente — são
-  dois estados/toggles separados uma vez que ambos foram aplicados.
-  `toggleDeafen` (auto-ensurdecer) é bloqueado enquanto `forceDeafened`
-  for true, mesma lógica de `toggleMic` travado por `forceMuted`.
+  (setar volume 0 dos remotos é local). **Diferente do Discord de
+  verdade**: aqui `mute` e `deafen` são totalmente independentes —
+  ensurdecer NÃO muta o mic da pessoa junto (uma tentativa anterior fazia
+  isso, copiando o comportamento real do Discord, mas foi revertida a
+  pedido: aqui só `forceMuted` mexe no mic, `forceDeafened` só mexe no que
+  a pessoa ouve). `toggleDeafen` (auto-ensurdecer) é bloqueado enquanto
+  `forceDeafened` for true, mesma lógica de `toggleMic` travado por
+  `forceMuted`.
 - **`forceMuted` (mutado por moderador) é diferente de automudo** — o ícone
   de mic mudo é **cinza** quando a própria pessoa se mutou e **vermelho**
   só quando alguém com `MUTE_MEMBERS` mutou ela. Isso é enforcement "soft":
