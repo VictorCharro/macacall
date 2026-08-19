@@ -264,7 +264,7 @@ export function DmChat({
 
         {!chatHidden && (
         <>
-        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain px-6 py-4">
+        <div className="scroll-hover min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain px-6 py-4">
               {messages.length === 0 ? (
                 <p className="text-center text-sm text-muted">
                   Comece a conversa com {displayName} 🍌

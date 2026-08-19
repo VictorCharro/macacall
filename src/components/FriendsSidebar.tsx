@@ -50,7 +50,7 @@ export function FriendsSidebar({
         </Link>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overflow-x-hidden overscroll-y-contain px-2 pb-3">
+      <div className="scroll-hover flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overflow-x-hidden overscroll-y-contain px-2 pb-3">
         <p className="px-2 text-xs font-semibold uppercase tracking-wide text-muted">
           Mensagens diretas
         </p>

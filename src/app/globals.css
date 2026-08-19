@@ -49,6 +49,29 @@ body {
   font-family: var(--font-fredoka), Arial, Helvetica, sans-serif;
 }
 
+/* Discord-style scrollbar: thin, invisible until the panel is hovered. */
+.scroll-hover {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.scroll-hover:hover {
+  scrollbar-color: var(--border-soft) transparent;
+}
+.scroll-hover::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.scroll-hover::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scroll-hover::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border-radius: 9999px;
+}
+.scroll-hover:hover::-webkit-scrollbar-thumb {
+  background-color: var(--border-soft);
+}
+
 .macacall-call {
   --lk-bg: #111413;
   --lk-bg2: #161c18;

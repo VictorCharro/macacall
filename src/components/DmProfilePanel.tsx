@@ -10,7 +10,7 @@ export function DmProfilePanel({
   isGroup: boolean;
 }) {
   return (
-    <aside className="hidden w-72 shrink-0 flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain border-l border-border bg-card/60 p-4 sm:flex">
+    <aside className="scroll-hover hidden w-72 shrink-0 flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain border-l border-border bg-card/60 p-4 sm:flex">
       {!isGroup && participants[0] ? (
         <div className="flex flex-col items-center gap-3 py-4 text-center">
           <img

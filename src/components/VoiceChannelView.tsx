@@ -284,7 +284,7 @@ export function CallInterface({
       </header>
 
       <div
-        className={`min-h-0 overflow-y-auto overscroll-y-contain p-4 ${
+        className={`scroll-hover min-h-0 overflow-y-auto overscroll-y-contain p-4 ${
           compact && !chatHidden ? "max-h-[45vh]" : "flex-1"
         }`}
       >

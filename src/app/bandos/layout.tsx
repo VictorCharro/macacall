@@ -46,7 +46,7 @@ export default async function BandosLayout({
       initialStatus={(ownProfile?.status as PresenceStatus) ?? "online"}
     >
       <CallProvider>
-        <div className="flex h-screen flex-1 overflow-hidden">
+        <div className="fixed inset-0 flex overflow-hidden">
           <ServerRail bandos={bandos} currentUserId={user.id} />
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             {children}
