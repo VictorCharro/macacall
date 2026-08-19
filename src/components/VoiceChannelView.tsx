@@ -24,6 +24,7 @@ import {
   Radio,
   Grid,
   Volume2,
+  Headphones,
   HeadphoneOff,
 } from "lucide-react";
 import { useCall } from "@/components/CallProvider";
@@ -150,7 +151,15 @@ export function CallInterface({
   /** DM-only: show a control-bar button to hide/show the message thread. */
   onToggleChatHidden?: () => void;
 }) {
-  const { leaveCall, micEnabled, forceMuted, toggleMic } = useCall();
+  const {
+    leaveCall,
+    micEnabled,
+    deafened,
+    forceMuted,
+    forceDeafened,
+    toggleMic,
+    toggleDeafen,
+  } = useCall();
   const [focusedKey, setFocusedKey] = useState<string | null>(null);
   const [forceGrid, setForceGrid] = useState(false);
   const participants = useParticipants();
@@ -306,6 +315,25 @@ export function CallInterface({
           tone={micEnabled ? "neutral" : forceMuted ? "danger" : "muted"}
         >
           {micEnabled ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
+        </CallButton>
+
+        <CallButton
+          onClick={toggleDeafen}
+          disabled={forceDeafened}
+          title={
+            forceDeafened
+              ? "Ensurdecido por um moderador"
+              : deafened
+                ? "Voltar a ouvir"
+                : "Parar de ouvir (surdo)"
+          }
+          tone={deafened ? "muted" : "neutral"}
+        >
+          {deafened ? (
+            <HeadphoneOff className="h-5 w-5" />
+          ) : (
+            <Headphones className="h-5 w-5" />
+          )}
         </CallButton>
 
         <CallButton

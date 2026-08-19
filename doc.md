@@ -118,6 +118,11 @@ ações. Resumo:
   chat").
 - Entrar num canal de voz exige clique explícito — nunca auto-conecta ao
   navegar pra página do canal.
+- A barra de controles da call (`VoiceChannelView.tsx`, `CallInterface`)
+  tem mic, ensurdecer (`toggleDeafen`/`deafened`/`forceDeafened` de
+  `useCall()`), câmera, compartilhar tela e desconectar — o botão de
+  ensurdecer ficava só no `UserPanel` (sidebar) antes, sem equivalente
+  dentro da própria tela de call.
 - **Moderação de voz (mutar/ensurdecer/mover membros)**:
   `POST /api/livekit/moderate` ({action: "mute"|"unmute"|"deafen"|
   "undeafen"|"move", channelId, targetUserId, destinationChannelId?}),
