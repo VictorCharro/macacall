@@ -39,7 +39,7 @@ export function ActiveNowPanel({ friends }: { friends: Friend[] }) {
   );
 
   return (
-    <aside className="hidden w-72 shrink-0 flex-col overflow-y-auto overflow-x-hidden border-l border-border-soft bg-card p-4 lg:flex">
+    <aside className="hidden w-72 shrink-0 flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain border-l border-border-soft bg-card p-4 lg:flex">
       <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted">
         Ativo agora
       </h2>

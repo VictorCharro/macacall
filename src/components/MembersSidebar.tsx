@@ -116,7 +116,7 @@ export function MembersSidebar({
 
   return (
     <>
-      <aside className="hidden w-60 shrink-0 flex-col gap-4 overflow-y-auto overflow-x-hidden border-l border-border-soft bg-card p-3 sm:flex">
+      <aside className="hidden w-60 shrink-0 flex-col gap-4 overflow-y-auto overflow-x-hidden overscroll-y-contain border-l border-border-soft bg-card p-3 sm:flex">
         {renderGroup("👑 DONO DO BANDO", owners, "text-primary")}
         {renderGroup("🐒 MEMBROS", others, "text-muted")}
       </aside>

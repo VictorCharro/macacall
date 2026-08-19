@@ -244,7 +244,7 @@ export function ChatChannel({
         </div>
       </header>
 
-      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden px-4 py-4">
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden overscroll-y-contain px-4 py-4">
         <div className="flex flex-col items-start gap-2 border-b border-border-soft py-6">
           <div className="mb-1 flex h-16 w-16 items-center justify-center rounded-full border border-secondary/30 bg-secondary/10">
             <Hash className="h-8 w-8 text-secondary" />

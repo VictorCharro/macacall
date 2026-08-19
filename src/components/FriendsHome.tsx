@@ -147,7 +147,7 @@ export function FriendsHome({
           </div>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-6 py-4">
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain px-6 py-4">
           {tab === "adicionar" && <AddFriendForm />}
 
           {tab === "online" && (
