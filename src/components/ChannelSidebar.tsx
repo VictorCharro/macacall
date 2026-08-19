@@ -17,7 +17,10 @@ import { CreateChannelButton } from "@/components/CreateChannelButton";
 import { VoiceConnectedBar } from "@/components/VoiceConnectedBar";
 import { UserPanel } from "@/components/UserPanel";
 import { useCall } from "@/components/CallProvider";
-import { useBandoParticipants } from "@/components/BandoParticipants";
+import {
+  useBandoParticipants,
+  useRefreshBandoParticipants,
+} from "@/components/BandoParticipants";
 import type { BandoParticipant } from "@/components/BandoParticipants";
 import { ContextMenuPortal } from "@/components/ContextMenuPortal";
 import { hasPermission } from "@/lib/permissions";
@@ -57,6 +60,7 @@ export function ChannelSidebar({
   voiceChannels,
   selfUsername,
   selfAvatarSeed,
+  selfUserId,
 }: {
   bandoId: string;
   bandoName: string;
@@ -68,6 +72,7 @@ export function ChannelSidebar({
   voiceChannels: ChannelInfo[];
   selfUsername: string;
   selfAvatarSeed: string;
+  selfUserId: string;
 }) {
   const pathname = usePathname();
   const participants = useBandoParticipants();
@@ -187,6 +192,7 @@ export function ChannelSidebar({
                               channelId={channel.id}
                               voiceChannels={voiceChannels}
                               canModerate={canModerate}
+                              isSelf={p.identity === selfUserId}
                             />
                           ))}
                         </ul>
@@ -317,13 +323,23 @@ function VoiceParticipantRow({
   channelId,
   voiceChannels,
   canModerate,
+  isSelf,
 }: {
   participant: BandoParticipant;
   channelId: string;
   voiceChannels: ChannelInfo[];
   canModerate: boolean;
+  isSelf: boolean;
 }) {
   const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null);
+  // The poll behind `participant` only refreshes every 4s and depends on the
+  // LiveKit server having already observed a published/unpublished track —
+  // for our OWN row we already know the real state instantly from the call
+  // context, so use that instead of waiting on the poll to catch up.
+  const self = useCall();
+  const deafened = isSelf ? self.deafened : participant.deafened;
+  const forceMuted = isSelf ? self.forceMuted : participant.forceMuted;
+  const micMuted = isSelf ? !self.micEnabled : participant.micMuted;
 
   return (
     <li
@@ -347,15 +363,15 @@ function VoiceParticipantRow({
         <span className="truncate">{participant.name}</span>
       </span>
 
-      {participant.deafened ? (
+      {deafened ? (
         <VolumeX className="h-3.5 w-3.5 shrink-0 text-danger" aria-label="Surdo e mudo" />
-      ) : participant.forceMuted ? (
+      ) : forceMuted ? (
         <MicOff
           className="h-3.5 w-3.5 shrink-0 text-danger"
           aria-label="Mutado por um moderador"
         />
       ) : (
-        participant.micMuted && (
+        micMuted && (
           <MicOff
             className="h-3.5 w-3.5 shrink-0 text-muted"
             aria-label="Microfone mudo"
@@ -394,22 +410,35 @@ function VoiceParticipantMenu({
 }) {
   const [moveOpen, setMoveOpen] = useState(false);
   const otherChannels = voiceChannels.filter((c) => c.id !== channelId);
+  const refreshParticipants = useRefreshBandoParticipants();
 
   async function moderate(
     action: "mute" | "unmute" | "move",
     destinationChannelId?: string,
   ) {
-    await fetch("/api/livekit/moderate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action,
-        channelId,
-        targetUserId: participant.identity,
-        destinationChannelId,
-      }),
-    });
     onClose();
+    try {
+      const res = await fetch("/api/livekit/moderate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action,
+          channelId,
+          targetUserId: participant.identity,
+          destinationChannelId,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        console.error("Falha na moderação:", data.error ?? res.statusText);
+        return;
+      }
+      // Don't wait up to 4s for the shared poll to notice — the icon should
+      // flip as soon as the moderator sees the menu close.
+      refreshParticipants();
+    } catch (err) {
+      console.error("Falha na moderação:", err);
+    }
   }
 
   return (

@@ -174,6 +174,7 @@ export default async function BandoLayout({
             voiceChannels={voiceChannels}
             selfUsername={self?.username ?? "Macaco"}
             selfAvatarSeed={self?.avatarSeed ?? user.id}
+            selfUserId={user.id}
           />
 
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">

@@ -138,6 +138,34 @@ ações. Resumo:
   republicar o áudio por fora da UI — é suficiente pro caso de uso real
   (amigos, não uma plataforma hostil), mas não é um mute a nível de SFU
   inquebrável como o "Server Mute" de verdade do Discord.
+- **Bug corrigido: mute de moderador parecia não fazer nada.** No
+  `/api/livekit/moderate`, o `mutePublishedTrack` (que muta o track já
+  publicado) e o `updateParticipant` (que seta o atributo `forceMuted`,
+  usado pra tudo — ícone, e o próprio cliente do alvo desabilitar o mic)
+  estavam no mesmo bloco `try`. Se o alvo ainda não tinha publicado um
+  track de mic no momento do mute (super comum — LiveKit não publica
+  instantaneamente ao entrar), `mutePublishedTrack` lançava, o `catch`
+  externo abortava a rota inteira, e o atributo **nunca era setado** — daí
+  nem o áudio mudava nem o ícone ficava vermelho. Fix: o
+  `mutePublishedTrack` agora tem seu próprio `try/catch` (best-effort), e
+  o `updateParticipant` do atributo roda sempre, independente. Também
+  faltava o `unmute` chamar `mutePublishedTrack(..., false)` — sem isso
+  só o atributo era limpo, o track continuava mutado no servidor.
+- **Bug corrigido: o próprio usuário não via seu ícone de mic mudo na
+  lista compacta de participantes** (`ChannelSidebar.tsx`). Essa lista
+  vem só do poll de 4s de `BandoParticipantsProvider`/
+  `/api/livekit/participants`, que depende do LiveKit já ter observado o
+  track (des)publicado no servidor — sempre atrasado, às vezes nem
+  reflete a tempo. Fix: `VoiceParticipantRow` agora recebe `isSelf`
+  (comparando `participant.identity` com o `selfUserId`, passado desde
+  `layout.tsx`/`user.id`) e, pra própria linha, usa o estado ao vivo de
+  `useCall()` (`micEnabled`/`deafened`/`forceMuted`) em vez do dado do
+  poll. Além disso, o menu de moderação agora chama
+  `useRefreshBandoParticipants()` depois de um mute/move bem-sucedido,
+  pra não depender do próximo tick do poll pra refletir na tela do
+  moderador, e checa `res.ok` (antes falhava silenciosamente, sem
+  feedback nenhum se a permissão fosse negada ou a chamada LiveKit
+  desse erro).
 
 ## Realtime
 

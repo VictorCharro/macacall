@@ -1,6 +1,14 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 export type BandoParticipant = {
   identity: string;
@@ -12,7 +20,15 @@ export type BandoParticipant = {
   forceMuted: boolean;
 };
 
-const BandoParticipantsContext = createContext<BandoParticipant[]>([]);
+type BandoParticipantsContextValue = {
+  participants: BandoParticipant[];
+  refresh: () => void;
+};
+
+const BandoParticipantsContext = createContext<BandoParticipantsContextValue>({
+  participants: [],
+  refresh: () => {},
+});
 
 /**
  * Single shared poll of /api/livekit/participants per bando, so sibling
@@ -27,6 +43,7 @@ export function BandoParticipantsProvider({
   children: React.ReactNode;
 }) {
   const [participants, setParticipants] = useState<BandoParticipant[]>([]);
+  const pollRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     let cancelled = false;
@@ -41,6 +58,7 @@ export function BandoParticipantsProvider({
       }
     }
 
+    pollRef.current = poll;
     poll();
     const interval = setInterval(poll, 4000);
     return () => {
@@ -49,13 +67,25 @@ export function BandoParticipantsProvider({
     };
   }, [bandoId]);
 
+  // Lets moderation actions (mute/move) force an immediate re-fetch instead
+  // of waiting up to 4s for the next scheduled tick.
+  const refresh = useCallback(() => {
+    pollRef.current();
+  }, []);
+
+  const value = useMemo(() => ({ participants, refresh }), [participants, refresh]);
+
   return (
-    <BandoParticipantsContext.Provider value={participants}>
+    <BandoParticipantsContext.Provider value={value}>
       {children}
     </BandoParticipantsContext.Provider>
   );
 }
 
 export function useBandoParticipants() {
-  return useContext(BandoParticipantsContext);
+  return useContext(BandoParticipantsContext).participants;
+}
+
+export function useRefreshBandoParticipants() {
+  return useContext(BandoParticipantsContext).refresh;
 }

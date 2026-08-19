@@ -58,7 +58,12 @@ export async function POST(request: Request) {
     if (action === "mute" || action === "unmute") {
       const shouldMute = action === "mute";
 
-      if (shouldMute) {
+      // The published-track mute is best-effort: if the target hasn't
+      // published a mic track yet (or the LiveKit call throws for any other
+      // reason), that must NOT prevent the forceMuted attribute below from
+      // being set — that attribute is what actually drives the moderation
+      // UI and what the target's own client reacts to.
+      try {
         const participants = await roomService.listParticipants(channelId);
         const target = participants.find((p) => p.identity === targetUserId);
         const micTrack = target?.tracks.find(
@@ -69,9 +74,11 @@ export async function POST(request: Request) {
             channelId,
             targetUserId,
             micTrack.sid,
-            true,
+            shouldMute,
           );
         }
+      } catch {
+        // segue o baile: o atributo abaixo ainda é aplicado
       }
 
       await roomService.updateParticipant(channelId, targetUserId, {
