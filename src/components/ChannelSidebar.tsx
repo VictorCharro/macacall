@@ -3,7 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Hash, Volume2, MicOff, VolumeX, ChevronDown } from "lucide-react";
+import {
+  Hash,
+  Volume2,
+  MicOff,
+  VolumeX,
+  ChevronDown,
+  ArrowRightLeft,
+} from "lucide-react";
 import { ServerHeaderMenu } from "@/components/ServerHeaderMenu";
 import { ChannelMenu } from "@/components/ChannelMenu";
 import { CreateChannelButton } from "@/components/CreateChannelButton";
@@ -11,6 +18,8 @@ import { VoiceConnectedBar } from "@/components/VoiceConnectedBar";
 import { UserPanel } from "@/components/UserPanel";
 import { useCall } from "@/components/CallProvider";
 import { useBandoParticipants } from "@/components/BandoParticipants";
+import type { BandoParticipant } from "@/components/BandoParticipants";
+import { ContextMenuPortal } from "@/components/ContextMenuPortal";
 import { hasPermission } from "@/lib/permissions";
 import type { Role } from "@/lib/types";
 
@@ -67,6 +76,10 @@ export function ChannelSidebar({
   const canManageChannels =
     isOwner || hasPermission(myPermissions, "MANAGE_CHANNELS");
   const canManageRoles = isOwner || hasPermission(myPermissions, "MANAGE_ROLES");
+  const canModerate =
+    isOwner ||
+    hasPermission(myPermissions, "MUTE_MEMBERS") ||
+    hasPermission(myPermissions, "MOVE_MEMBERS");
 
   function toggleCategory(name: string) {
     setCollapsed((prev) => {
@@ -168,33 +181,13 @@ export function ChannelSidebar({
                       {channelParticipants.length > 0 && (
                         <ul className="space-y-1 py-1 pl-6">
                           {channelParticipants.map((p) => (
-                            <li
+                            <VoiceParticipantRow
                               key={p.identity}
-                              className="flex items-center justify-between gap-2 py-0.5 text-xs text-muted"
-                            >
-                              <span className="flex min-w-0 items-center gap-2">
-                                <span
-                                  className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-card-3 text-[10px] ring-1 ring-secondary/40"
-                                  aria-hidden="true"
-                                >
-                                  🐵
-                                </span>
-                                <span className="truncate">{p.name}</span>
-                              </span>
-                              {p.deafened ? (
-                                <VolumeX
-                                  className="h-3.5 w-3.5 shrink-0 text-danger"
-                                  aria-label="Surdo e mudo"
-                                />
-                              ) : (
-                                p.micMuted && (
-                                  <MicOff
-                                    className="h-3.5 w-3.5 shrink-0 text-danger"
-                                    aria-label="Microfone mudo"
-                                  />
-                                )
-                              )}
-                            </li>
+                              participant={p}
+                              channelId={channel.id}
+                              voiceChannels={voiceChannels}
+                              canModerate={canModerate}
+                            />
                           ))}
                         </ul>
                       )}
@@ -317,4 +310,160 @@ function ChannelRow({
   );
 
   return asListItem ? <li>{row}</li> : row;
+}
+
+function VoiceParticipantRow({
+  participant,
+  channelId,
+  voiceChannels,
+  canModerate,
+}: {
+  participant: BandoParticipant;
+  channelId: string;
+  voiceChannels: ChannelInfo[];
+  canModerate: boolean;
+}) {
+  const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null);
+
+  return (
+    <li
+      className="flex items-center justify-between gap-2 py-0.5 text-xs text-muted"
+      onContextMenu={
+        canModerate
+          ? (e) => {
+              e.preventDefault();
+              setMenuPos({ x: e.clientX, y: e.clientY });
+            }
+          : undefined
+      }
+    >
+      <span className="flex min-w-0 items-center gap-2">
+        <span
+          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-card-3 text-[10px] ring-1 ring-secondary/40"
+          aria-hidden="true"
+        >
+          🐵
+        </span>
+        <span className="truncate">{participant.name}</span>
+      </span>
+
+      {participant.deafened ? (
+        <VolumeX className="h-3.5 w-3.5 shrink-0 text-danger" aria-label="Surdo e mudo" />
+      ) : participant.forceMuted ? (
+        <MicOff
+          className="h-3.5 w-3.5 shrink-0 text-danger"
+          aria-label="Mutado por um moderador"
+        />
+      ) : (
+        participant.micMuted && (
+          <MicOff
+            className="h-3.5 w-3.5 shrink-0 text-muted"
+            aria-label="Microfone mudo"
+          />
+        )
+      )}
+
+      {menuPos && (
+        <VoiceParticipantMenu
+          participant={participant}
+          channelId={channelId}
+          voiceChannels={voiceChannels}
+          x={menuPos.x}
+          y={menuPos.y}
+          onClose={() => setMenuPos(null)}
+        />
+      )}
+    </li>
+  );
+}
+
+function VoiceParticipantMenu({
+  participant,
+  channelId,
+  voiceChannels,
+  x,
+  y,
+  onClose,
+}: {
+  participant: BandoParticipant;
+  channelId: string;
+  voiceChannels: ChannelInfo[];
+  x: number;
+  y: number;
+  onClose: () => void;
+}) {
+  const [moveOpen, setMoveOpen] = useState(false);
+  const otherChannels = voiceChannels.filter((c) => c.id !== channelId);
+
+  async function moderate(
+    action: "mute" | "unmute" | "move",
+    destinationChannelId?: string,
+  ) {
+    await fetch("/api/livekit/moderate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action,
+        channelId,
+        targetUserId: participant.identity,
+        destinationChannelId,
+      }),
+    });
+    onClose();
+  }
+
+  return (
+    <ContextMenuPortal x={x} y={y} onClose={onClose}>
+      {moveOpen ? (
+        <div className="flex flex-col gap-1">
+          {otherChannels.length === 0 ? (
+            <p className="px-3 py-2 text-sm text-muted">
+              Nenhum outro canal de voz nesse bando.
+            </p>
+          ) : (
+            otherChannels.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => moderate("move", c.id)}
+                className="rounded-lg px-3 py-2 text-left text-sm text-foreground transition hover:bg-card-2"
+              >
+                {c.name}
+              </button>
+            ))
+          )}
+        </div>
+      ) : (
+        <div className="flex flex-col gap-1">
+          {participant.forceMuted ? (
+            <button
+              type="button"
+              onClick={() => moderate("unmute")}
+              className="flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-foreground transition hover:bg-card-2"
+            >
+              <MicOff className="h-4 w-4" />
+              Desmutar membro
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => moderate("mute")}
+              className="flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-foreground transition hover:bg-card-2"
+            >
+              <MicOff className="h-4 w-4" />
+              Silenciar membro
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setMoveOpen(true)}
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-foreground transition hover:bg-card-2"
+          >
+            <ArrowRightLeft className="h-4 w-4" />
+            Mover para...
+          </button>
+        </div>
+      )}
+    </ContextMenuPortal>
+  );
 }

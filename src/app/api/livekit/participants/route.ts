@@ -9,6 +9,7 @@ type ParticipantInfo = {
   sharingScreen: boolean;
   micMuted: boolean;
   deafened: boolean;
+  forceMuted: boolean;
 };
 
 export async function GET(request: Request) {
@@ -84,6 +85,7 @@ export async function GET(request: Request) {
               ),
               micMuted: micTrack ? micTrack.muted : true,
               deafened: p.attributes?.deafened === "true",
+              forceMuted: p.attributes?.forceMuted === "true",
             };
           });
         } catch {

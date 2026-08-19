@@ -14,7 +14,7 @@ export function UserPanel({
   username: string;
   avatarSeed: string;
 }) {
-  const { connected, micEnabled, deafened, toggleMic, toggleDeafen } =
+  const { connected, micEnabled, deafened, forceMuted, toggleMic, toggleDeafen } =
     useCall();
   const { myStatus } = usePresence();
   const [profileOpen, setProfileOpen] = useState(false);
@@ -60,12 +60,27 @@ export function UserPanel({
       <button
         type="button"
         onClick={toggleMic}
-        title={micEnabled ? "Mutar microfone" : "Ativar microfone"}
-        aria-label={micEnabled ? "Mutar microfone" : "Ativar microfone"}
-        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition ${
+        disabled={forceMuted}
+        title={
+          forceMuted
+            ? "Mutado por um moderador"
+            : micEnabled
+              ? "Mutar microfone"
+              : "Ativar microfone"
+        }
+        aria-label={
+          forceMuted
+            ? "Mutado por um moderador"
+            : micEnabled
+              ? "Mutar microfone"
+              : "Ativar microfone"
+        }
+        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition disabled:cursor-not-allowed ${
           micEnabled
             ? "text-muted hover:bg-card-2 hover:text-accent"
-            : "bg-danger/15 text-danger"
+            : forceMuted
+              ? "bg-danger/15 text-danger"
+              : "bg-card-2 text-muted"
         }`}
       >
         {micEnabled ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}

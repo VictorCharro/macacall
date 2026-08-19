@@ -73,11 +73,14 @@ busca cargos/permissões do usuário atual pra esse bando.
 Ver `src/lib/permissions.ts` pro bitmask e `src/app/actions/roles.ts` pras
 ações. Resumo:
 
-- Bitmask de 11 permissões (`MANAGE_BANDO`, `MANAGE_ROLES`, `MANAGE_CHANNELS`,
+- Bitmask de 13 permissões (`MANAGE_BANDO`, `MANAGE_ROLES`, `MANAGE_CHANNELS`,
   `MANAGE_MESSAGES`, `KICK_MEMBERS`, `BAN_MEMBERS`, `CREATE_INVITE`,
-  `MENTION_EVERYONE`, `CONNECT`, `SPEAK`, `STREAM`) — os bits estão
-  documentados também no topo da migration `add_roles_permissions_system`,
-  **os dois lugares precisam ficar em sincronia se um bit for adicionado**.
+  `MENTION_EVERYONE`, `CONNECT`, `SPEAK`, `STREAM`, `MUTE_MEMBERS`,
+  `MOVE_MEMBERS`) — os bits estão documentados também no topo da migration
+  `add_roles_permissions_system` (as duas últimas foram adicionadas depois,
+  só em código — bitmask é só um número, não precisa migration pra crescer,
+  mas **os dois lugares precisam ficar em sincronia se um bit for
+  adicionado**).
 - Cada cargo tem `permissions_allow` + `permissions_deny` (bigint). **Deny
   sempre vence** sobre allow de outro cargo — é a regra real do Discord.
 - `@everyone` é criado automaticamente (trigger `bandos_create_default_role`)
@@ -115,6 +118,26 @@ ações. Resumo:
   chat").
 - Entrar num canal de voz exige clique explícito — nunca auto-conecta ao
   navegar pra página do canal.
+- **Moderação de voz (mutar/mover membros)**: `POST /api/livekit/moderate`
+  ({action: "mute"|"unmute"|"move", channelId, targetUserId,
+  destinationChannelId?}), checado no servidor via `has_channel_permission`
+  (`MUTE_MEMBERS`/`MOVE_MEMBERS`). Como o LiveKit não tem um "mover
+  participante de sala" nativo, "mover" é só um **sinal**: o servidor marca
+  atributos (`movedToChannelId`/`movedToChannelName`) no participante alvo
+  via `RoomServiceClient.updateParticipant`, e é o **próprio cliente do
+  alvo** que reage a isso (ouvindo `ParticipantEvent.AttributesChanged` no
+  seu próprio `localParticipant`, dentro de `CallDeviceSync` em
+  `CallProvider.tsx`) chamando `joinCall` pro canal novo. Mesmo mecanismo pro
+  mute forçado: `mutePublishedTrack` mais o atributo `forceMuted`.
+- **`forceMuted` (mutado por moderador) é diferente de automudo** — o ícone
+  de mic mudo é **cinza** quando a própria pessoa se mutou e **vermelho**
+  só quando alguém com `MUTE_MEMBERS` mutou ela. Isso é enforcement "soft":
+  o servidor muta o track e sinaliza via atributo, o cliente do usuário
+  mutado desabilita o próprio botão de mic enquanto `forceMuted` for true,
+  mas nada no LiveKit impede tecnicamente esse cliente de tentar
+  republicar o áudio por fora da UI — é suficiente pro caso de uso real
+  (amigos, não uma plataforma hostil), mas não é um mute a nível de SFU
+  inquebrável como o "Server Mute" de verdade do Discord.
 
 ## Realtime
 

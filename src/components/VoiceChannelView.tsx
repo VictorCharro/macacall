@@ -149,7 +149,7 @@ export function CallInterface({
   /** DM-only: show a control-bar button to hide/show the message thread. */
   onToggleChatHidden?: () => void;
 }) {
-  const { leaveCall, micEnabled, toggleMic } = useCall();
+  const { leaveCall, micEnabled, forceMuted, toggleMic } = useCall();
   const [focusedKey, setFocusedKey] = useState<string | null>(null);
   const [forceGrid, setForceGrid] = useState(false);
   const participants = useParticipants();
@@ -294,8 +294,15 @@ export function CallInterface({
       <div className="flex h-20 shrink-0 items-center justify-center gap-3 border-t border-border-soft bg-card-3 px-6">
         <CallButton
           onClick={toggleMic}
-          title={micEnabled ? "Silenciar" : "Ativar microfone"}
-          tone={micEnabled ? "neutral" : "danger"}
+          disabled={forceMuted}
+          title={
+            forceMuted
+              ? "Mutado por um moderador"
+              : micEnabled
+                ? "Silenciar"
+                : "Ativar microfone"
+          }
+          tone={micEnabled ? "neutral" : forceMuted ? "danger" : "muted"}
         >
           {micEnabled ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
         </CallButton>
@@ -351,11 +358,13 @@ function CallButton({
   onClick,
   title,
   tone,
+  disabled,
   children,
 }: {
   onClick: () => void;
   title: string;
-  tone: "neutral" | "secondary" | "primary" | "danger";
+  tone: "neutral" | "secondary" | "primary" | "danger" | "muted";
+  disabled?: boolean;
   children: React.ReactNode;
 }) {
   const toneClasses = {
@@ -364,14 +373,16 @@ function CallButton({
     primary:
       "bg-primary text-primary-foreground shadow-primary/30 ring-2 ring-primary/40 hover:brightness-105",
     danger: "bg-danger text-white hover:brightness-90",
+    muted: "bg-card-3 text-muted hover:brightness-125",
   } as const;
 
   return (
     <button
       onClick={onClick}
+      disabled={disabled}
       title={title}
       aria-label={title}
-      className={`flex h-12 w-12 items-center justify-center rounded-full font-bold shadow-lg transition active:scale-95 ${toneClasses[tone]}`}
+      className={`flex h-12 w-12 items-center justify-center rounded-full font-bold shadow-lg transition active:scale-95 disabled:cursor-not-allowed disabled:active:scale-100 ${toneClasses[tone]}`}
     >
       {children}
     </button>
@@ -485,7 +496,13 @@ function Tile({
         </span>
         {!isScreenShare &&
           (isMuted ? (
-            <MicOff className="h-3.5 w-3.5 shrink-0 text-danger" />
+            <MicOff
+              className={`h-3.5 w-3.5 shrink-0 ${
+                participant.attributes?.forceMuted === "true"
+                  ? "text-danger"
+                  : "text-muted"
+              }`}
+            />
           ) : (
             <Mic className="h-3.5 w-3.5 shrink-0 text-secondary" />
           ))}

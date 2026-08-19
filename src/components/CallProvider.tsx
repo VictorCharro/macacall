@@ -14,6 +14,7 @@ import {
   useLocalParticipant,
   useRemoteParticipants,
 } from "@livekit/components-react";
+import { ParticipantEvent } from "livekit-client";
 import "@livekit/components-styles";
 
 type ActiveCall = { roomId: string; roomName: string; href: string };
@@ -24,6 +25,8 @@ type CallContextValue = {
   error: string | null;
   micEnabled: boolean;
   deafened: boolean;
+  /** Muted by a moderator (MUTE_MEMBERS), not by the user's own choice. */
+  forceMuted: boolean;
   joinCall: (
     roomId: string,
     roomName: string,
@@ -54,14 +57,18 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [micEnabled, setMicEnabled] = useState(true);
   const [deafened, setDeafened] = useState(false);
+  const [forceMuted, setForceMuted] = useState(false);
 
   const toggleMic = useCallback(() => {
+    // A moderator mute can only be lifted by the moderator (or by leaving and
+    // rejoining the call) — mirrors how a real Discord server mute works.
     setMicEnabled((prev) => {
+      if (forceMuted) return prev;
       const next = !prev;
       if (next) setDeafened(false);
       return next;
     });
-  }, []);
+  }, [forceMuted]);
 
   const toggleDeafen = useCallback(() => {
     setDeafened((prev) => {
@@ -89,6 +96,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     setActiveCall(null);
     setTokenInfo(null);
     setError(null);
+    setForceMuted(false);
   }, []);
 
   useEffect(() => {
@@ -128,6 +136,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       error,
       micEnabled,
       deafened,
+      forceMuted,
       joinCall,
       leaveCall,
       toggleMic,
@@ -139,6 +148,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       error,
       micEnabled,
       deafened,
+      forceMuted,
       joinCall,
       leaveCall,
       toggleMic,
@@ -159,7 +169,14 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
           onDisconnected={leaveCall}
         >
           <RoomAudioRenderer />
-          <CallDeviceSync micEnabled={micEnabled} deafened={deafened} />
+          <CallDeviceSync
+            micEnabled={micEnabled}
+            deafened={deafened}
+            activeCall={activeCall}
+            setMicEnabled={setMicEnabled}
+            setForceMuted={setForceMuted}
+            joinCall={joinCall}
+          />
           {children}
         </LiveKitRoom>
       </CallContext.Provider>
@@ -172,9 +189,17 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
 function CallDeviceSync({
   micEnabled,
   deafened,
+  activeCall,
+  setMicEnabled,
+  setForceMuted,
+  joinCall,
 }: {
   micEnabled: boolean;
   deafened: boolean;
+  activeCall: ActiveCall | null;
+  setMicEnabled: (value: boolean) => void;
+  setForceMuted: (value: boolean) => void;
+  joinCall: (roomId: string, roomName: string, href: string) => void;
 }) {
   const { localParticipant } = useLocalParticipant();
   const remoteParticipants = useRemoteParticipants();
@@ -186,6 +211,47 @@ function CallDeviceSync({
   useEffect(() => {
     remoteParticipants.forEach((p) => p.setVolume(deafened ? 0 : 1));
   }, [remoteParticipants, deafened]);
+
+  // Server-side moderation signals (forced mute, moved to another channel)
+  // arrive as attribute updates on our own participant.
+  useEffect(() => {
+    function handleAttributesChanged() {
+      const attrs = localParticipant.attributes;
+
+      const nowForceMuted = attrs.forceMuted === "true";
+      setForceMuted(nowForceMuted);
+      if (nowForceMuted) setMicEnabled(false);
+
+      const movedToChannelId = attrs.movedToChannelId;
+      const movedToChannelName = attrs.movedToChannelName;
+      if (movedToChannelId && activeCall) {
+        // The bando-scoped href always ends in the channel id — swap it for
+        // the destination channel's id instead of replacing the whole path,
+        // so this keeps working regardless of the /bandos/{bandoId}/ prefix.
+        const nextHref = activeCall.href.replace(
+          /[^/]+$/,
+          movedToChannelId,
+        );
+        joinCall(
+          movedToChannelId,
+          movedToChannelName ?? "canal de voz",
+          nextHref,
+        );
+      }
+    }
+
+    // Also check on attach, in case moderation landed moments before this
+    // listener was wired up (e.g. right after joining).
+    handleAttributesChanged();
+
+    localParticipant.on(ParticipantEvent.AttributesChanged, handleAttributesChanged);
+    return () => {
+      localParticipant.off(
+        ParticipantEvent.AttributesChanged,
+        handleAttributesChanged,
+      );
+    };
+  }, [localParticipant, activeCall, setForceMuted, setMicEnabled, joinCall]);
 
   useEffect(() => {
     localParticipant

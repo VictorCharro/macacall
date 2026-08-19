@@ -9,6 +9,7 @@ export type BandoParticipant = {
   sharingScreen: boolean;
   micMuted: boolean;
   deafened: boolean;
+  forceMuted: boolean;
 };
 
 const BandoParticipantsContext = createContext<BandoParticipant[]>([]);
