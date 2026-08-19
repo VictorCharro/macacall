@@ -78,7 +78,7 @@ export function UserPanel({
         className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition disabled:cursor-not-allowed ${
           micEnabled
             ? "text-muted hover:bg-card-2 hover:text-accent"
-            : forceMuted || deafened
+            : forceMuted
               ? "bg-danger/15 text-danger"
               : "bg-card-2 text-muted"
         }`}
@@ -93,7 +93,7 @@ export function UserPanel({
         aria-label={deafened ? "Voltar a ouvir" : "Parar de ouvir (surdo)"}
         className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition ${
           deafened
-            ? "bg-danger/15 text-danger"
+            ? "bg-card-2 text-muted"
             : "text-muted hover:bg-card-2 hover:text-accent"
         }`}
       >

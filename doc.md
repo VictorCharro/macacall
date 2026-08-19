@@ -187,20 +187,24 @@ ações. Resumo:
   participante LiveKit tem que ser refletido na *publicação* local
   também, não só num atributo ou numa flag de UI — senão o SDK "corrige"
   sozinho.
-- **Regra final de cor do ícone de mic mudo (igual ao Discord de
-  verdade)**: vermelho quando `forceMuted` (mutado por moderador) **ou**
-  `deafened` (ensurdecer sempre auto-muta o mic também, então o estado
-  composto é tratado como "importante" e fica vermelho); cinza só quando
-  é um automudo comum, sem ensurdecer e sem moderador envolvido.
-  Aplicado em `UserPanel.tsx`, `VoiceChannelView.tsx` (botão de mic da
-  call e badge de cada tile) e `ChannelSidebar.tsx`.
+- **Regra final de cor do ícone de mic mudo — CORRIGIDA de novo**: só
+  fica vermelho quando `forceMuted` (alguém com `MUTE_MEMBERS` mutou a
+  pessoa). Tudo que é escolha da própria pessoa — automudo comum **e**
+  ensurdecer (que também automuta o mic) — fica cinza. Uma tentativa
+  anterior tratava `deafened` como "estado importante" e pintava de
+  vermelho mesmo sendo automudo; usuário corrigiu explicitamente: só
+  vermelho quando ALGUÉM (moderador) muta, nunca por ação própria.
+  Aplicado em `UserPanel.tsx` (botão de mic E de ensurdecer — o de
+  ensurdecer nunca foi vermelho, sempre foi só um toggle "ativo", sem
+  conceito de "ensurdecer forçado"), `VoiceChannelView.tsx` (botão de
+  mic da call e badge de cada tile) e `ChannelSidebar.tsx`.
 - **Quando ensurdecido, os dois ícones aparecem juntos** (mic mudo +
   fone ensurdecido), igual à lista de membros em canal de voz do Discord
   de verdade — antes `VoiceParticipantRow` (`ChannelSidebar.tsx`) e o
   badge do `Tile` (`VoiceChannelView.tsx`) mostravam só UM ícone por vez
   (`deafened ? VolumeX : forceMuted ? MicOff : micMuted && MicOff`,
   mutuamente exclusivo) — agora, quando `deafened`, renderiza `MicOff` +
-  `VolumeX` juntos, os dois vermelhos.
+  `VolumeX` juntos, ambos na cor determinada só por `forceMuted`.
 - **Nota**: `forceMuted` é um atributo LiveKit preso à sessão/conexão
   atual do participante — persiste até alguém explicitamente
   "Desmutar membro" (ou o participante desconectar da call). Se um

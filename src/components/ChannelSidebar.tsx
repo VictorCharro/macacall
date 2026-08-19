@@ -364,23 +364,27 @@ function VoiceParticipantRow({
       </span>
 
       <span className="flex shrink-0 items-center gap-1">
-        {deafened ? (
-          // Deafening also mutes the mic, and both badges show together —
-          // matches Discord's own voice-channel member list.
-          <>
-            <MicOff className="h-3.5 w-3.5 text-danger" aria-label="Microfone mudo" />
-            <VolumeX className="h-3.5 w-3.5 text-danger" aria-label="Surdo" />
-          </>
-        ) : forceMuted ? (
-          <MicOff
-            className="h-3.5 w-3.5 text-danger"
-            aria-label="Mutado por um moderador"
-          />
-        ) : (
-          micMuted && (
-            <MicOff className="h-3.5 w-3.5 text-muted" aria-label="Microfone mudo" />
-          )
-        )}
+        {(() => {
+          // Only a moderator's forceMuted turns this red — self-mute and
+          // self-deafen are both just the user's own choice, always gray.
+          const color = forceMuted ? "text-danger" : "text-muted";
+          const label = forceMuted ? "Mutado por um moderador" : "Microfone mudo";
+          if (deafened) {
+            // Deafening also mutes the mic, and both badges show together —
+            // matches Discord's own voice-channel member list.
+            return (
+              <>
+                <MicOff className={`h-3.5 w-3.5 ${color}`} aria-label={label} />
+                <VolumeX className={`h-3.5 w-3.5 ${color}`} aria-label="Surdo" />
+              </>
+            );
+          }
+          return (
+            micMuted && (
+              <MicOff className={`h-3.5 w-3.5 ${color}`} aria-label={label} />
+            )
+          );
+        })()}
       </span>
 
       {menuPos && (

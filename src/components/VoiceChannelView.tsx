@@ -150,7 +150,7 @@ export function CallInterface({
   /** DM-only: show a control-bar button to hide/show the message thread. */
   onToggleChatHidden?: () => void;
 }) {
-  const { leaveCall, micEnabled, deafened, forceMuted, toggleMic } = useCall();
+  const { leaveCall, micEnabled, forceMuted, toggleMic } = useCall();
   const [focusedKey, setFocusedKey] = useState<string | null>(null);
   const [forceGrid, setForceGrid] = useState(false);
   const participants = useParticipants();
@@ -303,9 +303,7 @@ export function CallInterface({
                 ? "Silenciar"
                 : "Ativar microfone"
           }
-          tone={
-            micEnabled ? "neutral" : forceMuted || deafened ? "danger" : "muted"
-          }
+          tone={micEnabled ? "neutral" : forceMuted ? "danger" : "muted"}
         >
           {micEnabled ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
         </CallButton>
@@ -502,14 +500,19 @@ function Tile({
             <>
               <MicOff
                 className={`h-3.5 w-3.5 shrink-0 ${
-                  participant.attributes?.forceMuted === "true" ||
-                  participant.attributes?.deafened === "true"
+                  participant.attributes?.forceMuted === "true"
                     ? "text-danger"
                     : "text-muted"
                 }`}
               />
               {participant.attributes?.deafened === "true" && (
-                <VolumeX className="h-3.5 w-3.5 shrink-0 text-danger" />
+                <VolumeX
+                  className={`h-3.5 w-3.5 shrink-0 ${
+                    participant.attributes?.forceMuted === "true"
+                      ? "text-danger"
+                      : "text-muted"
+                  }`}
+                />
               )}
             </>
           ) : (
