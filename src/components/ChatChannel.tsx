@@ -14,6 +14,7 @@ import { MessageActionsMenu } from "@/components/MessageActionsMenu";
 import { MessageReactions } from "@/components/MessageReactions";
 import { PinnedMessagesModal } from "@/components/PinnedMessagesModal";
 import { useMembersPanel } from "@/components/MembersPanelProvider";
+import { useBandoRoles } from "@/components/BandoRolesProvider";
 import { summarizeReactions, type RawReaction } from "@/lib/reactions";
 
 type Member = { username: string; avatarSeed: string };
@@ -59,6 +60,7 @@ export function ChatChannel({
   const inputRef = useRef<HTMLInputElement>(null);
   const [inputKey, setInputKey] = useState(0);
   const { membersOpen, toggleMembers } = useMembersPanel();
+  const { roleColorByUserId } = useBandoRoles();
 
   const sendMessageWithChannel = sendMessage.bind(null, channelId);
   const [state, formAction] = useActionState(
@@ -305,7 +307,10 @@ export function ChatChannel({
 
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="cursor-pointer text-sm font-bold text-foreground hover:underline">
+                  <span
+                    className="cursor-pointer text-sm font-bold text-foreground hover:underline"
+                    style={{ color: roleColorByUserId[message.user_id] ?? undefined }}
+                  >
                     {member?.username ?? "Macaco"}
                   </span>
                   <span className="text-[10px] text-muted">

@@ -38,6 +38,45 @@ export type BandoMember = {
   joined_at: string;
 };
 
+export type Role = {
+  id: string;
+  bando_id: string;
+  name: string;
+  color: string;
+  icon: string | null;
+  position: number;
+  hoist: boolean;
+  is_default: boolean;
+  permissions_allow: string;
+  permissions_deny: string;
+  created_at: string;
+};
+
+export type MemberRole = {
+  bando_id: string;
+  user_id: string;
+  role_id: string;
+  assigned_at: string;
+};
+
+export type ChannelPermissionOverride = {
+  id: string;
+  channel_id: string;
+  role_id: string | null;
+  user_id: string | null;
+  allow: string;
+  deny: string;
+  created_at: string;
+};
+
+export type BannedUser = {
+  bando_id: string;
+  user_id: string;
+  banned_by: string;
+  reason: string | null;
+  banned_at: string;
+};
+
 export type Message = {
   id: string;
   channel_id: string;

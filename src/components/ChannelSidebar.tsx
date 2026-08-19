@@ -11,6 +11,8 @@ import { VoiceConnectedBar } from "@/components/VoiceConnectedBar";
 import { UserPanel } from "@/components/UserPanel";
 import { useCall } from "@/components/CallProvider";
 import { useBandoParticipants } from "@/components/BandoParticipants";
+import { hasPermission } from "@/lib/permissions";
+import type { Role } from "@/lib/types";
 
 type ChannelInfo = {
   id: string;
@@ -40,6 +42,8 @@ export function ChannelSidebar({
   bandoName,
   inviteUrl,
   isOwner,
+  myPermissions,
+  roles,
   textChannels,
   voiceChannels,
   selfUsername,
@@ -49,6 +53,8 @@ export function ChannelSidebar({
   bandoName: string;
   inviteUrl: string;
   isOwner: boolean;
+  myPermissions: number;
+  roles: Role[];
   textChannels: ChannelInfo[];
   voiceChannels: ChannelInfo[];
   selfUsername: string;
@@ -57,6 +63,10 @@ export function ChannelSidebar({
   const pathname = usePathname();
   const participants = useBandoParticipants();
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+
+  const canManageChannels =
+    isOwner || hasPermission(myPermissions, "MANAGE_CHANNELS");
+  const canManageRoles = isOwner || hasPermission(myPermissions, "MANAGE_ROLES");
 
   function toggleCategory(name: string) {
     setCollapsed((prev) => {
@@ -72,7 +82,13 @@ export function ChannelSidebar({
 
   return (
     <nav className="z-10 flex w-60 shrink-0 flex-col border-r border-border-soft bg-card">
-      <ServerHeaderMenu bandoName={bandoName} inviteUrl={inviteUrl} />
+      <ServerHeaderMenu
+        bandoId={bandoId}
+        bandoName={bandoName}
+        inviteUrl={inviteUrl}
+        roles={roles}
+        canManageRoles={canManageRoles}
+      />
 
       <div className="scroll-hover flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overflow-x-hidden overscroll-y-contain px-2 py-3">
         {textGroups.map(([category, channels]) => (
@@ -82,7 +98,7 @@ export function ChannelSidebar({
               collapsed={collapsed.has(`text-${category}`)}
               onToggle={() => toggleCategory(`text-${category}`)}
             >
-              {isOwner && (
+              {canManageChannels && (
                 <CreateChannelButton bandoId={bandoId} type="text" />
               )}
             </CategoryHeader>
@@ -94,7 +110,7 @@ export function ChannelSidebar({
                     key={channel.id}
                     bandoId={bandoId}
                     channel={channel}
-                    isOwner={isOwner}
+                    isOwner={canManageChannels}
                     active={pathname === `/bandos/${bandoId}/${channel.id}`}
                   >
                     <Hash className="h-4 w-4 shrink-0 text-muted" />
@@ -113,7 +129,7 @@ export function ChannelSidebar({
               collapsed={collapsed.has(`voice-${category}`)}
               onToggle={() => toggleCategory(`voice-${category}`)}
             >
-              {isOwner && (
+              {canManageChannels && (
                 <CreateChannelButton bandoId={bandoId} type="voice" />
               )}
             </CategoryHeader>
@@ -131,7 +147,7 @@ export function ChannelSidebar({
                       <ChannelRow
                         bandoId={bandoId}
                         channel={channel}
-                        isOwner={isOwner}
+                        isOwner={canManageChannels}
                         active={pathname === `/bandos/${bandoId}/${channel.id}`}
                         live={isInThisCall}
                         asListItem={false}

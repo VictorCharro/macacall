@@ -1,14 +1,21 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Crown, Mic, X, MessageSquare } from "lucide-react";
+import { Crown, Mic, X, MessageSquare, ShieldOff, LogOut } from "lucide-react";
 import { useBandoParticipants } from "@/components/BandoParticipants";
 import { useMembersPanel } from "@/components/MembersPanelProvider";
 import { usePresence } from "@/components/PresenceProvider";
 import { STATUS_META } from "@/lib/presence";
 import { colorFromSeed } from "@/lib/colorFromSeed";
 import { startDm } from "@/app/actions/dms";
-import type { PresenceStatus } from "@/lib/types";
+import {
+  assignRole,
+  removeRole,
+  kickMember,
+  banMember,
+} from "@/app/actions/roles";
+import { hasPermission } from "@/lib/permissions";
+import type { PresenceStatus, Role } from "@/lib/types";
 
 type Member = {
   id: string;
@@ -18,17 +25,30 @@ type Member = {
   statusMessage: string | null;
   bio: string | null;
   bannerColor: string | null;
+  roleColor: string | null;
+  roleIds: string[];
+  hoistedRoleName: string | null;
+  highestRolePosition: number;
 };
 
 export function MembersSidebar({
+  bandoId,
   members,
+  roles,
   voiceChannelNames,
   currentUserId,
+  isOwner,
+  myPermissions,
+  myHighestPosition,
 }: {
   bandoId: string;
   members: Member[];
+  roles: Role[];
   voiceChannelNames: Record<string, string>;
   currentUserId: string;
+  isOwner: boolean;
+  myPermissions: number;
+  myHighestPosition: number;
 }) {
   const participants = useBandoParticipants();
   const { membersOpen } = useMembersPanel();
@@ -42,8 +62,6 @@ export function MembersSidebar({
 
   if (!membersOpen) return null;
 
-  // Anyone not broadcasting presence is offline; "invisible" is deliberately
-  // indistinguishable from offline to everyone but the person themselves.
   const statusOf = (id: string): PresenceStatus | "offline" => {
     const status = online.get(id);
     if (!status || status === "invisible") return "offline";
@@ -51,14 +69,41 @@ export function MembersSidebar({
   };
 
   const owners = members.filter((m) => m.isOwner);
-  const others = members.filter((m) => !m.isOwner);
+  const rest = members.filter((m) => !m.isOwner);
 
-  const renderGroup = (title: string, list: Member[], colorClass: string) => {
+  const hoistedRoles = roles
+    .filter((r) => r.hoist && !r.is_default)
+    .sort((a, b) => b.position - a.position);
+
+  const grouped: { title: string; colorClass: string; list: Member[] }[] = [
+    { title: "👑 DONO DO BANDO", colorClass: "text-primary", list: owners },
+  ];
+  const consumed = new Set(owners.map((m) => m.id));
+  for (const role of hoistedRoles) {
+    const list = rest.filter(
+      (m) => !consumed.has(m.id) && m.roleIds.includes(role.id),
+    );
+    list.forEach((m) => consumed.add(m.id));
+    if (list.length) {
+      grouped.push({
+        title: `${role.name.toUpperCase()}`,
+        colorClass: "",
+        list,
+      });
+    }
+  }
+  grouped.push({
+    title: "🐒 MEMBROS",
+    colorClass: "text-muted",
+    list: rest.filter((m) => !consumed.has(m.id)),
+  });
+
+  const renderGroup = (title: string, colorClass: string, list: Member[]) => {
     if (list.length === 0) return null;
     return (
-      <div className="space-y-1">
+      <div key={title} className="space-y-1">
         <div
-          className={`px-2 py-1 text-[11px] font-bold tracking-wider ${colorClass}`}
+          className={`px-2 py-1 text-[11px] font-bold tracking-wider ${colorClass || "text-muted"}`}
         >
           {title} — {list.length}
         </div>
@@ -90,7 +135,10 @@ export function MembersSidebar({
               </div>
 
               <div className="min-w-0">
-                <p className="flex items-center gap-1 truncate text-xs font-bold text-foreground group-hover:text-accent">
+                <p
+                  className="flex items-center gap-1 truncate text-xs font-bold group-hover:text-accent"
+                  style={{ color: member.roleColor ?? undefined }}
+                >
                   {member.username}
                   {member.isOwner && (
                     <Crown className="h-3.5 w-3.5 shrink-0 text-primary" />
@@ -117,12 +165,12 @@ export function MembersSidebar({
   return (
     <>
       <aside className="scroll-hover hidden w-60 shrink-0 flex-col gap-4 overflow-y-auto overflow-x-hidden overscroll-y-contain border-l border-border-soft bg-card p-3 sm:flex">
-        {renderGroup("👑 DONO DO BANDO", owners, "text-primary")}
-        {renderGroup("🐒 MEMBROS", others, "text-muted")}
+        {grouped.map((g) => renderGroup(g.title, g.colorClass, g.list))}
       </aside>
 
       {selected && (
         <MemberProfileModal
+          bandoId={bandoId}
           member={selected}
           status={statusOf(selected.id)}
           isSelf={selected.id === currentUserId}
@@ -130,6 +178,24 @@ export function MembersSidebar({
             inCall.get(selected.id)
               ? voiceChannelNames[inCall.get(selected.id)!]
               : null
+          }
+          roles={roles}
+          canManageRoles={
+            isOwner ||
+            (hasPermission(myPermissions, "MANAGE_ROLES") &&
+              selected.highestRolePosition < myHighestPosition)
+          }
+          canKick={
+            !selected.isOwner &&
+            (isOwner ||
+              (hasPermission(myPermissions, "KICK_MEMBERS") &&
+                selected.highestRolePosition < myHighestPosition))
+          }
+          canBan={
+            !selected.isOwner &&
+            (isOwner ||
+              (hasPermission(myPermissions, "BAN_MEMBERS") &&
+                selected.highestRolePosition < myHighestPosition))
           }
           onClose={() => setSelected(null)}
         />
@@ -139,19 +205,58 @@ export function MembersSidebar({
 }
 
 function MemberProfileModal({
+  bandoId,
   member,
   status,
   isSelf,
   inCallChannel,
+  roles,
+  canManageRoles,
+  canKick,
+  canBan,
   onClose,
 }: {
+  bandoId: string;
   member: Member;
   status: PresenceStatus | "offline";
   isSelf: boolean;
   inCallChannel: string | null;
+  roles: Role[];
+  canManageRoles: boolean;
+  canKick: boolean;
+  canBan: boolean;
   onClose: () => void;
 }) {
   const banner = member.bannerColor ?? colorFromSeed(member.avatarSeed);
+  const [roleIds, setRoleIds] = useState(member.roleIds);
+  const [pending, setPending] = useState<string | null>(null);
+  const assignableRoles = roles.filter((r) => !r.is_default);
+
+  async function toggleRole(role: Role) {
+    setPending(role.id);
+    const has = roleIds.includes(role.id);
+    if (has) {
+      setRoleIds((prev) => prev.filter((id) => id !== role.id));
+      await removeRole(bandoId, member.id, role.id);
+    } else {
+      setRoleIds((prev) => [...prev, role.id]);
+      await assignRole(bandoId, member.id, role.id);
+    }
+    setPending(null);
+  }
+
+  async function handleKick() {
+    if (!confirm(`Expulsar ${member.username} do bando?`)) return;
+    await kickMember(bandoId, member.id);
+    onClose();
+  }
+
+  async function handleBan() {
+    const reason = prompt(`Banir ${member.username}? Motivo (opcional):`);
+    if (reason === null) return;
+    await banMember(bandoId, member.id, reason || null);
+    onClose();
+  }
 
   return (
     <div
@@ -173,7 +278,7 @@ function MemberProfileModal({
           </button>
         </div>
 
-        <div className="relative -mt-10 px-4 pb-4">
+        <div className="relative -mt-10 max-h-[70vh] overflow-y-auto scroll-hover px-4 pb-4">
           <div className="relative inline-block">
             <img
               src={`https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(member.avatarSeed)}`}
@@ -189,7 +294,10 @@ function MemberProfileModal({
           </div>
 
           <div className="mt-2">
-            <div className="flex items-center gap-1.5 text-lg font-black text-accent">
+            <div
+              className="flex items-center gap-1.5 text-lg font-black text-accent"
+              style={{ color: member.roleColor ?? undefined }}
+            >
               <span className="truncate">{member.username}</span>
               {member.isOwner && (
                 <Crown className="h-4 w-4 shrink-0 text-primary" />
@@ -222,16 +330,79 @@ function MemberProfileModal({
             </div>
           )}
 
+          {canManageRoles && assignableRoles.length > 0 && (
+            <div className="mt-3">
+              <div className="mb-1 text-[10px] font-bold uppercase text-muted">
+                Cargos
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {assignableRoles.map((role) => {
+                  const active = roleIds.includes(role.id);
+                  return (
+                    <button
+                      key={role.id}
+                      type="button"
+                      disabled={pending === role.id}
+                      onClick={() => toggleRole(role)}
+                      className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold transition disabled:opacity-60 ${
+                        active
+                          ? "border-transparent text-white"
+                          : "border-border-soft text-muted hover:text-foreground"
+                      }`}
+                      style={active ? { backgroundColor: role.color } : undefined}
+                    >
+                      <span
+                        className="h-2 w-2 rounded-full"
+                        style={{
+                          backgroundColor: active ? "rgba(255,255,255,0.7)" : role.color,
+                        }}
+                        aria-hidden="true"
+                      />
+                      {role.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {!isSelf && (
-            <form action={startDm.bind(null, member.id)} className="mt-4">
-              <button
-                type="submit"
-                className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary py-2 text-xs font-bold text-primary-foreground shadow-md transition hover:brightness-110"
-              >
-                <MessageSquare className="h-3.5 w-3.5" />
-                Mensagem
-              </button>
-            </form>
+            <div className="mt-4 space-y-2">
+              <form action={startDm.bind(null, member.id)}>
+                <button
+                  type="submit"
+                  className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary py-2 text-xs font-bold text-primary-foreground shadow-md transition hover:brightness-110"
+                >
+                  <MessageSquare className="h-3.5 w-3.5" />
+                  Mensagem
+                </button>
+              </form>
+
+              {(canKick || canBan) && (
+                <div className="flex gap-2">
+                  {canKick && (
+                    <button
+                      type="button"
+                      onClick={handleKick}
+                      className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-danger/40 py-2 text-xs font-bold text-danger transition hover:bg-danger/10"
+                    >
+                      <LogOut className="h-3.5 w-3.5" />
+                      Expulsar
+                    </button>
+                  )}
+                  {canBan && (
+                    <button
+                      type="button"
+                      onClick={handleBan}
+                      className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-danger py-2 text-xs font-bold text-white transition hover:brightness-110"
+                    >
+                      <ShieldOff className="h-3.5 w-3.5" />
+                      Banir
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>
