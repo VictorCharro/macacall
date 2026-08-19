@@ -1,11 +1,12 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import {
   renameChannel,
   deleteChannel,
 } from "@/app/actions/channels";
 import type { BandoActionState } from "@/app/actions/bandos";
+import { ContextMenuPortal } from "@/components/ContextMenuPortal";
 import { Modal } from "@/components/Modal";
 import { SubmitButton } from "@/components/SubmitButton";
 
@@ -15,16 +16,19 @@ export function ChannelMenu({
   bandoId,
   channelId,
   channelName,
+  x,
+  y,
   onClose,
 }: {
   bandoId: string;
   channelId: string;
   channelName: string;
+  x: number;
+  y: number;
   onClose: () => void;
 }) {
   const [mode, setMode] = useState<"menu" | "rename">("menu");
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
 
   const renameChannelWithId = renameChannel.bind(null, channelId);
   const [renameState, renameAction] = useActionState(
@@ -41,28 +45,8 @@ export function ChannelMenu({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [renameState]);
 
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        onClose();
-      }
-    }
-    function handleEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("keydown", handleEscape);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleEscape);
-    };
-  }, [onClose]);
-
   return (
-    <div
-      ref={menuRef}
-      className="absolute left-full top-0 z-40 min-w-[13rem] animate-modal-in rounded-xl border border-border bg-card p-2 text-left shadow-lg"
-    >
+    <ContextMenuPortal x={x} y={y} onClose={onClose}>
       {mode === "rename" ? (
         <form action={renameAction} className="flex flex-col gap-2 p-1">
           <input
@@ -139,6 +123,6 @@ export function ChannelMenu({
           </form>
         </Modal>
       )}
-    </div>
+    </ContextMenuPortal>
   );
 }

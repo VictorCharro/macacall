@@ -40,7 +40,7 @@ export function ChannelSidebar({
     <nav className="flex w-60 shrink-0 flex-col border-r border-border-soft bg-card">
       <ServerHeaderMenu bandoName={bandoName} inviteUrl={inviteUrl} />
 
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-2 py-3">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overflow-x-hidden px-2 py-3">
         <ChannelGroup label="Canais de Texto">
           {isOwner && <CreateChannelButton bandoId={bandoId} type="text" />}
         </ChannelGroup>
@@ -152,7 +152,7 @@ function ChannelRow({
   isVoice?: boolean;
   children: React.ReactNode;
 }) {
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null);
   const { joinCall } = useCall();
 
   const row = (
@@ -162,7 +162,7 @@ function ChannelRow({
         isOwner
           ? (e) => {
               e.preventDefault();
-              setMenuOpen(true);
+              setMenuPos({ x: e.clientX, y: e.clientY });
             }
           : undefined
       }
@@ -182,12 +182,14 @@ function ChannelRow({
       >
         {children}
       </Link>
-      {isOwner && menuOpen && (
+      {isOwner && menuPos && (
         <ChannelMenu
           bandoId={bandoId}
           channelId={channel.id}
           channelName={channel.name}
-          onClose={() => setMenuOpen(false)}
+          x={menuPos.x}
+          y={menuPos.y}
+          onClose={() => setMenuPos(null)}
         />
       )}
     </div>

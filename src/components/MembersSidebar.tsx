@@ -70,7 +70,7 @@ export function MembersSidebar({
   };
 
   return (
-    <aside className="hidden w-60 shrink-0 flex-col gap-4 overflow-y-auto border-l border-border-soft bg-card p-3 sm:flex">
+    <aside className="hidden w-60 shrink-0 flex-col gap-4 overflow-y-auto overflow-x-hidden border-l border-border-soft bg-card p-3 sm:flex">
       {renderGroup("Dono do bando", leaders)}
       {renderGroup("Membros", others)}
     </aside>
