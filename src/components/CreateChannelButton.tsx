@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { Plus } from "lucide-react";
 import { createChannel } from "@/app/actions/channels";
 import type { BandoActionState } from "@/app/actions/bandos";
 import { Modal } from "@/components/Modal";
@@ -34,10 +35,11 @@ export function CreateChannelButton({
       <button
         type="button"
         onClick={() => setOpen(true)}
+        title={type === "text" ? "Criar canal de texto" : "Criar canal de voz"}
         aria-label={type === "text" ? "Criar canal de texto" : "Criar canal de voz"}
         className="rounded p-0.5 text-muted transition hover:text-accent"
       >
-        <span className="text-base leading-none">+</span>
+        <Plus className="h-3.5 w-3.5" />
       </button>
 
       {open && (
@@ -55,6 +57,17 @@ export function CreateChannelButton({
               placeholder={type === "text" ? "novo-canal" : "Nome do canal"}
               className="rounded-lg border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-primary"
             />
+            <input
+              type="text"
+              name="category"
+              maxLength={40}
+              placeholder="Categoria (opcional)"
+              className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+            />
+            <p className="-mt-1 text-xs text-muted">
+              Canais com a mesma categoria aparecem juntos, num grupo que dá pra
+              recolher na barra lateral.
+            </p>
             {state.error && <p className="text-sm text-danger">{state.error}</p>}
             <div className="flex justify-end gap-2">
               <button

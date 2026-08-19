@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Users, MessageSquare, X } from "lucide-react";
+import { Users, MessageSquare, X, Phone } from "lucide-react";
 import {
   respondFriendRequest,
   removeFriend,
 } from "@/app/actions/friends";
-import { startDm } from "@/app/actions/dms";
+import { startDm, startDmCall } from "@/app/actions/dms";
+import { usePresence } from "@/components/PresenceProvider";
 import { FriendRow, useEffectiveStatus } from "@/components/FriendRow";
 import { AddFriendForm } from "@/components/AddFriendForm";
 import { ActiveNowPanel } from "@/components/ActiveNowPanel";
@@ -51,6 +52,13 @@ export function FriendsHome({
 }) {
   const [tab, setTab] = useState<Tab>("online");
   const router = useRouter();
+  const { online } = usePresence();
+
+  // "Invisible" reads as offline to everyone else, so it doesn't count here.
+  const onlineCount = friends.filter((f) => {
+    const status = online.get(f.id);
+    return status && status !== "invisible";
+  }).length;
 
   useEffect(() => {
     let cancelled = false;
@@ -107,8 +115,8 @@ export function FriendsHome({
           <div className="flex gap-1">
             {(
               [
-                ["online", "Disponível"],
-                ["todos", "Todos"],
+                ["online", `Disponível (${onlineCount})`],
+                ["todos", `Todos (${friends.length})`],
                 ["pendente", `Pendente${incoming.length ? ` (${incoming.length})` : ""}`],
               ] as [Tab, string][]
             ).map(([key, label]) => (
@@ -145,13 +153,20 @@ export function FriendsHome({
           {tab === "online" && (
             <FriendList
               friends={friends}
+              count={onlineCount}
               filterOnline
-              emptyLabel="Ninguém online agora 🍃"
+              emptyTitle="Nenhum primata por aqui..."
+              emptyLabel="Seus amigos devem estar colhendo banana ou jogando videogame."
             />
           )}
 
           {tab === "todos" && (
-            <FriendList friends={friends} emptyLabel="Você ainda não tem amigos. Adicione um! 🐒" />
+            <FriendList
+              friends={friends}
+              count={friends.length}
+              emptyTitle="Sua selva está vazia"
+              emptyLabel="Você ainda não tem amigos por aqui. Bora adicionar o primeiro!"
+            />
           )}
 
           {tab === "pendente" && (
@@ -229,27 +244,43 @@ export function FriendsHome({
 
 function FriendList({
   friends,
+  count,
   filterOnline,
+  emptyTitle,
   emptyLabel,
 }: {
   friends: FriendEntry[];
+  /** Already-filtered total, so the heading matches what actually renders. */
+  count: number;
   filterOnline?: boolean;
+  emptyTitle: string;
   emptyLabel: string;
 }) {
-  if (friends.length === 0) {
-    return <p className="text-sm text-muted">{emptyLabel}</p>;
+  if (count === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <div className="mb-3 text-5xl">🐒💤</div>
+        <h3 className="text-base font-bold text-foreground">{emptyTitle}</h3>
+        <p className="mt-1 max-w-xs text-xs text-muted">{emptyLabel}</p>
+      </div>
+    );
   }
 
   return (
-    <ul className="flex flex-col">
-      {friends.map((f) => (
-        <ConditionalFriendRow
-          key={f.friendshipId}
-          friend={f}
-          filterOnline={filterOnline}
-        />
-      ))}
-    </ul>
+    <div className="space-y-1.5">
+      <div className="mb-2 px-3 text-xs font-bold uppercase tracking-wider text-muted">
+        Primatas — {count}
+      </div>
+      <ul className="flex flex-col">
+        {friends.map((f) => (
+          <ConditionalFriendRow
+            key={f.friendshipId}
+            friend={f}
+            filterOnline={filterOnline}
+          />
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -275,6 +306,16 @@ function ConditionalFriendRow({
           className="flex h-9 w-9 items-center justify-center rounded-full bg-card-2 text-muted transition hover:text-accent"
         >
           <MessageSquare className="h-4 w-4" />
+        </button>
+      </form>
+      <form action={startDmCall.bind(null, friend.id)}>
+        <button
+          type="submit"
+          title="Ligar"
+          aria-label="Ligar"
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-card-2 text-secondary transition hover:bg-secondary/30 hover:brightness-125"
+        >
+          <Phone className="h-4 w-4" />
         </button>
       </form>
       <button

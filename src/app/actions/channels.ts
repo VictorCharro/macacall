@@ -12,6 +12,7 @@ export async function createChannel(
   formData: FormData,
 ): Promise<BandoActionState> {
   const name = String(formData.get("name")).trim();
+  const category = String(formData.get("category") ?? "").trim();
 
   if (name.length < 2) {
     return { error: "Dê um nome ao canal" };
@@ -26,13 +27,46 @@ export async function createChannel(
 
   const { error } = await supabase
     .from("channels")
-    .insert({ bando_id: bandoId, name, type });
+    .insert({ bando_id: bandoId, name, type, category: category || null });
 
   if (error) {
     return { error: error.message };
   }
 
   revalidatePath(`/bandos/${bandoId}`, "layout");
+  return {};
+}
+
+export async function updateChannelTopic(
+  channelId: string,
+  _prevState: BandoActionState,
+  formData: FormData,
+): Promise<BandoActionState> {
+  const topic = String(formData.get("topic") ?? "").trim();
+
+  if (topic.length > 200) {
+    return { error: "Tópico muito longo (máximo 200 caracteres)" };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const { data: channel, error } = await supabase
+    .from("channels")
+    .update({ topic: topic || null })
+    .eq("id", channelId)
+    .select("bando_id")
+    .single();
+
+  if (error || !channel) {
+    return { error: error?.message ?? "Erro ao salvar o tópico" };
+  }
+
+  revalidatePath(`/bandos/${channel.bando_id}`, "layout");
   return {};
 }
 

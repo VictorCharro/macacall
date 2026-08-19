@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Phone, Video, Pin, UserPlus, Globe, Send } from "lucide-react";
 import {
@@ -8,13 +8,16 @@ import {
   toggleDmPinMessage,
   type SendDmState,
 } from "@/app/actions/dms";
+import { toggleDmReaction } from "@/app/actions/reactions";
 import { createRealtimeClient } from "@/lib/supabase/realtimeClient";
 import { useCall } from "@/components/CallProvider";
 import { CallInterface } from "@/components/VoiceChannelView";
 import { MessageActionsMenu } from "@/components/MessageActionsMenu";
+import { MessageReactions } from "@/components/MessageReactions";
 import { DmPinnedMessagesModal } from "@/components/DmPinnedMessagesModal";
 import { AddDmParticipantModal } from "@/components/AddDmParticipantModal";
 import { DmProfilePanel } from "@/components/DmProfilePanel";
+import { summarizeReactions, type RawReaction } from "@/lib/reactions";
 
 type DmMessage = {
   id: string;
@@ -38,6 +41,7 @@ export function DmChat({
   currentUserId,
   currentAvatarSeed,
   initialMessages,
+  initialReactions,
   availableFriendsToAdd,
 }: {
   conversationId: string;
@@ -47,9 +51,11 @@ export function DmChat({
   currentUserId: string;
   currentAvatarSeed: string;
   initialMessages: DmMessage[];
+  initialReactions: RawReaction[];
   availableFriendsToAdd: Friend[];
 }) {
   const [messages, setMessages] = useState<DmMessage[]>(initialMessages);
+  const [reactions, setReactions] = useState<RawReaction[]>(initialReactions);
   const bottomRef = useRef<HTMLDivElement>(null);
   const [inputKey, setInputKey] = useState(0);
   const [pinnedOpen, setPinnedOpen] = useState(false);
@@ -136,6 +142,43 @@ export function DmChat({
             );
           },
         )
+        // dm_message_reactions has no conversation_id, so this listens broadly
+        // and drops rows for messages we aren't showing. RLS already limits the
+        // stream to conversations this user takes part in.
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "dm_message_reactions" },
+          (payload) => {
+            const row = payload.new as RawReaction;
+            setReactions((prev) =>
+              prev.some(
+                (r) =>
+                  r.message_id === row.message_id &&
+                  r.user_id === row.user_id &&
+                  r.emoji === row.emoji,
+              )
+                ? prev
+                : [...prev, row],
+            );
+          },
+        )
+        .on(
+          "postgres_changes",
+          { event: "DELETE", schema: "public", table: "dm_message_reactions" },
+          (payload) => {
+            const row = payload.old as RawReaction;
+            setReactions((prev) =>
+              prev.filter(
+                (r) =>
+                  !(
+                    r.message_id === row.message_id &&
+                    r.user_id === row.user_id &&
+                    r.emoji === row.emoji
+                  ),
+              ),
+            );
+          },
+        )
         .subscribe();
 
       cleanup = () => supabase.removeChannel(channel);
@@ -150,6 +193,11 @@ export function DmChat({
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  const reactionsByMessage = useMemo(
+    () => summarizeReactions(reactions, currentUserId),
+    [reactions, currentUserId],
+  );
 
   return (
     <div className="flex min-h-0 flex-1 overflow-hidden">
@@ -253,6 +301,13 @@ export function DmChat({
                           <p className="whitespace-pre-wrap break-words text-sm text-foreground">
                             {message.content}
                           </p>
+
+                          <MessageReactions
+                            reactions={reactionsByMessage.get(message.id) ?? []}
+                            onToggle={(emoji) =>
+                              toggleDmReaction(message.id, emoji)
+                            }
+                          />
                         </div>
 
                         <MessageActionsMenu
@@ -261,6 +316,9 @@ export function DmChat({
                           canPin
                           onTogglePin={() =>
                             toggleDmPinMessage(message.id, !message.pinned)
+                          }
+                          onReact={(emoji) =>
+                            toggleDmReaction(message.id, emoji)
                           }
                         />
                       </li>

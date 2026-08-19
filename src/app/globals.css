@@ -15,6 +15,8 @@
   --accent: #f4f4f5;
   --danger: #e11d48;
   --muted: #a1a1aa;
+  /* Call stage sits a shade below every other surface so video pops off it. */
+  --stage: #0d120f;
 }
 
 @theme inline {
@@ -32,6 +34,7 @@
   --color-accent: var(--accent);
   --color-danger: var(--danger);
   --color-muted: var(--muted);
+  --color-stage: var(--stage);
   --font-sans: var(--font-fredoka);
 }
 

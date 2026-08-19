@@ -59,6 +59,14 @@ export default async function DmPage({
     .order("created_at")
     .limit(100);
 
+  const messageIds = (messages ?? []).map((m) => m.id);
+  const { data: reactions } = messageIds.length
+    ? await supabase
+        .from("dm_message_reactions")
+        .select("message_id, user_id, emoji")
+        .in("message_id", messageIds)
+    : { data: [] };
+
   const { data: friendships } = await supabase
     .from("friendships")
     .select(
@@ -100,6 +108,7 @@ export default async function DmPage({
         currentUserId={user.id}
         currentAvatarSeed={profile.avatar_seed}
         initialMessages={messages ?? []}
+        initialReactions={reactions ?? []}
         availableFriendsToAdd={availableFriendsToAdd}
       />
     </div>

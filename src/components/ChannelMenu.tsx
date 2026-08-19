@@ -4,6 +4,7 @@ import { useActionState, useEffect, useState } from "react";
 import {
   renameChannel,
   deleteChannel,
+  updateChannelTopic,
 } from "@/app/actions/channels";
 import type { BandoActionState } from "@/app/actions/bandos";
 import { ContextMenuPortal } from "@/components/ContextMenuPortal";
@@ -16,6 +17,7 @@ export function ChannelMenu({
   bandoId,
   channelId,
   channelName,
+  channelTopic,
   x,
   y,
   onClose,
@@ -23,16 +25,23 @@ export function ChannelMenu({
   bandoId: string;
   channelId: string;
   channelName: string;
+  channelTopic?: string | null;
   x: number;
   y: number;
   onClose: () => void;
 }) {
-  const [mode, setMode] = useState<"menu" | "rename">("menu");
+  const [mode, setMode] = useState<"menu" | "rename" | "topic">("menu");
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const renameChannelWithId = renameChannel.bind(null, channelId);
   const [renameState, renameAction] = useActionState(
     renameChannelWithId,
+    initialState,
+  );
+
+  const updateTopicWithId = updateChannelTopic.bind(null, channelId);
+  const [topicState, topicAction] = useActionState(
+    updateTopicWithId,
     initialState,
   );
 
@@ -44,6 +53,13 @@ export function ChannelMenu({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [renameState]);
+
+  useEffect(() => {
+    if (topicState !== initialState && !topicState.error) {
+      onClose();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [topicState]);
 
   return (
     <ContextMenuPortal x={x} y={y} onClose={onClose}>
@@ -77,6 +93,36 @@ export function ChannelMenu({
             </button>
           </div>
         </form>
+      ) : mode === "topic" ? (
+        <form action={topicAction} className="flex w-64 flex-col gap-2 p-1">
+          <input
+            type="text"
+            name="topic"
+            maxLength={200}
+            defaultValue={channelTopic ?? ""}
+            autoFocus
+            placeholder="Do que se fala nesse canal?"
+            className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+          />
+          {topicState.error && (
+            <p className="text-xs text-danger">{topicState.error}</p>
+          )}
+          <div className="flex gap-2">
+            <SubmitButton
+              pendingLabel="Salvando..."
+              className="flex-1 rounded-full bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground hover:brightness-95"
+            >
+              Salvar
+            </SubmitButton>
+            <button
+              type="button"
+              onClick={() => setMode("menu")}
+              className="flex-1 rounded-full border border-border px-3 py-1.5 text-sm text-muted transition hover:bg-card-2"
+            >
+              Cancelar
+            </button>
+          </div>
+        </form>
       ) : (
         <div className="flex flex-col gap-1">
           <button
@@ -85,6 +131,13 @@ export function ChannelMenu({
             className="rounded-lg px-3 py-2 text-left text-sm text-foreground transition hover:bg-card-2"
           >
             Editar nome
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("topic")}
+            className="rounded-lg px-3 py-2 text-left text-sm text-foreground transition hover:bg-card-2"
+          >
+            Editar tópico
           </button>
           <button
             type="button"

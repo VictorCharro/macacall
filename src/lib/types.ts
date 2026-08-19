@@ -6,6 +6,8 @@ export type Profile = {
   avatar_seed: string;
   status: PresenceStatus;
   status_message: string | null;
+  bio: string | null;
+  banner_color: string | null;
   created_at: string;
 };
 
@@ -23,6 +25,9 @@ export type Channel = {
   bando_id: string;
   name: string;
   type: "voice" | "text";
+  category: string | null;
+  topic: string | null;
+  position: number;
   created_at: string;
 };
 
@@ -41,6 +46,26 @@ export type Message = {
   created_at: string;
   reply_to_id: string | null;
   pinned: boolean;
+};
+
+export type MessageReaction = {
+  message_id: string;
+  user_id: string;
+  emoji: string;
+  created_at: string;
+};
+
+/** Reactions for one message, already rolled up for rendering. */
+export type ReactionSummary = {
+  emoji: string;
+  count: number;
+  reacted: boolean;
+};
+
+export type ChannelRead = {
+  user_id: string;
+  channel_id: string;
+  last_read_at: string;
 };
 
 export type Friendship = {

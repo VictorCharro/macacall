@@ -3,6 +3,30 @@ import { createClient } from "@/lib/supabase/server";
 import { ChatChannel } from "@/components/ChatChannel";
 import { VoiceChannelView } from "@/components/VoiceChannelView";
 import type { Profile } from "@/lib/types";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+/** Loads a text channel's recent messages plus every reaction on them. */
+async function loadThread(
+  supabase: SupabaseClient,
+  channelId: string,
+) {
+  const { data: messages } = await supabase
+    .from("messages")
+    .select("id, content, created_at, user_id, reply_to_id, pinned")
+    .eq("channel_id", channelId)
+    .order("created_at")
+    .limit(100);
+
+  const ids = (messages ?? []).map((m) => m.id);
+  const { data: reactions } = ids.length
+    ? await supabase
+        .from("message_reactions")
+        .select("message_id, user_id, emoji")
+        .in("message_id", ids)
+    : { data: [] };
+
+  return { messages: messages ?? [], reactions: reactions ?? [] };
+}
 
 export default async function ChannelPage({
   params,
@@ -19,7 +43,7 @@ export default async function ChannelPage({
 
   const { data: channel } = await supabase
     .from("channels")
-    .select("id, name, type, bando_id")
+    .select("id, name, type, topic, bando_id")
     .eq("id", channelId)
     .eq("bando_id", id)
     .maybeSingle();
@@ -62,7 +86,7 @@ export default async function ChannelPage({
     // every voice channel in a real server implicitly shares #geral.
     const { data: primaryTextChannel } = await supabase
       .from("channels")
-      .select("id, name")
+      .select("id, name, topic")
       .eq("bando_id", id)
       .eq("type", "text")
       .order("created_at")
@@ -71,17 +95,17 @@ export default async function ChannelPage({
 
     let textChannel = null;
     if (primaryTextChannel) {
-      const { data: messages } = await supabase
-        .from("messages")
-        .select("id, content, created_at, user_id, reply_to_id, pinned")
-        .eq("channel_id", primaryTextChannel.id)
-        .order("created_at")
-        .limit(100);
+      const { messages, reactions } = await loadThread(
+        supabase,
+        primaryTextChannel.id,
+      );
 
       textChannel = {
         id: primaryTextChannel.id,
         name: primaryTextChannel.name,
-        initialMessages: messages ?? [],
+        topic: primaryTextChannel.topic,
+        initialMessages: messages,
+        initialReactions: reactions,
         members,
         canPin,
       };
@@ -92,26 +116,25 @@ export default async function ChannelPage({
         bandoId={id}
         channelId={channel.id}
         channelName={channel.name}
+        currentUserId={user.id}
         textChannel={textChannel}
       />
     );
   }
 
-  const { data: messages } = await supabase
-    .from("messages")
-    .select("id, content, created_at, user_id, reply_to_id, pinned")
-    .eq("channel_id", channelId)
-    .order("created_at")
-    .limit(100);
+  const { messages, reactions } = await loadThread(supabase, channelId);
 
   return (
     <ChatChannel
       key={channel.id}
       channelId={channel.id}
       channelName={channel.name}
-      initialMessages={messages ?? []}
+      channelTopic={channel.topic}
+      initialMessages={messages}
+      initialReactions={reactions}
       members={members}
       canPin={canPin}
+      currentUserId={user.id}
     />
   );
 }
