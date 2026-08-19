@@ -14,6 +14,7 @@ export const PERMISSIONS = {
   STREAM: 1 << 10,
   MUTE_MEMBERS: 1 << 11,
   MOVE_MEMBERS: 1 << 12,
+  DEAFEN_MEMBERS: 1 << 13,
 } as const;
 
 export type PermissionKey = keyof typeof PERMISSIONS;
@@ -71,6 +72,10 @@ export const PERMISSION_LABELS: Record<PermissionKey, { label: string; descripti
     label: "Mover membros",
     description: "Permite mover membros entre canais de voz aos quais têm acesso.",
   },
+  DEAFEN_MEMBERS: {
+    label: "Ensurdecer membros",
+    description: "Permite impedir que outros membros ouçam o canal de voz.",
+  },
 };
 
 export const ALL_PERMISSION_KEYS = Object.keys(PERMISSIONS) as PermissionKey[];
@@ -90,6 +95,7 @@ export const CHANNEL_PERMISSION_KEYS: PermissionKey[] = [
   "STREAM",
   "MUTE_MEMBERS",
   "MOVE_MEMBERS",
+  "DEAFEN_MEMBERS",
 ];
 
 type MaskInput = number | bigint | string;

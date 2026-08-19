@@ -73,14 +73,14 @@ busca cargos/permissões do usuário atual pra esse bando.
 Ver `src/lib/permissions.ts` pro bitmask e `src/app/actions/roles.ts` pras
 ações. Resumo:
 
-- Bitmask de 13 permissões (`MANAGE_BANDO`, `MANAGE_ROLES`, `MANAGE_CHANNELS`,
+- Bitmask de 14 permissões (`MANAGE_BANDO`, `MANAGE_ROLES`, `MANAGE_CHANNELS`,
   `MANAGE_MESSAGES`, `KICK_MEMBERS`, `BAN_MEMBERS`, `CREATE_INVITE`,
   `MENTION_EVERYONE`, `CONNECT`, `SPEAK`, `STREAM`, `MUTE_MEMBERS`,
-  `MOVE_MEMBERS`) — os bits estão documentados também no topo da migration
-  `add_roles_permissions_system` (as duas últimas foram adicionadas depois,
-  só em código — bitmask é só um número, não precisa migration pra crescer,
-  mas **os dois lugares precisam ficar em sincronia se um bit for
-  adicionado**).
+  `MOVE_MEMBERS`, `DEAFEN_MEMBERS`) — os bits estão documentados também no
+  topo da migration `add_roles_permissions_system` (as três últimas foram
+  adicionadas depois, só em código — bitmask é só um número, não precisa
+  migration pra crescer, mas **os dois lugares precisam ficar em
+  sincronia se um bit for adicionado**).
 - Cada cargo tem `permissions_allow` + `permissions_deny` (bigint). **Deny
   sempre vence** sobre allow de outro cargo — é a regra real do Discord.
 - `@everyone` é criado automaticamente (trigger `bandos_create_default_role`)
@@ -118,17 +118,27 @@ ações. Resumo:
   chat").
 - Entrar num canal de voz exige clique explícito — nunca auto-conecta ao
   navegar pra página do canal.
-- **Moderação de voz (mutar/mover membros)**: `POST /api/livekit/moderate`
-  ({action: "mute"|"unmute"|"move", channelId, targetUserId,
-  destinationChannelId?}), checado no servidor via `has_channel_permission`
-  (`MUTE_MEMBERS`/`MOVE_MEMBERS`). Como o LiveKit não tem um "mover
-  participante de sala" nativo, "mover" é só um **sinal**: o servidor marca
-  atributos (`movedToChannelId`/`movedToChannelName`) no participante alvo
-  via `RoomServiceClient.updateParticipant`, e é o **próprio cliente do
-  alvo** que reage a isso (ouvindo `ParticipantEvent.AttributesChanged` no
-  seu próprio `localParticipant`, dentro de `CallDeviceSync` em
-  `CallProvider.tsx`) chamando `joinCall` pro canal novo. Mesmo mecanismo pro
-  mute forçado: `mutePublishedTrack` mais o atributo `forceMuted`.
+- **Moderação de voz (mutar/ensurdecer/mover membros)**:
+  `POST /api/livekit/moderate` ({action: "mute"|"unmute"|"deafen"|
+  "undeafen"|"move", channelId, targetUserId, destinationChannelId?}),
+  checado no servidor via `has_channel_permission`
+  (`MUTE_MEMBERS`/`DEAFEN_MEMBERS`/`MOVE_MEMBERS`, um bit por ação). Como o
+  LiveKit não tem um "mover participante de sala" nativo, "mover" é só um
+  **sinal**: o servidor marca atributos (`movedToChannelId`/
+  `movedToChannelName`) no participante alvo via
+  `RoomServiceClient.updateParticipant`, e é o **próprio cliente do alvo**
+  que reage a isso (ouvindo `ParticipantEvent.AttributesChanged` no seu
+  próprio `localParticipant`, dentro de `CallDeviceSync` em
+  `CallProvider.tsx`) chamando `joinCall` pro canal novo. Mesmo mecanismo
+  pro mute forçado: `mutePublishedTrack` mais o atributo `forceMuted`.
+  "Ensurdecer" é o mesmo padrão de sinal via atributo (`forceDeafened`),
+  já que forçar alguém a não ouvir só pode ser feito no cliente dela
+  (setar volume 0 dos remotos é local); igual o Discord de verdade,
+  ensurdecer também força mute (o servidor já manda `forceMuted: "true"`
+  junto), mas desensurdecer **não** desfaz o mute automaticamente — são
+  dois estados/toggles separados uma vez que ambos foram aplicados.
+  `toggleDeafen` (auto-ensurdecer) é bloqueado enquanto `forceDeafened`
+  for true, mesma lógica de `toggleMic` travado por `forceMuted`.
 - **`forceMuted` (mutado por moderador) é diferente de automudo** — o ícone
   de mic mudo é **cinza** quando a própria pessoa se mutou e **vermelho**
   só quando alguém com `MUTE_MEMBERS` mutou ela. Isso é enforcement "soft":

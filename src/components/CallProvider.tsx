@@ -28,6 +28,8 @@ type CallContextValue = {
   deafened: boolean;
   /** Muted by a moderator (MUTE_MEMBERS), not by the user's own choice. */
   forceMuted: boolean;
+  /** Deafened by a moderator (DEAFEN_MEMBERS), not by the user's own choice. */
+  forceDeafened: boolean;
   joinCall: (
     roomId: string,
     roomName: string,
@@ -59,6 +61,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   const [micEnabled, setMicEnabled] = useState(true);
   const [deafened, setDeafened] = useState(false);
   const [forceMuted, setForceMuted] = useState(false);
+  const [forceDeafened, setForceDeafened] = useState(false);
 
   const toggleMic = useCallback(() => {
     // A moderator mute can only be lifted by the moderator (or by leaving and
@@ -72,12 +75,15 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   }, [forceMuted]);
 
   const toggleDeafen = useCallback(() => {
+    // Same idea as forceMuted: a moderator deafen can only be lifted by the
+    // moderator (or by leaving and rejoining the call).
     setDeafened((prev) => {
+      if (forceDeafened) return prev;
       const next = !prev;
       setMicEnabled(!next);
       return next;
     });
-  }, []);
+  }, [forceDeafened]);
 
   const joinCall = useCallback(
     (
@@ -98,6 +104,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     setTokenInfo(null);
     setError(null);
     setForceMuted(false);
+    setForceDeafened(false);
   }, []);
 
   useEffect(() => {
@@ -138,6 +145,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       micEnabled,
       deafened,
       forceMuted,
+      forceDeafened,
       joinCall,
       leaveCall,
       toggleMic,
@@ -150,6 +158,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       micEnabled,
       deafened,
       forceMuted,
+      forceDeafened,
       joinCall,
       leaveCall,
       toggleMic,
@@ -175,7 +184,9 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
             deafened={deafened}
             activeCall={activeCall}
             setMicEnabled={setMicEnabled}
+            setDeafened={setDeafened}
             setForceMuted={setForceMuted}
+            setForceDeafened={setForceDeafened}
             joinCall={joinCall}
           />
           {children}
@@ -192,14 +203,18 @@ function CallDeviceSync({
   deafened,
   activeCall,
   setMicEnabled,
+  setDeafened,
   setForceMuted,
+  setForceDeafened,
   joinCall,
 }: {
   micEnabled: boolean;
   deafened: boolean;
   activeCall: ActiveCall | null;
   setMicEnabled: (value: boolean) => void;
+  setDeafened: (value: boolean) => void;
   setForceMuted: (value: boolean) => void;
+  setForceDeafened: (value: boolean) => void;
   joinCall: (roomId: string, roomName: string, href: string) => void;
 }) {
   const { localParticipant } = useLocalParticipant();
@@ -249,6 +264,10 @@ function CallDeviceSync({
       }
       prevForceMutedRef.current = nowForceMuted;
 
+      const nowForceDeafened = attrs.forceDeafened === "true";
+      setForceDeafened(nowForceDeafened);
+      if (nowForceDeafened) setDeafened(true);
+
       const movedToChannelId = attrs.movedToChannelId;
       const movedToChannelName = attrs.movedToChannelName;
       if (movedToChannelId && activeCall) {
@@ -278,7 +297,16 @@ function CallDeviceSync({
         handleAttributesChanged,
       );
     };
-  }, [localParticipant, activeCall, setForceMuted, setMicEnabled, joinCall, micEnabled]);
+  }, [
+    localParticipant,
+    activeCall,
+    setForceMuted,
+    setForceDeafened,
+    setMicEnabled,
+    setDeafened,
+    joinCall,
+    micEnabled,
+  ]);
 
   useEffect(() => {
     localParticipant

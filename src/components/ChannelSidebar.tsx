@@ -84,7 +84,8 @@ export function ChannelSidebar({
   const canModerate =
     isOwner ||
     hasPermission(myPermissions, "MUTE_MEMBERS") ||
-    hasPermission(myPermissions, "MOVE_MEMBERS");
+    hasPermission(myPermissions, "MOVE_MEMBERS") ||
+    hasPermission(myPermissions, "DEAFEN_MEMBERS");
 
   function toggleCategory(name: string) {
     setCollapsed((prev) => {
@@ -421,7 +422,7 @@ function VoiceParticipantMenu({
   const refreshParticipants = useRefreshBandoParticipants();
 
   async function moderate(
-    action: "mute" | "unmute" | "move",
+    action: "mute" | "unmute" | "deafen" | "undeafen" | "move",
     destinationChannelId?: string,
   ) {
     onClose();
@@ -489,6 +490,25 @@ function VoiceParticipantMenu({
             >
               <MicOff className="h-4 w-4" />
               Silenciar membro
+            </button>
+          )}
+          {participant.forceDeafened ? (
+            <button
+              type="button"
+              onClick={() => moderate("undeafen")}
+              className="flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-foreground transition hover:bg-card-2"
+            >
+              <HeadphoneOff className="h-4 w-4" />
+              Remover ensurdecimento
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => moderate("deafen")}
+              className="flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-foreground transition hover:bg-card-2"
+            >
+              <HeadphoneOff className="h-4 w-4" />
+              Ensurdecer membro
             </button>
           )}
           <button

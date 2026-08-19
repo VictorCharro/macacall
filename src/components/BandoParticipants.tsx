@@ -18,6 +18,7 @@ export type BandoParticipant = {
   micMuted: boolean;
   deafened: boolean;
   forceMuted: boolean;
+  forceDeafened: boolean;
 };
 
 type BandoParticipantsContextValue = {

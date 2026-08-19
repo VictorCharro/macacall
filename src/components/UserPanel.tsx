@@ -14,8 +14,15 @@ export function UserPanel({
   username: string;
   avatarSeed: string;
 }) {
-  const { connected, micEnabled, deafened, forceMuted, toggleMic, toggleDeafen } =
-    useCall();
+  const {
+    connected,
+    micEnabled,
+    deafened,
+    forceMuted,
+    forceDeafened,
+    toggleMic,
+    toggleDeafen,
+  } = useCall();
   const { myStatus } = usePresence();
   const [profileOpen, setProfileOpen] = useState(false);
 
@@ -89,9 +96,22 @@ export function UserPanel({
       <button
         type="button"
         onClick={toggleDeafen}
-        title={deafened ? "Voltar a ouvir" : "Parar de ouvir (surdo)"}
-        aria-label={deafened ? "Voltar a ouvir" : "Parar de ouvir (surdo)"}
-        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition ${
+        disabled={forceDeafened}
+        title={
+          forceDeafened
+            ? "Ensurdecido por um moderador"
+            : deafened
+              ? "Voltar a ouvir"
+              : "Parar de ouvir (surdo)"
+        }
+        aria-label={
+          forceDeafened
+            ? "Ensurdecido por um moderador"
+            : deafened
+              ? "Voltar a ouvir"
+              : "Parar de ouvir (surdo)"
+        }
+        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition disabled:cursor-not-allowed ${
           deafened
             ? "bg-card-2 text-muted"
             : "text-muted hover:bg-card-2 hover:text-accent"

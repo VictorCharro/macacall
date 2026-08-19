@@ -15,7 +15,7 @@ function getRoomService() {
 export async function POST(request: Request) {
   const body = await request.json();
   const { action, channelId, targetUserId } = body as {
-    action: "mute" | "unmute" | "move";
+    action: "mute" | "unmute" | "deafen" | "undeafen" | "move";
     channelId: string;
     targetUserId: string;
   };
@@ -34,7 +34,11 @@ export async function POST(request: Request) {
   }
 
   const requiredBit =
-    action === "move" ? PERMISSIONS.MOVE_MEMBERS : PERMISSIONS.MUTE_MEMBERS;
+    action === "move"
+      ? PERMISSIONS.MOVE_MEMBERS
+      : action === "deafen" || action === "undeafen"
+        ? PERMISSIONS.DEAFEN_MEMBERS
+        : PERMISSIONS.MUTE_MEMBERS;
 
   const { data: allowed } = await supabase.rpc("has_channel_permission", {
     p_user_id: user.id,
@@ -83,6 +87,43 @@ export async function POST(request: Request) {
 
       await roomService.updateParticipant(channelId, targetUserId, {
         attributes: { forceMuted: shouldMute ? "true" : "false" },
+      });
+
+      return NextResponse.json({ ok: true });
+    }
+
+    if (action === "deafen" || action === "undeafen") {
+      const shouldDeafen = action === "deafen";
+
+      // Same as Discord: server-deafening someone also server-mutes them
+      // (you can't meaningfully talk while forcibly deaf). Undeafening
+      // doesn't automatically lift that mute — matches real Discord, where
+      // the two are separate toggles once both have been applied.
+      if (shouldDeafen) {
+        try {
+          const participants = await roomService.listParticipants(channelId);
+          const target = participants.find((p) => p.identity === targetUserId);
+          const micTrack = target?.tracks.find(
+            (t) => t.source === TrackSource.MICROPHONE,
+          );
+          if (micTrack) {
+            await roomService.mutePublishedTrack(
+              channelId,
+              targetUserId,
+              micTrack.sid,
+              true,
+            );
+          }
+        } catch {
+          // best-effort: o atributo abaixo ainda é aplicado
+        }
+      }
+
+      await roomService.updateParticipant(channelId, targetUserId, {
+        attributes: {
+          forceDeafened: shouldDeafen ? "true" : "false",
+          ...(shouldDeafen ? { forceMuted: "true" } : {}),
+        },
       });
 
       return NextResponse.json({ ok: true });
