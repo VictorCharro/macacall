@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCachedUser } from "@/lib/supabase/server";
 import { ChatChannel } from "@/components/ChatChannel";
 import { VoiceChannelView } from "@/components/VoiceChannelView";
 import type { Profile } from "@/lib/types";
@@ -35,33 +35,32 @@ export default async function ChannelPage({
 }) {
   const { id, channelId } = await params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const [
+    {
+      data: { user },
+    },
+    { data: channel },
+    { data: bando },
+    { data: bandoMembers },
+  ] = await Promise.all([
+    getCachedUser(),
+    supabase
+      .from("channels")
+      .select("id, name, type, topic, bando_id")
+      .eq("id", channelId)
+      .eq("bando_id", id)
+      .maybeSingle(),
+    supabase.from("bandos").select("owner_id").eq("id", id).maybeSingle(),
+    supabase
+      .from("bando_members")
+      .select("profiles(id, username, avatar_seed)")
+      .eq("bando_id", id),
+  ]);
 
   if (!user) redirect("/login");
-
-  const { data: channel } = await supabase
-    .from("channels")
-    .select("id, name, type, topic, bando_id")
-    .eq("id", channelId)
-    .eq("bando_id", id)
-    .maybeSingle();
-
   if (!channel) notFound();
 
-  const { data: bando } = await supabase
-    .from("bandos")
-    .select("owner_id")
-    .eq("id", id)
-    .maybeSingle();
-
   const canPin = bando?.owner_id === user.id;
-
-  const { data: bandoMembers } = await supabase
-    .from("bando_members")
-    .select("profiles(id, username, avatar_seed)")
-    .eq("bando_id", id);
 
   const members = Object.fromEntries(
     (bandoMembers ?? [])

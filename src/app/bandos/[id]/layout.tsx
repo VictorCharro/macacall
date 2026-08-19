@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCachedUser } from "@/lib/supabase/server";
 import { ChannelSidebar } from "@/components/ChannelSidebar";
 import { MembersSidebar } from "@/components/MembersSidebar";
 import { BandoParticipantsProvider } from "@/components/BandoParticipants";
@@ -17,18 +17,21 @@ export default async function BandoLayout({
 }) {
   const { id } = await params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const [
+    {
+      data: { user },
+    },
+    { data: bando },
+  ] = await Promise.all([
+    getCachedUser(),
+    supabase
+      .from("bandos")
+      .select("id, name, owner_id, invite_code")
+      .eq("id", id)
+      .maybeSingle(),
+  ]);
 
   if (!user) redirect("/login");
-
-  const { data: bando } = await supabase
-    .from("bandos")
-    .select("id, name, owner_id, invite_code")
-    .eq("id", id)
-    .maybeSingle();
-
   if (!bando) notFound();
 
   const headerList = await headers();

@@ -59,6 +59,31 @@ seção "Bugs resolvidos" abaixo antes de mexer nisso.
 `src/app/bandos/[id]/layout.tsx` monta sidebar de canais + sidebar de membros +
 busca cargos/permissões do usuário atual pra esse bando.
 
+## Performance de navegação
+
+- `src/app/bandos/[id]/loading.tsx` — esqueleto instantâneo enquanto o
+  layout do bando (6+ queries) e a página do canal (mais 3-4) ainda estão
+  buscando dados. Sem isso, trocar de servidor deixava a tela travada/em
+  branco até tudo resolver. Convenção nativa do Next — qualquer navegação
+  pra dentro dessa rota já usa esse arquivo automaticamente, não precisa
+  de Suspense manual em nenhum componente.
+- **`getCachedUser()`** (`lib/supabase/server.ts`) — `supabase.auth.getUser()`
+  faz um round-trip real pro servidor de auth do Supabase pra revalidar a
+  sessão (não é só decodificar o cookie), então chamar duas vezes na mesma
+  navegação (uma no layout, outra na página do canal) pagava esse custo
+  duas vezes. Envolvido em `cache()` do React, que deduplica automaticamente
+  chamadas com os mesmos argumentos dentro do mesmo request/render — layout
+  e página continuam cada um chamando `getCachedUser()` normalmente, só que
+  a segunda chamada não gera uma nova requisição de rede. **Usar
+  `getCachedUser()` em vez de `createClient().auth.getUser()` em qualquer
+  Server Component/Server Action nova que precise do usuário atual.**
+- Nos dois lugares (`bandos/[id]/layout.tsx` e
+  `bandos/[id]/[channelId]/page.tsx`) as queries que não dependem umas das
+  outras foram agrupadas em `Promise.all` em vez de rodarem em série —
+  a página do canal, por exemplo, buscava canal → bando → membros um atrás
+  do outro sem motivo, sendo que nenhum dos três depende do resultado dos
+  outros.
+
 ## Autenticação
 
 - Email/senha normal, **ou** convidado (`guestSignIn` em `actions/auth.ts` →
