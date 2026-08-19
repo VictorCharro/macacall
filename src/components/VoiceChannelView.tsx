@@ -24,6 +24,7 @@ import {
   Radio,
   Grid,
   Volume2,
+  VolumeX,
 } from "lucide-react";
 import { useCall } from "@/components/CallProvider";
 import { ChatChannel } from "@/components/ChatChannel";
@@ -149,7 +150,7 @@ export function CallInterface({
   /** DM-only: show a control-bar button to hide/show the message thread. */
   onToggleChatHidden?: () => void;
 }) {
-  const { leaveCall, micEnabled, forceMuted, toggleMic } = useCall();
+  const { leaveCall, micEnabled, deafened, forceMuted, toggleMic } = useCall();
   const [focusedKey, setFocusedKey] = useState<string | null>(null);
   const [forceGrid, setForceGrid] = useState(false);
   const participants = useParticipants();
@@ -302,7 +303,9 @@ export function CallInterface({
                 ? "Silenciar"
                 : "Ativar microfone"
           }
-          tone={micEnabled ? "neutral" : forceMuted ? "danger" : "muted"}
+          tone={
+            micEnabled ? "neutral" : forceMuted || deafened ? "danger" : "muted"
+          }
         >
           {micEnabled ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
         </CallButton>
@@ -496,13 +499,19 @@ function Tile({
         </span>
         {!isScreenShare &&
           (isMuted ? (
-            <MicOff
-              className={`h-3.5 w-3.5 shrink-0 ${
-                participant.attributes?.forceMuted === "true"
-                  ? "text-danger"
-                  : "text-muted"
-              }`}
-            />
+            <>
+              <MicOff
+                className={`h-3.5 w-3.5 shrink-0 ${
+                  participant.attributes?.forceMuted === "true" ||
+                  participant.attributes?.deafened === "true"
+                    ? "text-danger"
+                    : "text-muted"
+                }`}
+              />
+              {participant.attributes?.deafened === "true" && (
+                <VolumeX className="h-3.5 w-3.5 shrink-0 text-danger" />
+              )}
+            </>
           ) : (
             <Mic className="h-3.5 w-3.5 shrink-0 text-secondary" />
           ))}

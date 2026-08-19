@@ -187,6 +187,26 @@ ações. Resumo:
   participante LiveKit tem que ser refletido na *publicação* local
   também, não só num atributo ou numa flag de UI — senão o SDK "corrige"
   sozinho.
+- **Regra final de cor do ícone de mic mudo (igual ao Discord de
+  verdade)**: vermelho quando `forceMuted` (mutado por moderador) **ou**
+  `deafened` (ensurdecer sempre auto-muta o mic também, então o estado
+  composto é tratado como "importante" e fica vermelho); cinza só quando
+  é um automudo comum, sem ensurdecer e sem moderador envolvido.
+  Aplicado em `UserPanel.tsx`, `VoiceChannelView.tsx` (botão de mic da
+  call e badge de cada tile) e `ChannelSidebar.tsx`.
+- **Quando ensurdecido, os dois ícones aparecem juntos** (mic mudo +
+  fone ensurdecido), igual à lista de membros em canal de voz do Discord
+  de verdade — antes `VoiceParticipantRow` (`ChannelSidebar.tsx`) e o
+  badge do `Tile` (`VoiceChannelView.tsx`) mostravam só UM ícone por vez
+  (`deafened ? VolumeX : forceMuted ? MicOff : micMuted && MicOff`,
+  mutuamente exclusivo) — agora, quando `deafened`, renderiza `MicOff` +
+  `VolumeX` juntos, os dois vermelhos.
+- **Nota**: `forceMuted` é um atributo LiveKit preso à sessão/conexão
+  atual do participante — persiste até alguém explicitamente
+  "Desmutar membro" (ou o participante desconectar da call). Se um
+  ícone ficar vermelho sem explicação aparente, o mais provável é que
+  alguém (inclusive a própria pessoa, testando a moderação em si mesma)
+  se auto-mutou via o menu de moderação e nunca desfez.
 
 ## Realtime
 

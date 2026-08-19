@@ -363,21 +363,25 @@ function VoiceParticipantRow({
         <span className="truncate">{participant.name}</span>
       </span>
 
-      {deafened ? (
-        <VolumeX className="h-3.5 w-3.5 shrink-0 text-danger" aria-label="Surdo e mudo" />
-      ) : forceMuted ? (
-        <MicOff
-          className="h-3.5 w-3.5 shrink-0 text-danger"
-          aria-label="Mutado por um moderador"
-        />
-      ) : (
-        micMuted && (
+      <span className="flex shrink-0 items-center gap-1">
+        {deafened ? (
+          // Deafening also mutes the mic, and both badges show together —
+          // matches Discord's own voice-channel member list.
+          <>
+            <MicOff className="h-3.5 w-3.5 text-danger" aria-label="Microfone mudo" />
+            <VolumeX className="h-3.5 w-3.5 text-danger" aria-label="Surdo" />
+          </>
+        ) : forceMuted ? (
           <MicOff
-            className="h-3.5 w-3.5 shrink-0 text-muted"
-            aria-label="Microfone mudo"
+            className="h-3.5 w-3.5 text-danger"
+            aria-label="Mutado por um moderador"
           />
-        )
-      )}
+        ) : (
+          micMuted && (
+            <MicOff className="h-3.5 w-3.5 text-muted" aria-label="Microfone mudo" />
+          )
+        )}
+      </span>
 
       {menuPos && (
         <VoiceParticipantMenu
