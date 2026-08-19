@@ -33,7 +33,10 @@ function ConnectedBarContent({
 }) {
   const { leaveCall } = useCall();
   const cam = useTrackToggle({ source: Track.Source.Camera });
-  const screen = useTrackToggle({ source: Track.Source.ScreenShare });
+  const screen = useTrackToggle({
+    source: Track.Source.ScreenShare,
+    captureOptions: { audio: true },
+  });
 
   return (
     <div className="m-2 flex flex-col gap-2 rounded-xl border border-secondary/30 bg-secondary/10 p-3">

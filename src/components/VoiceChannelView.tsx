@@ -145,7 +145,10 @@ export function CallInterface({
   const otherItems = stageItems.filter((i) => i.key !== spotlightKey);
 
   const cam = useTrackToggle({ source: Track.Source.Camera });
-  const screen = useTrackToggle({ source: Track.Source.ScreenShare });
+  const screen = useTrackToggle({
+    source: Track.Source.ScreenShare,
+    captureOptions: { audio: true },
+  });
 
   const stageContent = spotlightItem ? (
     <div className="flex h-full flex-col gap-2">

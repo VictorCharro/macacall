@@ -134,6 +134,18 @@ export function ChatChannel({
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-6 py-4">
+        <div className="mb-4 flex flex-col items-start gap-2 border-b border-border-soft py-6">
+          <div className="mb-1 flex h-16 w-16 items-center justify-center rounded-full border border-secondary/30 bg-secondary/10 text-3xl">
+            <Hash className="h-8 w-8 text-secondary" />
+          </div>
+          <h2 className="text-2xl font-black text-accent">
+            Bem-vindo a #{channelName}!
+          </h2>
+          <p className="max-w-lg text-sm text-muted">
+            Esse é o começo do canal{" "}
+            <strong className="text-accent">#{channelName}</strong>.
+          </p>
+        </div>
         {messages.length === 0 ? (
           <p className="text-center text-sm text-muted">
             Ninguém falou nada por aqui ainda 🍌
