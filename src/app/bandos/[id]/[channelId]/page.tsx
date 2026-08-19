@@ -34,23 +34,6 @@ export default async function ChannelPage({
 
   const canPin = bando?.owner_id === user.id;
 
-  if (channel.type === "voice") {
-    return (
-      <VoiceChannelView
-        bandoId={id}
-        channelId={channel.id}
-        channelName={channel.name}
-      />
-    );
-  }
-
-  const { data: messages } = await supabase
-    .from("messages")
-    .select("id, content, created_at, user_id, reply_to_id, pinned")
-    .eq("channel_id", channelId)
-    .order("created_at")
-    .limit(100);
-
   const { data: bandoMembers } = await supabase
     .from("bando_members")
     .select("profiles(id, username, avatar_seed)")
@@ -71,6 +54,55 @@ export default async function ChannelPage({
         { username: profile.username, avatarSeed: profile.avatar_seed },
       ]),
   );
+
+  if (channel.type === "voice") {
+    // Discord docks a voice channel's video call above its own text chat --
+    // our voice channels don't carry a message thread of their own, so we
+    // reuse the bando's oldest ("primary") text channel underneath, same as
+    // every voice channel in a real server implicitly shares #geral.
+    const { data: primaryTextChannel } = await supabase
+      .from("channels")
+      .select("id, name")
+      .eq("bando_id", id)
+      .eq("type", "text")
+      .order("created_at")
+      .limit(1)
+      .maybeSingle();
+
+    let textChannel = null;
+    if (primaryTextChannel) {
+      const { data: messages } = await supabase
+        .from("messages")
+        .select("id, content, created_at, user_id, reply_to_id, pinned")
+        .eq("channel_id", primaryTextChannel.id)
+        .order("created_at")
+        .limit(100);
+
+      textChannel = {
+        id: primaryTextChannel.id,
+        name: primaryTextChannel.name,
+        initialMessages: messages ?? [],
+        members,
+        canPin,
+      };
+    }
+
+    return (
+      <VoiceChannelView
+        bandoId={id}
+        channelId={channel.id}
+        channelName={channel.name}
+        textChannel={textChannel}
+      />
+    );
+  }
+
+  const { data: messages } = await supabase
+    .from("messages")
+    .select("id, content, created_at, user_id, reply_to_id, pinned")
+    .eq("channel_id", channelId)
+    .order("created_at")
+    .limit(100);
 
   return (
     <ChatChannel

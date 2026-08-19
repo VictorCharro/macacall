@@ -23,64 +23,98 @@ import {
   PhoneOff,
   Maximize2,
   Minimize2,
+  Volume2,
 } from "lucide-react";
 import { useCall } from "@/components/CallProvider";
+import { ChatChannel } from "@/components/ChatChannel";
+
+type TextChannelData = {
+  id: string;
+  name: string;
+  initialMessages: {
+    id: string;
+    content: string;
+    created_at: string;
+    user_id: string;
+    reply_to_id: string | null;
+    pinned: boolean;
+  }[];
+  members: Record<string, { username: string; avatarSeed: string }>;
+  canPin: boolean;
+};
 
 export function VoiceChannelView({
   bandoId,
   channelId,
   channelName,
+  textChannel,
 }: {
   bandoId: string;
   channelId: string;
   channelName: string;
+  textChannel: TextChannelData | null;
 }) {
   const { activeCall, connected, error, joinCall } = useCall();
   const href = `/bandos/${bandoId}/${channelId}`;
 
   const isThisChannel = activeCall?.roomId === channelId;
 
-  if (isThisChannel && error) {
-    return (
-      <main className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
-        <p className="text-danger">{error}</p>
-        <button
-          onClick={() => joinCall(channelId, channelName, href)}
-          className="rounded-full border border-border px-4 py-2 font-semibold text-accent"
-        >
-          Tentar de novo
-        </button>
-      </main>
-    );
-  }
-
-  if (isThisChannel && !connected) {
-    return (
-      <main className="flex flex-1 flex-col items-center justify-center gap-3">
-        <span className="animate-bounce text-4xl">🐒</span>
-        <p className="text-muted">Balançando de galho em galho até a call...</p>
-      </main>
-    );
-  }
-
-  if (!isThisChannel) {
-    return (
-      <main className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
-        <span className="text-4xl">🌴</span>
-        <p className="text-accent">Pronto pra entrar em {channelName}</p>
-        <button
-          onClick={() => joinCall(channelId, channelName, href)}
-          className="rounded-full bg-secondary px-6 py-3 font-semibold text-secondary-foreground transition hover:brightness-95"
-        >
-          Entrar na call
-        </button>
-      </main>
-    );
-  }
-
   return (
     <div className="macacall-call flex min-h-0 flex-1 flex-col overflow-hidden">
-      <CallInterface channelName={channelName} />
+      {isThisChannel && error && (
+        <div className="flex items-center justify-between gap-3 border-b border-border-soft bg-card-3/60 px-6 py-3">
+          <p className="text-sm text-danger">{error}</p>
+          <button
+            onClick={() => joinCall(channelId, channelName, href)}
+            className="rounded-full border border-border px-4 py-1.5 text-sm font-semibold text-accent"
+          >
+            Tentar de novo
+          </button>
+        </div>
+      )}
+
+      {isThisChannel && !connected && !error && (
+        <div className="flex items-center gap-3 border-b border-border-soft bg-card-3/60 px-6 py-3">
+          <span className="animate-bounce text-xl">🐒</span>
+          <p className="text-sm text-muted">
+            Balançando de galho em galho até a call...
+          </p>
+        </div>
+      )}
+
+      {!isThisChannel && (
+        <div className="flex items-center justify-between gap-3 border-b border-border-soft bg-card-3/60 px-6 py-3">
+          <div className="flex items-center gap-2">
+            <Volume2 className="h-4 w-4 text-secondary" />
+            <p className="text-sm text-accent">
+              Pronto pra entrar em {channelName}
+            </p>
+          </div>
+          <button
+            onClick={() => joinCall(channelId, channelName, href)}
+            className="rounded-full bg-secondary px-4 py-1.5 text-sm font-semibold text-secondary-foreground transition hover:brightness-95"
+          >
+            Entrar na call
+          </button>
+        </div>
+      )}
+
+      {isThisChannel && connected && <CallInterface channelName={channelName} compact />}
+
+      {textChannel ? (
+        <ChatChannel
+          key={textChannel.id}
+          channelId={textChannel.id}
+          channelName={textChannel.name}
+          initialMessages={textChannel.initialMessages}
+          members={textChannel.members}
+          canPin={textChannel.canPin}
+        />
+      ) : (
+        <div className="flex flex-1 items-center justify-center text-sm text-muted">
+          Crie um canal de texto pra conversar por aqui também 🍌
+        </div>
+      )}
     </div>
   );
 }
@@ -388,7 +422,7 @@ function Tile({
           className={`h-full w-full ${size === "focus" ? "object-contain bg-black" : "object-cover"}`}
         />
       ) : (
-        <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 bg-card-2 px-2">
+        <div className="flex h-full w-full items-center justify-center bg-card-2 px-2">
           <div className="relative">
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-background text-2xl">
               🐵
@@ -397,9 +431,6 @@ function Tile({
               <span className="absolute inset-0 animate-ping rounded-full border-2 border-secondary opacity-60" />
             )}
           </div>
-          <span className="max-w-full truncate text-xs font-bold text-foreground">
-            {participant.name || participant.identity}
-          </span>
         </div>
       )}
 
