@@ -24,7 +24,7 @@ import {
   Radio,
   Grid,
   Volume2,
-  VolumeX,
+  HeadphoneOff,
 } from "lucide-react";
 import { useCall } from "@/components/CallProvider";
 import { ChatChannel } from "@/components/ChatChannel";
@@ -506,7 +506,7 @@ function Tile({
                 }`}
               />
               {participant.attributes?.deafened === "true" && (
-                <VolumeX
+                <HeadphoneOff
                   className={`h-3.5 w-3.5 shrink-0 ${
                     participant.attributes?.forceMuted === "true"
                       ? "text-danger"

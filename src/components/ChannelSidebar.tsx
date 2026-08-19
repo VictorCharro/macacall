@@ -7,7 +7,7 @@ import {
   Hash,
   Volume2,
   MicOff,
-  VolumeX,
+  HeadphoneOff,
   ChevronDown,
   ArrowRightLeft,
 } from "lucide-react";
@@ -375,7 +375,7 @@ function VoiceParticipantRow({
             return (
               <>
                 <MicOff className={`h-3.5 w-3.5 ${color}`} aria-label={label} />
-                <VolumeX className={`h-3.5 w-3.5 ${color}`} aria-label="Surdo" />
+                <HeadphoneOff className={`h-3.5 w-3.5 ${color}`} aria-label="Surdo" />
               </>
             );
           }

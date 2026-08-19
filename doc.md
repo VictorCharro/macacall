@@ -204,7 +204,11 @@ ações. Resumo:
   badge do `Tile` (`VoiceChannelView.tsx`) mostravam só UM ícone por vez
   (`deafened ? VolumeX : forceMuted ? MicOff : micMuted && MicOff`,
   mutuamente exclusivo) — agora, quando `deafened`, renderiza `MicOff` +
-  `VolumeX` juntos, ambos na cor determinada só por `forceMuted`.
+  `HeadphoneOff` juntos, ambos na cor determinada só por `forceMuted`.
+  O ícone de ensurdecido também trocou de `VolumeX` (alto-falante com X)
+  pra `HeadphoneOff` (fone com um traço cruzando), pra ficar visualmente
+  consistente com o `MicOff` do microfone em vez de duas linguagens
+  visuais diferentes pro mesmo tipo de estado "mudo".
 - **Nota**: `forceMuted` é um atributo LiveKit preso à sessão/conexão
   atual do participante — persiste até alguém explicitamente
   "Desmutar membro" (ou o participante desconectar da call). Se um

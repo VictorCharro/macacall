@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Mic, MicOff, Headphones, VolumeX, Settings } from "lucide-react";
+import { Mic, MicOff, Headphones, HeadphoneOff, Settings } from "lucide-react";
 import { useCall } from "@/components/CallProvider";
 import { usePresence } from "@/components/PresenceProvider";
 import { ProfilePopout } from "@/components/ProfilePopout";
@@ -97,7 +97,7 @@ export function UserPanel({
             : "text-muted hover:bg-card-2 hover:text-accent"
         }`}
       >
-        {deafened ? <VolumeX className="h-4 w-4" /> : <Headphones className="h-4 w-4" />}
+        {deafened ? <HeadphoneOff className="h-4 w-4" /> : <Headphones className="h-4 w-4" />}
       </button>
 
       <button
