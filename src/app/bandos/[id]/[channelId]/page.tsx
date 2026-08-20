@@ -12,7 +12,7 @@ async function loadThread(
 ) {
   const { data: messages } = await supabase
     .from("messages")
-    .select("id, content, created_at, user_id, reply_to_id, pinned")
+    .select("id, content, created_at, user_id, reply_to_id, pinned, edited_at")
     .eq("channel_id", channelId)
     .order("created_at")
     .limit(100);
@@ -26,6 +26,18 @@ async function loadThread(
     : { data: [] };
 
   return { messages: messages ?? [], reactions: reactions ?? [] };
+}
+
+/** MANAGE_MESSAGES bit -- keep in sync with src/lib/permissions.ts. */
+const MANAGE_MESSAGES = 8;
+
+async function canManageMessagesIn(supabase: SupabaseClient, userId: string, channelId: string) {
+  const { data } = await supabase.rpc("has_channel_permission", {
+    p_user_id: userId,
+    p_channel_id: channelId,
+    p_bit: MANAGE_MESSAGES,
+  });
+  return Boolean(data);
 }
 
 export default async function ChannelPage({
@@ -60,7 +72,7 @@ export default async function ChannelPage({
   if (!user) redirect("/login");
   if (!channel) notFound();
 
-  const canPin = bando?.owner_id === user.id;
+  const isOwner = bando?.owner_id === user.id;
 
   const members = Object.fromEntries(
     (bandoMembers ?? [])
@@ -94,10 +106,12 @@ export default async function ChannelPage({
 
     let textChannel = null;
     if (primaryTextChannel) {
-      const { messages, reactions } = await loadThread(
-        supabase,
-        primaryTextChannel.id,
-      );
+      const [{ messages, reactions }, canManageMessages] = await Promise.all([
+        loadThread(supabase, primaryTextChannel.id),
+        isOwner
+          ? Promise.resolve(true)
+          : canManageMessagesIn(supabase, user.id, primaryTextChannel.id),
+      ]);
 
       textChannel = {
         id: primaryTextChannel.id,
@@ -106,7 +120,7 @@ export default async function ChannelPage({
         initialMessages: messages,
         initialReactions: reactions,
         members,
-        canPin,
+        canManageMessages,
       };
     }
 
@@ -121,7 +135,10 @@ export default async function ChannelPage({
     );
   }
 
-  const { messages, reactions } = await loadThread(supabase, channelId);
+  const [{ messages, reactions }, canManageMessages] = await Promise.all([
+    loadThread(supabase, channelId),
+    isOwner ? Promise.resolve(true) : canManageMessagesIn(supabase, user.id, channelId),
+  ]);
 
   return (
     <ChatChannel
@@ -132,7 +149,7 @@ export default async function ChannelPage({
       initialMessages={messages}
       initialReactions={reactions}
       members={members}
-      canPin={canPin}
+      canManageMessages={canManageMessages}
       currentUserId={user.id}
     />
   );

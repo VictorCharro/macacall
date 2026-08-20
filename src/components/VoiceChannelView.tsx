@@ -45,7 +45,7 @@ type TextChannelData = {
   }[];
   initialReactions: RawReaction[];
   members: Record<string, { username: string; avatarSeed: string }>;
-  canPin: boolean;
+  canManageMessages: boolean;
 };
 
 export function VoiceChannelView({
@@ -117,7 +117,7 @@ export function VoiceChannelView({
           initialMessages={textChannel.initialMessages}
           initialReactions={textChannel.initialReactions}
           members={textChannel.members}
-          canPin={textChannel.canPin}
+          canManageMessages={textChannel.canManageMessages}
           currentUserId={currentUserId}
         />
       ) : (

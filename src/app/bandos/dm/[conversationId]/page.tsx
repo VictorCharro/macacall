@@ -47,7 +47,7 @@ export default async function DmPage({
       .eq("conversation_id", conversationId),
     supabase
       .from("dm_messages")
-      .select("id, content, created_at, user_id, pinned")
+      .select("id, content, created_at, user_id, pinned, edited_at")
       .eq("conversation_id", conversationId)
       .order("created_at")
       .limit(100),

@@ -5,6 +5,8 @@ import { Hash, Pin, Send, Search, Users, CornerDownRight, X } from "lucide-react
 import {
   sendMessage,
   togglePinMessage,
+  editMessage,
+  deleteMessage,
   type SendMessageState,
 } from "@/app/actions/messages";
 import { toggleReaction } from "@/app/actions/reactions";
@@ -25,6 +27,7 @@ type ChatMessage = {
   user_id: string;
   reply_to_id: string | null;
   pinned: boolean;
+  edited_at?: string | null;
 };
 
 const initialState: SendMessageState = {};
@@ -36,7 +39,7 @@ export function ChatChannel({
   initialMessages,
   initialReactions,
   members,
-  canPin,
+  canManageMessages,
   currentUserId,
   showMembersToggle = true,
 }: {
@@ -46,7 +49,7 @@ export function ChatChannel({
   initialMessages: ChatMessage[];
   initialReactions: RawReaction[];
   members: Record<string, Member>;
-  canPin: boolean;
+  canManageMessages: boolean;
   currentUserId: string;
   /** Hidden when the chat is docked under a voice call, which has no members panel. */
   showMembersToggle?: boolean;
@@ -54,6 +57,7 @@ export function ChatChannel({
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [reactions, setReactions] = useState<RawReaction[]>(initialReactions);
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [pinnedModalOpen, setPinnedModalOpen] = useState(false);
   const [search, setSearch] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -117,6 +121,19 @@ export function ChatChannel({
             setMessages((prev) =>
               prev.map((m) => (m.id === row.id ? { ...m, ...row } : m)),
             );
+          },
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "DELETE",
+            schema: "public",
+            table: "messages",
+            filter: `channel_id=eq.${channelId}`,
+          },
+          (payload) => {
+            const row = payload.old as { id: string };
+            setMessages((prev) => prev.filter((m) => m.id !== row.id));
           },
         )
         // message_reactions carries no channel_id, so this listens broadly and
@@ -325,11 +342,26 @@ export function ChatChannel({
                       aria-label="Mensagem fixada"
                     />
                   )}
+                  {message.edited_at && (
+                    <span className="text-[10px] text-muted">(editado)</span>
+                  )}
                 </div>
 
-                <div className="mt-0.5 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground">
-                  {message.content}
-                </div>
+                {editingId === message.id ? (
+                  <EditMessageForm
+                    initialContent={message.content}
+                    onCancel={() => setEditingId(null)}
+                    onSave={async (content) => {
+                      const res = await editMessage(message.id, content);
+                      if (!res.error) setEditingId(null);
+                      return res;
+                    }}
+                  />
+                ) : (
+                  <div className="mt-0.5 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground">
+                    {message.content}
+                  </div>
+                )}
 
                 <MessageReactions
                   reactions={reactionsByMessage.get(message.id) ?? []}
@@ -340,8 +372,12 @@ export function ChatChannel({
               <MessageActionsMenu
                 content={message.content}
                 pinned={message.pinned}
-                canPin={canPin}
+                canPin={canManageMessages}
+                canEdit={message.user_id === currentUserId}
+                canDelete={message.user_id === currentUserId || canManageMessages}
                 onTogglePin={() => togglePinMessage(message.id, !message.pinned)}
+                onEdit={() => setEditingId(message.id)}
+                onDelete={() => deleteMessage(message.id)}
                 onReply={() => {
                   setReplyingTo(message);
                   inputRef.current?.focus();
@@ -403,10 +439,75 @@ export function ChatChannel({
         <PinnedMessagesModal
           channelId={channelId}
           members={members}
-          canUnpin={canPin}
+          canUnpin={canManageMessages}
           onClose={() => setPinnedModalOpen(false)}
         />
       )}
+    </div>
+  );
+}
+
+/** Inline edit box that replaces a message's body -- Discord-style: Enter to
+ * save, Esc or Cancel to back out, autosized to the existing content. */
+export function EditMessageForm({
+  initialContent,
+  onSave,
+  onCancel,
+}: {
+  initialContent: string;
+  onSave: (content: string) => Promise<{ error?: string }>;
+  onCancel: () => void;
+}) {
+  const [value, setValue] = useState(initialContent);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.focus();
+    el.setSelectionRange(el.value.length, el.value.length);
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, []);
+
+  async function save() {
+    if (pending) return;
+    setPending(true);
+    const res = await onSave(value);
+    setPending(false);
+    if (res.error) setError(res.error);
+  }
+
+  return (
+    <div className="mt-0.5">
+      <textarea
+        ref={textareaRef}
+        value={value}
+        onChange={(e) => {
+          setValue(e.target.value);
+          e.target.style.height = "auto";
+          e.target.style.height = `${e.target.scrollHeight}px`;
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            save();
+          }
+          if (e.key === "Escape") {
+            e.preventDefault();
+            onCancel();
+          }
+        }}
+        maxLength={2000}
+        rows={1}
+        className="w-full resize-none rounded-lg border border-primary/60 bg-card-2 px-2.5 py-1.5 text-sm text-foreground outline-none"
+      />
+      <p className="mt-1 text-[11px] text-muted">
+        Enter pra salvar · Esc pra cancelar
+        {error && <span className="ml-2 text-danger">{error}</span>}
+      </p>
     </div>
   );
 }

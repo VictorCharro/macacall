@@ -6,12 +6,15 @@ import { Phone, Video, Pin, UserPlus, Globe, Send } from "lucide-react";
 import {
   sendDmMessage,
   toggleDmPinMessage,
+  editDmMessage,
+  deleteDmMessage,
   type SendDmState,
 } from "@/app/actions/dms";
 import { toggleDmReaction } from "@/app/actions/reactions";
 import { createRealtimeClient } from "@/lib/supabase/realtimeClient";
 import { useCall } from "@/components/CallProvider";
 import { CallInterface } from "@/components/VoiceChannelView";
+import { EditMessageForm } from "@/components/ChatChannel";
 import { MessageActionsMenu } from "@/components/MessageActionsMenu";
 import { MessageReactions } from "@/components/MessageReactions";
 import { DmPinnedMessagesModal } from "@/components/DmPinnedMessagesModal";
@@ -25,6 +28,7 @@ type DmMessage = {
   created_at: string;
   user_id: string;
   pinned: boolean;
+  edited_at?: string | null;
 };
 
 type Participant = { id: string; username: string; avatarSeed: string };
@@ -56,6 +60,7 @@ export function DmChat({
 }) {
   const [messages, setMessages] = useState<DmMessage[]>(initialMessages);
   const [reactions, setReactions] = useState<RawReaction[]>(initialReactions);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const [inputKey, setInputKey] = useState(0);
   const [pinnedOpen, setPinnedOpen] = useState(false);
@@ -140,6 +145,19 @@ export function DmChat({
             setMessages((prev) =>
               prev.map((m) => (m.id === row.id ? { ...m, ...row } : m)),
             );
+          },
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "DELETE",
+            schema: "public",
+            table: "dm_messages",
+            filter: `conversation_id=eq.${conversationId}`,
+          },
+          (payload) => {
+            const row = payload.old as { id: string };
+            setMessages((prev) => prev.filter((m) => m.id !== row.id));
           },
         )
         // dm_message_reactions has no conversation_id, so this listens broadly
@@ -297,10 +315,26 @@ export function DmChat({
                             {message.pinned && (
                               <Pin className="h-3.5 w-3.5 shrink-0 text-muted" aria-label="Mensagem fixada" />
                             )}
+                            {message.edited_at && (
+                              <span className="text-[10px] text-muted">(editado)</span>
+                            )}
                           </div>
-                          <p className="whitespace-pre-wrap break-words text-sm text-foreground">
-                            {message.content}
-                          </p>
+
+                          {editingId === message.id ? (
+                            <EditMessageForm
+                              initialContent={message.content}
+                              onCancel={() => setEditingId(null)}
+                              onSave={async (content) => {
+                                const res = await editDmMessage(message.id, content);
+                                if (!res.error) setEditingId(null);
+                                return res;
+                              }}
+                            />
+                          ) : (
+                            <p className="whitespace-pre-wrap break-words text-sm text-foreground">
+                              {message.content}
+                            </p>
+                          )}
 
                           <MessageReactions
                             reactions={reactionsByMessage.get(message.id) ?? []}
@@ -314,9 +348,13 @@ export function DmChat({
                           content={message.content}
                           pinned={message.pinned}
                           canPin
+                          canEdit={message.user_id === currentUserId}
+                          canDelete={message.user_id === currentUserId}
                           onTogglePin={() =>
                             toggleDmPinMessage(message.id, !message.pinned)
                           }
+                          onEdit={() => setEditingId(message.id)}
+                          onDelete={() => deleteDmMessage(message.id)}
                           onReact={(emoji) =>
                             toggleDmReaction(message.id, emoji)
                           }

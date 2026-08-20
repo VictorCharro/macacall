@@ -1,7 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { MoreHorizontal, Pin, PinOff, CornerDownRight, Copy } from "lucide-react";
+import {
+  MoreHorizontal,
+  Pin,
+  PinOff,
+  CornerDownRight,
+  Copy,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import { QUICK_REACTIONS } from "@/components/MessageReactions";
 
 /**
@@ -13,18 +21,27 @@ export function MessageActionsMenu({
   content,
   pinned,
   canPin,
+  canEdit = false,
+  canDelete = false,
   onTogglePin,
+  onEdit,
+  onDelete,
   onReply,
   onReact,
 }: {
   content: string;
   pinned: boolean;
   canPin: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
   onTogglePin: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
   onReply?: () => void;
   onReact?: (emoji: string) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -71,6 +88,18 @@ export function MessageActionsMenu({
         </button>
       )}
 
+      {canEdit && onEdit && (
+        <button
+          type="button"
+          onClick={onEdit}
+          title="Editar mensagem"
+          aria-label="Editar mensagem"
+          className="rounded p-1 text-muted transition hover:bg-card-2 hover:text-accent"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </button>
+      )}
+
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -107,6 +136,55 @@ export function MessageActionsMenu({
             <Copy className="h-4 w-4" />
             Copiar mensagem
           </button>
+          {canDelete && onDelete && (
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                setConfirmingDelete(true);
+              }}
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-sm text-danger transition hover:bg-danger/10"
+            >
+              <Trash2 className="h-4 w-4" />
+              Apagar mensagem
+            </button>
+          )}
+        </div>
+      )}
+
+      {confirmingDelete && onDelete && (
+        <div
+          className="fixed inset-0 z-50 flex animate-overlay-in items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          onClick={() => setConfirmingDelete(false)}
+        >
+          <div
+            className="w-80 animate-modal-in rounded-2xl border border-border bg-card-3 p-4 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-base font-bold text-accent">Apagar mensagem?</h3>
+            <p className="mt-1 text-sm text-muted">
+              Essa ação não pode ser desfeita.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmingDelete(false)}
+                className="rounded-full border border-border px-4 py-1.5 text-sm font-semibold text-muted transition hover:bg-card-2"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmingDelete(false);
+                  onDelete();
+                }}
+                className="rounded-full bg-danger px-4 py-1.5 text-sm font-semibold text-white transition hover:brightness-90"
+              >
+                Apagar
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

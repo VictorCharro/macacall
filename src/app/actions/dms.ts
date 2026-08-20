@@ -258,3 +258,49 @@ export async function toggleDmPinMessage(
   if (error) return { error: error.message };
   return {};
 }
+
+export async function editDmMessage(
+  messageId: string,
+  content: string,
+): Promise<{ error?: string }> {
+  const trimmed = content.trim();
+  if (!trimmed) return { error: "Mensagem não pode ficar vazia" };
+  if (trimmed.length > 2000) {
+    return { error: "Mensagem muito longa (máximo 2000 caracteres)" };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const { error } = await supabase
+    .from("dm_messages")
+    .update({ content: trimmed, edited_at: new Date().toISOString() })
+    .eq("id", messageId)
+    .eq("user_id", user.id);
+
+  if (error) return { error: error.message };
+  return {};
+}
+
+export async function deleteDmMessage(
+  messageId: string,
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const { error } = await supabase
+    .from("dm_messages")
+    .delete()
+    .eq("id", messageId);
+
+  if (error) return { error: error.message };
+  return {};
+}
