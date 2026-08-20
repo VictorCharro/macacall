@@ -49,6 +49,19 @@ body {
   font-family: var(--font-fredoka), Arial, Helvetica, sans-serif;
 }
 
+/* Browsers only give <a> a pointer cursor by default -- <button> stays
+   "default", which is why so much of the UI read as "not clickable".
+   Applies to every button/role=button/label-for-checkbox in the app. */
+button:not(:disabled),
+[role="button"],
+label:has(input[type="checkbox"]),
+label:has(input[type="radio"]) {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+
 /* Discord-style scrollbar: thin, invisible until the panel is hovered. */
 .scroll-hover {
   scrollbar-width: thin;
