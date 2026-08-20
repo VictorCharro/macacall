@@ -334,6 +334,16 @@ ações. Resumo:
    policy de SELECT só libera quem já é participante de algo que está sendo
    criado na mesma query, o próprio criador não consegue ver a linha que
    acabou de criar. (Aconteceu com `dm_conversations`.)
+7. **Coluna homônima "engole" a correlação num subquery de policy**: numa
+   `with check`/`using` que faz subquery contra outra tabela, uma coluna
+   sem prefixo (ex. `name`) resolve pro escopo mais interno primeiro. Se a
+   tabela de fora (`storage.objects`) e a de dentro (`channels`) têm as
+   duas uma coluna `name`, `storage.foldername(name)` dentro do subquery
+   silenciosamente vira `channels.name`, não `objects.name` -- sem erro
+   nenhum, só nunca dá match (`is_bando_member(null)` = false, insert
+   negado). Sempre qualificar a coluna da tabela de fora explicitamente
+   (`objects.name`) dentro de qualquer subquery correlacionado numa
+   policy. Aconteceu na policy de upload de `message_attachments`.
 
 ## Onde encontrar cada coisa
 
