@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCachedUser } from "@/lib/supabase/server";
 import { FriendsHome } from "@/components/FriendsHome";
 import { buildDmSidebarEntries } from "@/lib/dm-helpers";
 import type { PresenceStatus, Profile } from "@/lib/types";
@@ -10,24 +10,27 @@ export default async function BandosPage() {
   const supabase = await createClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await getCachedUser();
 
   if (!user) redirect("/login");
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("id, username, avatar_seed, status")
-    .eq("id", user.id)
-    .maybeSingle();
+  const [{ data: profile }, { data: friendships }, { data: dmRows }] =
+    await Promise.all([
+      supabase
+        .from("profiles")
+        .select("id, username, avatar_seed, status")
+        .eq("id", user.id)
+        .maybeSingle(),
+      supabase
+        .from("friendships")
+        .select(
+          "id, requester_id, addressee_id, status, requester:profiles!friendships_requester_id_fkey(id, username, avatar_seed, status), addressee:profiles!friendships_addressee_id_fkey(id, username, avatar_seed, status)",
+        )
+        .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`),
+      supabase.from("dm_participants").select("conversation_id").eq("user_id", user.id),
+    ]);
 
   if (!profile) redirect("/onboarding");
-
-  const { data: friendships } = await supabase
-    .from("friendships")
-    .select(
-      "id, requester_id, addressee_id, status, requester:profiles!friendships_requester_id_fkey(id, username, avatar_seed, status), addressee:profiles!friendships_addressee_id_fkey(id, username, avatar_seed, status)",
-    )
-    .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`);
 
   const friends: { friendshipId: string; profile: ProfileRow }[] = [];
   const incoming: { friendshipId: string; profile: ProfileRow }[] = [];
@@ -48,11 +51,6 @@ export default async function BandosPage() {
       incoming.push({ friendshipId: f.id, profile: other });
     }
   }
-
-  const { data: dmRows } = await supabase
-    .from("dm_participants")
-    .select("conversation_id")
-    .eq("user_id", user.id);
 
   const dmEntries = await buildDmSidebarEntries(supabase, user.id, dmRows ?? []);
 

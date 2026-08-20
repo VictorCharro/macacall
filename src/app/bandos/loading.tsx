@@ -1,0 +1,28 @@
+/**
+ * Shown instantly by Next.js while BandosPage (Amigos/DMs) is still
+ * fetching — same idea as bandos/[id]/loading.tsx, but for the Friends
+ * home screen, which sits directly under this segment instead of [id].
+ */
+export default function BandosLoading() {
+  return (
+    <div className="flex min-h-0 flex-1 overflow-hidden">
+      <nav className="flex w-72 shrink-0 flex-col gap-4 border-r border-border-soft bg-card p-3">
+        <div className="h-6 w-24 animate-pulse rounded bg-card-2" />
+        <div className="flex flex-col gap-1.5">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <div className="h-8 w-8 shrink-0 animate-pulse rounded-full bg-card-2" />
+              <div className="h-3 w-28 animate-pulse rounded bg-card-2" />
+            </div>
+          ))}
+        </div>
+      </nav>
+
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="flex h-12 shrink-0 items-center border-b border-border-soft px-4">
+          <div className="h-4 w-32 animate-pulse rounded bg-card-2" />
+        </div>
+      </div>
+    </div>
+  );
+}

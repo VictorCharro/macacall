@@ -83,6 +83,18 @@ busca cargos/permissões do usuário atual pra esse bando.
   a página do canal, por exemplo, buscava canal → bando → membros um atrás
   do outro sem motivo, sendo que nenhum dos três depende do resultado dos
   outros.
+- **Mesmo tratamento no lado "Amigos/DMs"** (rota irmã de `[id]`, não
+  coberta pelo `loading.tsx` dele): `bandos/layout.tsx` (rail de
+  servidores, layout raiz de tudo dentro de `/bandos`),
+  `bandos/page.tsx` (home "Amigos") e `bandos/dm/[conversationId]/page.tsx`
+  (uma conversa) ganharam `getCachedUser()` + `Promise.all` nas queries
+  independentes, e dois `loading.tsx` novos (`bandos/loading.tsx` pra home
+  de Amigos, `bandos/dm/[conversationId]/loading.tsx` pra uma DM aberta).
+  `bandos/dm/[conversationId]/page.tsx` era o pior caso: 8 queries **todas
+  em série**, nenhuma dependendo da anterior (só de `user.id`/
+  `conversationId`, ambos já conhecidos de cara) — só `reactions`
+  (depende de `messageIds`, que só existe depois de `messages` voltar) e
+  `dmEntries` (depende de `dmRows`) realmente precisam esperar algo.
 
 ## Autenticação
 

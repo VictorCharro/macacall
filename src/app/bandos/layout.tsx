@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCachedUser } from "@/lib/supabase/server";
 import { ServerRail } from "@/components/ServerRail";
 import { CallProvider } from "@/components/CallProvider";
 import { PresenceProvider } from "@/components/PresenceProvider";
@@ -13,14 +13,17 @@ export default async function BandosLayout({
   const supabase = await createClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await getCachedUser();
 
   if (!user) redirect("/login");
 
-  const { data: memberships } = await supabase
-    .from("bando_members")
-    .select("bandos(id, name, owner_id, photo_url)")
-    .eq("user_id", user.id);
+  const [{ data: memberships }, { data: ownProfile }] = await Promise.all([
+    supabase
+      .from("bando_members")
+      .select("bandos(id, name, owner_id, photo_url)")
+      .eq("user_id", user.id),
+    supabase.from("profiles").select("status").eq("id", user.id).maybeSingle(),
+  ]);
 
   const bandos = (memberships ?? [])
     .map(
@@ -33,12 +36,6 @@ export default async function BandosLayout({
         },
     )
     .filter(Boolean);
-
-  const { data: ownProfile } = await supabase
-    .from("profiles")
-    .select("status")
-    .eq("id", user.id)
-    .maybeSingle();
 
   return (
     <PresenceProvider
