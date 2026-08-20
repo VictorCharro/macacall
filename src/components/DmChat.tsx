@@ -17,10 +17,19 @@ import { CallInterface } from "@/components/VoiceChannelView";
 import { EditMessageForm } from "@/components/ChatChannel";
 import { MessageActionsMenu } from "@/components/MessageActionsMenu";
 import { MessageReactions } from "@/components/MessageReactions";
+import { MentionPopup } from "@/components/MentionPopup";
+import { MentionText } from "@/components/MentionText";
 import { DmPinnedMessagesModal } from "@/components/DmPinnedMessagesModal";
 import { AddDmParticipantModal } from "@/components/AddDmParticipantModal";
 import { DmProfilePanel } from "@/components/DmProfilePanel";
 import { summarizeReactions, type RawReaction } from "@/lib/reactions";
+import {
+  findMentionTrigger,
+  applyMention,
+  mentionsUser,
+  renderMentionSegments,
+  type Mentionable,
+} from "@/lib/mentions";
 
 type DmMessage = {
   id: string;
@@ -62,6 +71,7 @@ export function DmChat({
   const [reactions, setReactions] = useState<RawReaction[]>(initialReactions);
   const [editingId, setEditingId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [inputKey, setInputKey] = useState(0);
   const [pinnedOpen, setPinnedOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
@@ -89,6 +99,65 @@ export function DmChat({
     [currentUserId, { username: "Você", avatarSeed: currentAvatarSeed }],
   ]);
 
+  // Only other participants -- mentioning yourself in a DM does nothing.
+  const mentionables: Mentionable[] = useMemo(
+    () => participants.map((p) => ({ key: p.id, label: p.username, kind: "user" as const })),
+    [participants],
+  );
+
+  const [mentionTrigger, setMentionTrigger] = useState<{
+    start: number;
+    query: string;
+  } | null>(null);
+  const [mentionActiveIndex, setMentionActiveIndex] = useState(0);
+  const mentionSuggestions = mentionTrigger
+    ? mentionables
+        .filter((m) => m.label.toLowerCase().startsWith(mentionTrigger.query.toLowerCase()))
+        .slice(0, 8)
+    : [];
+
+  function selectMention(m: Mentionable) {
+    const input = inputRef.current;
+    if (!input || !mentionTrigger) return;
+    const cursor = input.selectionStart ?? input.value.length;
+    const { value, cursor: nextCursor } = applyMention(
+      input.value,
+      mentionTrigger.start,
+      cursor,
+      m.label,
+    );
+    input.value = value;
+    input.setSelectionRange(nextCursor, nextCursor);
+    input.focus();
+    setMentionTrigger(null);
+  }
+
+  function handleComposerInput(e: React.FormEvent<HTMLInputElement>) {
+    const input = e.currentTarget;
+    const cursor = input.selectionStart ?? input.value.length;
+    setMentionTrigger(findMentionTrigger(input.value, cursor));
+    setMentionActiveIndex(0);
+  }
+
+  function handleComposerKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (!mentionTrigger || mentionSuggestions.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setMentionActiveIndex((i) => (i + 1) % mentionSuggestions.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setMentionActiveIndex(
+        (i) => (i - 1 + mentionSuggestions.length) % mentionSuggestions.length,
+      );
+    } else if (e.key === "Enter" || e.key === "Tab") {
+      e.preventDefault();
+      selectMention(mentionSuggestions[mentionActiveIndex]);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      setMentionTrigger(null);
+    }
+  }
+
   const sendMessageWithConversation = sendDmMessage.bind(null, conversationId);
   const [state, formAction] = useActionState(
     sendMessageWithConversation,
@@ -99,6 +168,7 @@ export function DmChat({
   if (state !== handledState) {
     setHandledState(state);
     setInputKey((k) => k + 1);
+    setMentionTrigger(null);
     if (state.message) {
       const sent = state.message;
       setMessages((prev) =>
@@ -291,10 +361,19 @@ export function DmChat({
                 <ul className="flex flex-col gap-3">
                   {messages.map((message) => {
                     const member = members[message.user_id];
+                    const mentionsMe =
+                      message.user_id !== currentUserId &&
+                      mentionsUser(
+                        renderMentionSegments(message.content, mentionables),
+                        currentUserId,
+                        [],
+                      );
                     return (
                       <li
                         key={message.id}
-                        className="group relative -mx-2 flex items-start gap-3 rounded-lg px-2 py-1 hover:bg-card-2/60"
+                        className={`group relative -mx-2 flex items-start gap-3 rounded-lg px-2 py-1 hover:bg-card-2/60 ${
+                          mentionsMe ? "bg-primary/10 hover:bg-primary/15" : ""
+                        }`}
                       >
                         <img
                           src={`https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(member?.avatarSeed ?? message.user_id)}`}
@@ -332,7 +411,11 @@ export function DmChat({
                             />
                           ) : (
                             <p className="whitespace-pre-wrap break-words text-sm text-foreground">
-                              {message.content}
+                              <MentionText
+                                content={message.content}
+                                mentionables={mentionables}
+                                isMentioningMe={(m) => m.key === currentUserId}
+                              />
                             </p>
                           )}
 
@@ -367,14 +450,22 @@ export function DmChat({
               <div ref={bottomRef} />
         </div>
 
-        <form action={formAction} key={inputKey} className="p-4 pt-1">
+        <form action={formAction} key={inputKey} className="relative p-4 pt-1">
+          <MentionPopup
+            suggestions={mentionSuggestions}
+            activeIndex={mentionActiveIndex}
+            onSelect={selectMention}
+          />
           <div className="flex items-center gap-3 rounded-xl border border-border-soft bg-card-2 px-4 py-2.5 shadow-inner transition focus-within:border-primary/70">
             <input
+              ref={inputRef}
               type="text"
               name="content"
               maxLength={2000}
               placeholder={`Conversar com ${displayName}`}
               autoComplete="off"
+              onInput={handleComposerInput}
+              onKeyDown={handleComposerKeyDown}
               className="flex-1 bg-transparent text-sm text-foreground placeholder-muted outline-none"
             />
             <button

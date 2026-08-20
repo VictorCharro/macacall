@@ -14,10 +14,19 @@ import { markChannelRead } from "@/app/actions/reads";
 import { createRealtimeClient } from "@/lib/supabase/realtimeClient";
 import { MessageActionsMenu } from "@/components/MessageActionsMenu";
 import { MessageReactions } from "@/components/MessageReactions";
+import { MentionPopup } from "@/components/MentionPopup";
+import { MentionText } from "@/components/MentionText";
 import { PinnedMessagesModal } from "@/components/PinnedMessagesModal";
 import { useMembersPanel } from "@/components/MembersPanelProvider";
 import { useBandoRoles } from "@/components/BandoRolesProvider";
 import { summarizeReactions, type RawReaction } from "@/lib/reactions";
+import {
+  findMentionTrigger,
+  applyMention,
+  mentionsUser,
+  renderMentionSegments,
+  type Mentionable,
+} from "@/lib/mentions";
 
 type Member = { username: string; avatarSeed: string };
 type ChatMessage = {
@@ -64,7 +73,90 @@ export function ChatChannel({
   const inputRef = useRef<HTMLInputElement>(null);
   const [inputKey, setInputKey] = useState(0);
   const { membersOpen, toggleMembers } = useMembersPanel();
-  const { roleColorByUserId } = useBandoRoles();
+  const { roleColorByUserId, mentionableRoles, canMentionEveryone, myRoleIds } =
+    useBandoRoles();
+
+  const userMentionables: Mentionable[] = useMemo(
+    () =>
+      Object.entries(members).map(([userId, m]) => ({
+        key: userId,
+        label: m.username,
+        kind: "user" as const,
+      })),
+    [members],
+  );
+  const everyoneMentionable: Mentionable = {
+    key: "everyone",
+    label: "everyone",
+    kind: "everyone",
+  };
+  // Rendering recognizes every possible mention regardless of who's allowed
+  // to type one -- only the *composer's suggestion list* is gated.
+  const allMentionables: Mentionable[] = useMemo(
+    () => [...userMentionables, ...mentionableRoles, everyoneMentionable],
+    [userMentionables, mentionableRoles],
+  );
+  const mentionables: Mentionable[] = useMemo(
+    () =>
+      canMentionEveryone
+        ? [...userMentionables, ...mentionableRoles, everyoneMentionable]
+        : userMentionables,
+    [userMentionables, mentionableRoles, canMentionEveryone],
+  );
+
+  const [mentionTrigger, setMentionTrigger] = useState<{
+    start: number;
+    query: string;
+  } | null>(null);
+  const [mentionActiveIndex, setMentionActiveIndex] = useState(0);
+  const mentionSuggestions = mentionTrigger
+    ? mentionables
+        .filter((m) => m.label.toLowerCase().startsWith(mentionTrigger.query.toLowerCase()))
+        .slice(0, 8)
+    : [];
+
+  function selectMention(m: Mentionable) {
+    const input = inputRef.current;
+    if (!input || !mentionTrigger) return;
+    const cursor = input.selectionStart ?? input.value.length;
+    const { value, cursor: nextCursor } = applyMention(
+      input.value,
+      mentionTrigger.start,
+      cursor,
+      m.label,
+    );
+    input.value = value;
+    input.setSelectionRange(nextCursor, nextCursor);
+    input.focus();
+    setMentionTrigger(null);
+  }
+
+  function handleComposerInput(e: React.FormEvent<HTMLInputElement>) {
+    const input = e.currentTarget;
+    const cursor = input.selectionStart ?? input.value.length;
+    const trigger = findMentionTrigger(input.value, cursor);
+    setMentionTrigger(trigger);
+    setMentionActiveIndex(0);
+  }
+
+  function handleComposerKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (!mentionTrigger || mentionSuggestions.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setMentionActiveIndex((i) => (i + 1) % mentionSuggestions.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setMentionActiveIndex(
+        (i) => (i - 1 + mentionSuggestions.length) % mentionSuggestions.length,
+      );
+    } else if (e.key === "Enter" || e.key === "Tab") {
+      e.preventDefault();
+      selectMention(mentionSuggestions[mentionActiveIndex]);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      setMentionTrigger(null);
+    }
+  }
 
   const sendMessageWithChannel = sendMessage.bind(null, channelId);
   const [state, formAction] = useActionState(
@@ -77,6 +169,7 @@ export function ChatChannel({
     setHandledState(state);
     setInputKey((k) => k + 1);
     setReplyingTo(null);
+    setMentionTrigger(null);
     if (state.message) {
       const sent = state.message;
       setMessages((prev) =>
@@ -292,11 +385,20 @@ export function ChatChannel({
             ? messages.find((m) => m.id === message.reply_to_id)
             : null;
           const repliedMember = repliedTo ? members[repliedTo.user_id] : null;
+          const mentionsMe =
+            message.user_id !== currentUserId &&
+            mentionsUser(
+              renderMentionSegments(message.content, allMentionables),
+              currentUserId,
+              myRoleIds,
+            );
 
           return (
             <div
               key={message.id}
-              className="group relative -mx-4 flex gap-3.5 rounded px-4 py-1.5 transition-colors hover:bg-card-2/80"
+              className={`group relative -mx-4 flex gap-3.5 rounded px-4 py-1.5 transition-colors hover:bg-card-2/80 ${
+                mentionsMe ? "bg-primary/10 hover:bg-primary/15" : ""
+              }`}
             >
               {message.reply_to_id && (
                 <div className="absolute -top-3 left-12 flex items-center gap-1.5 text-[11px] text-muted">
@@ -359,7 +461,15 @@ export function ChatChannel({
                   />
                 ) : (
                   <div className="mt-0.5 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground">
-                    {message.content}
+                    <MentionText
+                      content={message.content}
+                      mentionables={allMentionables}
+                      isMentioningMe={(m) =>
+                        m.kind === "everyone" ||
+                        (m.kind === "user" && m.key === currentUserId) ||
+                        (m.kind === "role" && myRoleIds.includes(m.key))
+                      }
+                    />
                   </div>
                 )}
 
@@ -412,8 +522,13 @@ export function ChatChannel({
         </div>
       )}
 
-      <form action={formAction} key={inputKey} className="shrink-0 p-4 pt-1">
+      <form action={formAction} key={inputKey} className="relative shrink-0 p-4 pt-1">
         <input type="hidden" name="replyToId" value={replyingTo?.id ?? ""} />
+        <MentionPopup
+          suggestions={mentionSuggestions}
+          activeIndex={mentionActiveIndex}
+          onSelect={selectMention}
+        />
         <div className="flex items-center gap-3 rounded-xl border border-border bg-card-2 px-4 py-2.5 shadow-inner transition focus-within:border-primary/80">
           <input
             ref={inputRef}
@@ -422,6 +537,8 @@ export function ChatChannel({
             maxLength={2000}
             placeholder={`Conversar em #${channelName}`}
             autoComplete="off"
+            onInput={handleComposerInput}
+            onKeyDown={handleComposerKeyDown}
             className="flex-1 bg-transparent text-sm text-foreground placeholder-muted outline-none"
           />
           <button

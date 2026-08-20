@@ -6,6 +6,8 @@ import { MembersSidebar } from "@/components/MembersSidebar";
 import { BandoParticipantsProvider } from "@/components/BandoParticipants";
 import { MembersPanelProvider } from "@/components/MembersPanelProvider";
 import { BandoRolesProvider } from "@/components/BandoRolesProvider";
+import { hasPermission } from "@/lib/permissions";
+import type { Mentionable } from "@/lib/mentions";
 import type { Profile, Role } from "@/lib/types";
 
 export default async function BandoLayout({
@@ -161,9 +163,20 @@ export default async function BandoLayout({
   const myPermissions = isOwner ? 0 : Number(myPermissionsRaw ?? 0);
   const myHighestPosition = self?.highestRolePosition ?? 0;
 
+  const mentionableRoles: Mentionable[] = allRoles
+    .filter((r) => !r.is_default)
+    .map((r) => ({ key: r.id, label: r.name, kind: "role" as const }));
+  const canMentionEveryone = isOwner || hasPermission(myPermissions, "MENTION_EVERYONE");
+  const myRoleIds = roleIdsByUser.get(user.id) ?? [];
+
   return (
     <BandoParticipantsProvider bandoId={id}>
-      <BandoRolesProvider roleColorByUserId={roleColorByUserId}>
+      <BandoRolesProvider
+        roleColorByUserId={roleColorByUserId}
+        mentionableRoles={mentionableRoles}
+        canMentionEveryone={canMentionEveryone}
+        myRoleIds={myRoleIds}
+      >
       <MembersPanelProvider>
         <div className="flex min-h-0 flex-1 overflow-hidden">
           <ChannelSidebar
