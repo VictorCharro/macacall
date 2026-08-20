@@ -14,11 +14,26 @@ import {
   RoomAudioRenderer,
   useLocalParticipant,
   useRemoteParticipants,
+  useRoomContext,
 } from "@livekit/components-react";
-import { ParticipantEvent, Track } from "livekit-client";
+import { ParticipantEvent, Track, type Room } from "livekit-client";
 import "@livekit/components-styles";
 
 type ActiveCall = { roomId: string; roomName: string; href: string };
+
+export type DeviceKind = "audioinput" | "videoinput" | "audiooutput";
+export type DevicePreferences = Partial<Record<DeviceKind, string>>;
+
+const DEVICE_PREFS_KEY = "macacall-device-prefs";
+
+function loadDevicePreferences(): DevicePreferences {
+  if (typeof window === "undefined") return {};
+  try {
+    return JSON.parse(localStorage.getItem(DEVICE_PREFS_KEY) ?? "{}");
+  } catch {
+    return {};
+  }
+}
 
 type CallContextValue = {
   activeCall: ActiveCall | null;
@@ -39,6 +54,9 @@ type CallContextValue = {
   leaveCall: () => void;
   toggleMic: () => void;
   toggleDeafen: () => void;
+  devicePreferences: DevicePreferences;
+  /** Persists the choice and, if a call is active, hot-swaps the live track. */
+  setDevicePreference: (kind: DeviceKind, deviceId: string) => void;
 };
 
 const CallContext = createContext<CallContextValue | null>(null);
@@ -62,6 +80,19 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   const [deafened, setDeafened] = useState(false);
   const [forceMuted, setForceMuted] = useState(false);
   const [forceDeafened, setForceDeafened] = useState(false);
+  const [devicePreferences, setDevicePreferences] = useState<DevicePreferences>(
+    loadDevicePreferences,
+  );
+  const roomRef = useRef<Room | null>(null);
+
+  const setDevicePreference = useCallback((kind: DeviceKind, deviceId: string) => {
+    setDevicePreferences((prev) => {
+      const next = { ...prev, [kind]: deviceId };
+      localStorage.setItem(DEVICE_PREFS_KEY, JSON.stringify(next));
+      return next;
+    });
+    roomRef.current?.switchActiveDevice(kind, deviceId).catch(() => {});
+  }, []);
 
   const toggleMic = useCallback(() => {
     // A moderator mute can only be lifted by the moderator (or by leaving and
@@ -150,6 +181,8 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       leaveCall,
       toggleMic,
       toggleDeafen,
+      devicePreferences,
+      setDevicePreference,
     }),
     [
       activeCall,
@@ -163,6 +196,8 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       leaveCall,
       toggleMic,
       toggleDeafen,
+      devicePreferences,
+      setDevicePreference,
     ],
   );
 
@@ -173,12 +208,25 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
           token={tokenInfo!.token}
           serverUrl={tokenInfo!.serverUrl}
           connect
-          audio={micEnabled}
-          video={camOnJoin}
+          audio={
+            !micEnabled
+              ? false
+              : devicePreferences.audioinput
+                ? { deviceId: devicePreferences.audioinput }
+                : true
+          }
+          video={
+            !camOnJoin
+              ? false
+              : devicePreferences.videoinput
+                ? { deviceId: devicePreferences.videoinput }
+                : true
+          }
           style={{ display: "contents" }}
           onDisconnected={leaveCall}
         >
           <RoomAudioRenderer />
+          <CallRoomRef roomRef={roomRef} />
           <CallDeviceSync
             micEnabled={micEnabled}
             deafened={deafened}
@@ -313,6 +361,25 @@ function CallDeviceSync({
       .setAttributes({ deafened: deafened ? "true" : "false" })
       .catch(() => {});
   }, [localParticipant, deafened]);
+
+  return null;
+}
+
+/** Stashes the connected Room instance in a ref so setDevicePreference (which
+ * lives outside the LiveKitRoom subtree) can hot-swap devices mid-call, and
+ * applies the saved speaker preference once on connect -- there's no
+ * join-time prop for audio output like there is for audio/video input. */
+function CallRoomRef({ roomRef }: { roomRef: React.MutableRefObject<Room | null> }) {
+  const room = useRoomContext();
+
+  useEffect(() => {
+    roomRef.current = room;
+    const speakerId = loadDevicePreferences().audiooutput;
+    if (speakerId) room.switchActiveDevice("audiooutput", speakerId).catch(() => {});
+    return () => {
+      roomRef.current = null;
+    };
+  }, [room, roomRef]);
 
   return null;
 }

@@ -6,6 +6,7 @@ import { useCall } from "@/components/CallProvider";
 import { usePresence } from "@/components/PresenceProvider";
 import { ProfilePopout } from "@/components/ProfilePopout";
 import { PushNotificationToggle } from "@/components/PushNotificationToggle";
+import { VoiceSettingsModal } from "@/components/VoiceSettingsModal";
 import { STATUS_META } from "@/lib/presence";
 
 export function UserPanel({
@@ -26,6 +27,7 @@ export function UserPanel({
   } = useCall();
   const { myStatus } = usePresence();
   const [profileOpen, setProfileOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   return (
     <div className="flex items-center gap-1.5 border-t border-border-soft bg-card-3 px-2 py-2">
@@ -125,12 +127,15 @@ export function UserPanel({
 
       <button
         type="button"
-        title="Configurações (em breve)"
-        aria-label="Configurações"
+        onClick={() => setSettingsOpen(true)}
+        title="Configurações de voz e vídeo"
+        aria-label="Configurações de voz e vídeo"
         className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted transition hover:bg-card-2 hover:text-accent"
       >
         <Settings className="h-4 w-4" />
       </button>
+
+      {settingsOpen && <VoiceSettingsModal onClose={() => setSettingsOpen(false)} />}
     </div>
   );
 }
