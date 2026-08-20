@@ -27,3 +27,24 @@ export async function markChannelRead(channelId: string) {
 
   return error ? { error: error.message } : {};
 }
+
+/** Same idea as markChannelRead, but for a DM/group conversation. */
+export async function markDmRead(conversationId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return {};
+
+  const { error } = await supabase.from("dm_reads").upsert(
+    {
+      user_id: user.id,
+      conversation_id: conversationId,
+      last_read_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id,conversation_id" },
+  );
+
+  return error ? { error: error.message } : {};
+}

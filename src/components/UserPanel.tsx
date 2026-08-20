@@ -5,6 +5,7 @@ import { Mic, MicOff, Headphones, HeadphoneOff, Settings } from "lucide-react";
 import { useCall } from "@/components/CallProvider";
 import { usePresence } from "@/components/PresenceProvider";
 import { ProfilePopout } from "@/components/ProfilePopout";
+import { PushNotificationToggle } from "@/components/PushNotificationToggle";
 import { STATUS_META } from "@/lib/presence";
 
 export function UserPanel({
@@ -119,6 +120,8 @@ export function UserPanel({
       >
         {deafened ? <HeadphoneOff className="h-4 w-4" /> : <Headphones className="h-4 w-4" />}
       </button>
+
+      <PushNotificationToggle />
 
       <button
         type="button"

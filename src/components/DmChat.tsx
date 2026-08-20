@@ -11,6 +11,7 @@ import {
   type SendDmState,
 } from "@/app/actions/dms";
 import { toggleDmReaction } from "@/app/actions/reactions";
+import { markDmRead } from "@/app/actions/reads";
 import { createRealtimeClient } from "@/lib/supabase/realtimeClient";
 import { useCall } from "@/components/CallProvider";
 import { CallInterface } from "@/components/VoiceChannelView";
@@ -305,6 +306,10 @@ export function DmChat({
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    markDmRead(conversationId);
+  }, [conversationId, messages.length]);
 
   const reactionsByMessage = useMemo(
     () => summarizeReactions(reactions, currentUserId),

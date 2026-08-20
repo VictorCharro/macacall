@@ -16,6 +16,7 @@ type DmEntry = {
   username: string;
   avatarSeed: string;
   isGroup?: boolean;
+  unread?: number;
 };
 
 export function FriendsSidebar({
@@ -108,7 +109,16 @@ function DmListItem({ dm, active }: { dm: DmEntry; active: boolean }) {
             aria-hidden="true"
           />
         </div>
-        <span className="truncate">{dm.username}</span>
+        <span
+          className={`min-w-0 flex-1 truncate ${!active && dm.unread ? "font-bold text-foreground" : ""}`}
+        >
+          {dm.username}
+        </span>
+        {!active && !!dm.unread && (
+          <span className="shrink-0 rounded-full bg-primary px-1.5 text-[10px] font-black text-primary-foreground">
+            {dm.unread > 99 ? "99+" : dm.unread}
+          </span>
+        )}
       </Link>
 
       {menu.pos && (

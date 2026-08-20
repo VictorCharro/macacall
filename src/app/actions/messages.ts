@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { BandoActionState } from "@/app/actions/bandos";
 import { collectAttachmentFiles, uploadAttachments } from "@/lib/attachments";
+import { sendPushToUser } from "@/lib/push";
+import { renderMentionSegments, type Mentionable } from "@/lib/mentions";
 
 export type SendMessageState = BandoActionState & {
   message?: {
@@ -57,6 +59,10 @@ export async function sendMessage(
 
   if (error || !data) {
     return { error: error?.message ?? "Erro ao enviar mensagem" };
+  }
+
+  if (content) {
+    await notifyMentionedMembers(supabase, channelId, user.id, content);
   }
 
   if (files.length === 0) {
@@ -154,4 +160,80 @@ export async function deleteMessage(
 
   if (error) return { error: error.message };
   return {};
+}
+
+/** Pushes whoever a channel message actually @mentions -- unlike DMs, most
+ * channel messages aren't addressed to anyone in particular, so pushing on
+ * every message would just be noise. Resolves @role and @everyone down to
+ * the individual members they cover. */
+async function notifyMentionedMembers(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  channelId: string,
+  senderId: string,
+  content: string,
+) {
+  if (!content.includes("@")) return;
+
+  const { data: channel } = await supabase
+    .from("channels")
+    .select("bando_id")
+    .eq("id", channelId)
+    .maybeSingle();
+  if (!channel) return;
+
+  const [{ data: members }, { data: roles }, { data: memberRoles }, { data: senderProfile }] =
+    await Promise.all([
+      supabase
+        .from("bando_members")
+        .select("user_id, profiles(username)")
+        .eq("bando_id", channel.bando_id),
+      supabase.from("roles").select("id, name").eq("bando_id", channel.bando_id),
+      supabase.from("member_roles").select("user_id, role_id").eq("bando_id", channel.bando_id),
+      supabase.from("profiles").select("username").eq("id", senderId).maybeSingle(),
+    ]);
+
+  const memberList = (members ?? [])
+    .map((m) => ({
+      userId: m.user_id,
+      username: (m.profiles as unknown as { username: string } | null)?.username,
+    }))
+    .filter((m): m is { userId: string; username: string } => !!m.username);
+
+  const mentionables: Mentionable[] = [
+    ...memberList.map((m) => ({ key: m.userId, label: m.username, kind: "user" as const })),
+    ...(roles ?? []).map((r) => ({ key: r.id, label: r.name, kind: "role" as const })),
+    { key: "everyone", label: "everyone", kind: "everyone" as const },
+  ];
+
+  const segments = renderMentionSegments(content, mentionables);
+  const targetIds = new Set<string>();
+
+  for (const seg of segments) {
+    if (!("mention" in seg)) continue;
+    if (seg.mention.kind === "user") {
+      targetIds.add(seg.mention.key);
+    } else if (seg.mention.kind === "everyone") {
+      memberList.forEach((m) => targetIds.add(m.userId));
+    } else {
+      (memberRoles ?? [])
+        .filter((mr) => mr.role_id === seg.mention.key)
+        .forEach((mr) => targetIds.add(mr.user_id));
+    }
+  }
+
+  targetIds.delete(senderId);
+  if (targetIds.size === 0) return;
+
+  const senderName = senderProfile?.username ?? "Macaco";
+
+  await Promise.all(
+    [...targetIds].map((userId) =>
+      sendPushToUser(userId, {
+        title: `${senderName} mencionou você`,
+        body: content,
+        url: `/bandos/${channel.bando_id}/${channelId}`,
+        tag: `channel-${channelId}`,
+      }),
+    ),
+  );
 }

@@ -17,13 +17,24 @@ export default async function BandosLayout({
 
   if (!user) redirect("/login");
 
-  const [{ data: memberships }, { data: ownProfile }] = await Promise.all([
-    supabase
-      .from("bando_members")
-      .select("bandos(id, name, owner_id, photo_url)")
-      .eq("user_id", user.id),
-    supabase.from("profiles").select("status").eq("id", user.id).maybeSingle(),
-  ]);
+  const [{ data: memberships }, { data: ownProfile }, { data: unreadDms }, { count: pendingRequests }] =
+    await Promise.all([
+      supabase
+        .from("bando_members")
+        .select("bandos(id, name, owner_id, photo_url)")
+        .eq("user_id", user.id),
+      supabase.from("profiles").select("status").eq("id", user.id).maybeSingle(),
+      supabase.rpc("unread_dm_counts", { p_user_id: user.id }),
+      supabase
+        .from("friendships")
+        .select("id", { count: "exact", head: true })
+        .eq("addressee_id", user.id)
+        .eq("status", "pending"),
+    ]);
+
+  const hasUnreadHome =
+    (unreadDms ?? []).some((r: { unread: number }) => Number(r.unread) > 0) ||
+    (pendingRequests ?? 0) > 0;
 
   const bandos = (memberships ?? [])
     .map(
@@ -44,7 +55,7 @@ export default async function BandosLayout({
     >
       <CallProvider>
         <div className="fixed inset-0 flex overflow-hidden">
-          <ServerRail bandos={bandos} currentUserId={user.id} />
+          <ServerRail bandos={bandos} currentUserId={user.id} hasUnreadHome={hasUnreadHome} />
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             {children}
           </div>

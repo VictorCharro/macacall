@@ -6,6 +6,7 @@ import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import type { BandoActionState } from "@/app/actions/bandos";
 import { collectAttachmentFiles, uploadAttachments } from "@/lib/attachments";
+import { sendPushToUser } from "@/lib/push";
 
 export type SendDmState = BandoActionState & {
   message?: {
@@ -241,6 +242,8 @@ export async function sendDmMessage(
     return { error: error?.message ?? "Erro ao enviar mensagem" };
   }
 
+  await notifyDmParticipants(supabase, conversationId, user.id, content, files.length > 0);
+
   if (files.length === 0) {
     return { message: data };
   }
@@ -334,4 +337,40 @@ export async function deleteDmMessage(
 
   if (error) return { error: error.message };
   return {};
+}
+
+/** Pushes every other participant in the conversation -- DMs are small
+ * (1:1 or a handful of people in a group), so unlike channel messages there's
+ * no @everyone-style gate needed; every new message is worth a ping. */
+async function notifyDmParticipants(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  conversationId: string,
+  senderId: string,
+  content: string,
+  hasAttachment: boolean,
+) {
+  const [{ data: participants }, { data: senderProfile }] = await Promise.all([
+    supabase
+      .from("dm_participants")
+      .select("user_id")
+      .eq("conversation_id", conversationId)
+      .neq("user_id", senderId),
+    supabase.from("profiles").select("username").eq("id", senderId).maybeSingle(),
+  ]);
+
+  if (!participants || participants.length === 0) return;
+
+  const senderName = senderProfile?.username ?? "Macaco";
+  const body = content || (hasAttachment ? "📎 enviou um arquivo" : "");
+
+  await Promise.all(
+    participants.map((p) =>
+      sendPushToUser(p.user_id, {
+        title: senderName,
+        body,
+        url: `/bandos/dm/${conversationId}`,
+        tag: `dm-${conversationId}`,
+      }),
+    ),
+  );
 }

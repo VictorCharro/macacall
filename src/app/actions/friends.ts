@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { BandoActionState } from "@/app/actions/bandos";
 import type { PresenceStatus } from "@/lib/types";
+import { sendPushToUser } from "@/lib/push";
 
 export async function sendFriendRequest(
   _prevState: BandoActionState,
@@ -59,6 +60,19 @@ export async function sendFriendRequest(
     }
     return { error: error.message };
   }
+
+  const { data: senderProfile } = await supabase
+    .from("profiles")
+    .select("username")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  await sendPushToUser(target.id, {
+    title: "Novo pedido de amizade",
+    body: `${senderProfile?.username ?? "Um macaco"} quer ser seu amigo`,
+    url: "/bandos",
+    tag: "friend-request",
+  });
 
   revalidatePath("/bandos");
   return {};

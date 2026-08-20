@@ -59,9 +59,12 @@ function RailTooltipPortal({
 export function ServerRail({
   bandos,
   currentUserId,
+  hasUnreadHome = false,
 }: {
   bandos: RailBando[];
   currentUserId: string;
+  /** Red dot on the home icon: unread DM or a pending friend request. */
+  hasUnreadHome?: boolean;
 }) {
   const pathname = usePathname();
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -76,6 +79,12 @@ export function ServerRail({
         label="Amigos e mensagens diretas"
       >
         <span className="text-2xl">🐵</span>
+        {hasUnreadHome && (
+          <span
+            className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-card-3 bg-danger"
+            aria-hidden="true"
+          />
+        )}
       </RailIcon>
 
       {bandos.length > 0 && (
@@ -154,7 +163,7 @@ function RailIcon({
         ref={linkRef}
         href={href}
         aria-label={label}
-        className={`flex h-12 w-12 items-center justify-center font-semibold transition-all duration-200 ${
+        className={`relative flex h-12 w-12 items-center justify-center font-semibold transition-all duration-200 ${
           active
             ? "rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20"
             : "rounded-[24px] bg-card text-accent hover:rounded-2xl hover:bg-primary hover:text-primary-foreground"

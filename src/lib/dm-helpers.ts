@@ -10,13 +10,22 @@ export async function buildDmSidebarEntries(
 ) {
   if (dmRows.length === 0) return [];
 
-  const { data: allParticipants } = await supabase
-    .from("dm_participants")
-    .select("conversation_id, profiles(id, username, avatar_seed)")
-    .in(
-      "conversation_id",
-      dmRows.map((r) => r.conversation_id),
-    );
+  const [{ data: allParticipants }, { data: unreadRows }] = await Promise.all([
+    supabase
+      .from("dm_participants")
+      .select("conversation_id, profiles(id, username, avatar_seed)")
+      .in(
+        "conversation_id",
+        dmRows.map((r) => r.conversation_id),
+      ),
+    supabase.rpc("unread_dm_counts", { p_user_id: userId }),
+  ]);
+
+  const unreadByConversation = new Map<string, number>(
+    (unreadRows ?? []).map(
+      (r: { conversation_id: string; unread: number }) => [r.conversation_id, Number(r.unread)],
+    ),
+  );
 
   const byConversation = new Map<string, ProfileRow[]>();
   for (const row of allParticipants ?? []) {
@@ -43,6 +52,7 @@ export async function buildDmSidebarEntries(
         // A group DM has no single "other person", so anything that acts on
         // one specific user (the right-click menu) stays off for those.
         isGroup: others.length > 1,
+        unread: unreadByConversation.get(r.conversation_id) ?? 0,
       };
     })
     .filter((d): d is NonNullable<typeof d> => Boolean(d));
