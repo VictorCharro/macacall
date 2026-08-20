@@ -349,8 +349,34 @@ ações. Resumo:
 | Chamadas | `components/CallProvider.tsx`, `components/VoiceChannelView.tsx`, `api/livekit/*` |
 | Perfil do usuário (popout) | `components/ProfilePopout.tsx` |
 
+## Roadmap "Discord 2" (issues no GitHub, uma por feature grande)
+
+Pedido do dono do projeto: reescrever a experiência pra ficar o mais fiel
+possível ao Discord de verdade, cobrindo tudo que falta. Trackeado como
+issues em `VictorCharro/macacall` pra não perder o fio -- confira o estado
+lá (`gh issue list`) antes de assumir que algo falta ou já foi feito.
+
+- ✅ #1 Cargos/permissões estilo Discord -- já existia antes deste roadmap
+  (ver seção acima).
+- ✅ #2 Edição e exclusão de mensagens -- autor edita/apaga a própria;
+  quem tem `MANAGE_MESSAGES` no canal também apaga de terceiros (DM não
+  tem esse conceito, só o autor). `edited_at` em `messages`/`dm_messages`,
+  RLS de UPDATE/DELETE, realtime DELETE, form inline reaproveitado
+  (`EditMessageForm`, exportado de `ChatChannel.tsx`) entre canal e DM.
+- ⬜ #3 Menções (@usuário e @cargo)
+- ⬜ #4 Upload de arquivo/imagem (Supabase Storage) + emoji picker
+- ⬜ #5 Notificações (push do navegador + in-app)
+- ⬜ #6 Threads (avaliar se faz sentido pra arquitetura atual)
+- ⬜ #7 Configurações de servidor/administração completa (nome, ícone,
+  log de auditoria -- kick/ban já existem via moderação de cargos)
+- ⬜ #8 Configurações de voz: troca de dispositivo, teste de mic
+  (mute/deafen/move de terceiros já existem via `/api/livekit/moderate`)
+- ⬜ #9 Responsividade mobile completa (layout hoje assume desktop)
+
 ## Histórico resumido (mais recente primeiro)
 
+- Edição e exclusão de mensagens (canais + DMs), roadmap "Discord 2" nas
+  issues do GitHub.
 - Editar perfil (bio + cor do banner), menu de contexto nas DMs 1:1 da
   sidebar, e UI de permissões por canal.
 - Sistema de cargos e permissões estilo Discord (hierarquia, overrides por
