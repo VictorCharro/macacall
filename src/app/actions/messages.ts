@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { BandoActionState } from "@/app/actions/bandos";
+import { collectAttachmentFiles, uploadAttachments } from "@/lib/attachments";
 
 export type SendMessageState = BandoActionState & {
   message?: {
@@ -12,6 +13,7 @@ export type SendMessageState = BandoActionState & {
     user_id: string;
     reply_to_id: string | null;
     pinned: boolean;
+    attachments?: { id: string; url: string; name: string; mime_type: string | null }[];
   };
 };
 
@@ -23,7 +25,10 @@ export async function sendMessage(
   const content = String(formData.get("content")).trim();
   const replyToId = formData.get("replyToId");
 
-  if (!content) {
+  const files = collectAttachmentFiles(formData);
+  if ("error" in files) return { error: files.error };
+
+  if (!content && files.length === 0) {
     return {};
   }
 
@@ -54,7 +59,33 @@ export async function sendMessage(
     return { error: error?.message ?? "Erro ao enviar mensagem" };
   }
 
-  return { message: data };
+  if (files.length === 0) {
+    return { message: data };
+  }
+
+  const uploaded = await uploadAttachments(supabase, files, "c", channelId, data.id);
+  if ("error" in uploaded) {
+    return { message: data, error: `Mensagem enviada, mas anexo falhou: ${uploaded.error}` };
+  }
+
+  const { data: attachmentRows, error: attachError } = await supabase
+    .from("message_attachments")
+    .insert(
+      uploaded.map((a) => ({
+        message_id: data.id,
+        url: a.url,
+        name: a.name,
+        mime_type: a.mime_type,
+        size_bytes: a.size_bytes,
+      })),
+    )
+    .select("id, url, name, mime_type");
+
+  if (attachError) {
+    return { message: data, error: `Mensagem enviada, mas anexo falhou: ${attachError.message}` };
+  }
+
+  return { message: { ...data, attachments: attachmentRows ?? [] } };
 }
 
 export async function togglePinMessage(

@@ -16,10 +16,14 @@ import { MessageActionsMenu } from "@/components/MessageActionsMenu";
 import { MessageReactions } from "@/components/MessageReactions";
 import { MentionPopup } from "@/components/MentionPopup";
 import { MentionText } from "@/components/MentionText";
+import { AttachmentPicker } from "@/components/AttachmentPicker";
+import { AttachmentGallery } from "@/components/AttachmentGallery";
+import { EmojiPickerButton } from "@/components/EmojiPickerButton";
 import { PinnedMessagesModal } from "@/components/PinnedMessagesModal";
 import { useMembersPanel } from "@/components/MembersPanelProvider";
 import { useBandoRoles } from "@/components/BandoRolesProvider";
 import { summarizeReactions, type RawReaction } from "@/lib/reactions";
+import type { RawAttachment } from "@/lib/attachments";
 import {
   findMentionTrigger,
   applyMention,
@@ -47,6 +51,7 @@ export function ChatChannel({
   channelTopic,
   initialMessages,
   initialReactions,
+  initialAttachments,
   members,
   canManageMessages,
   currentUserId,
@@ -57,6 +62,7 @@ export function ChatChannel({
   channelTopic: string | null;
   initialMessages: ChatMessage[];
   initialReactions: RawReaction[];
+  initialAttachments: RawAttachment[];
   members: Record<string, Member>;
   canManageMessages: boolean;
   currentUserId: string;
@@ -65,6 +71,7 @@ export function ChatChannel({
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [reactions, setReactions] = useState<RawReaction[]>(initialReactions);
+  const [attachments, setAttachments] = useState<RawAttachment[]>(initialAttachments);
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pinnedModalOpen, setPinnedModalOpen] = useState(false);
@@ -175,6 +182,13 @@ export function ChatChannel({
       setMessages((prev) =>
         prev.some((m) => m.id === sent.id) ? prev : [...prev, sent],
       );
+      if (sent.attachments?.length) {
+        const withMessageId = sent.attachments.map((a) => ({ ...a, message_id: sent.id }));
+        setAttachments((prev) => [
+          ...prev,
+          ...withMessageId.filter((a) => !prev.some((p) => p.id === a.id)),
+        ]);
+      }
     }
   }
 
@@ -227,6 +241,19 @@ export function ChatChannel({
           (payload) => {
             const row = payload.old as { id: string };
             setMessages((prev) => prev.filter((m) => m.id !== row.id));
+          },
+        )
+        // Attachments finish uploading slightly after the message row itself
+        // (they're a separate insert in the same server action), so other
+        // clients see the text first and the files pop in a beat later.
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "message_attachments" },
+          (payload) => {
+            const row = payload.new as RawAttachment;
+            setAttachments((prev) =>
+              prev.some((a) => a.id === row.id) ? prev : [...prev, row],
+            );
           },
         )
         // message_reactions carries no channel_id, so this listens broadly and
@@ -291,6 +318,16 @@ export function ChatChannel({
     () => summarizeReactions(reactions, currentUserId),
     [reactions, currentUserId],
   );
+
+  const attachmentsByMessage = useMemo(() => {
+    const map = new Map<string, RawAttachment[]>();
+    for (const a of attachments) {
+      const list = map.get(a.message_id) ?? [];
+      list.push(a);
+      map.set(a.message_id, list);
+    }
+    return map;
+  }, [attachments]);
 
   const visibleMessages = search.trim()
     ? messages.filter((m) =>
@@ -473,6 +510,8 @@ export function ChatChannel({
                   </div>
                 )}
 
+                <AttachmentGallery attachments={attachmentsByMessage.get(message.id) ?? []} />
+
                 <MessageReactions
                   reactions={reactionsByMessage.get(message.id) ?? []}
                   onToggle={(emoji) => toggleReaction(message.id, emoji)}
@@ -529,7 +568,8 @@ export function ChatChannel({
           activeIndex={mentionActiveIndex}
           onSelect={selectMention}
         />
-        <div className="flex items-center gap-3 rounded-xl border border-border bg-card-2 px-4 py-2.5 shadow-inner transition focus-within:border-primary/80">
+        <div className="relative flex items-center gap-3 rounded-xl border border-border bg-card-2 px-4 py-2.5 shadow-inner transition focus-within:border-primary/80">
+          <AttachmentPicker />
           <input
             ref={inputRef}
             type="text"
@@ -541,6 +581,7 @@ export function ChatChannel({
             onKeyDown={handleComposerKeyDown}
             className="flex-1 bg-transparent text-sm text-foreground placeholder-muted outline-none"
           />
+          <EmojiPickerButton targetRef={inputRef} />
           <button
             type="submit"
             aria-label="Enviar mensagem"

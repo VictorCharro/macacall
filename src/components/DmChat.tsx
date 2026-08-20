@@ -19,10 +19,14 @@ import { MessageActionsMenu } from "@/components/MessageActionsMenu";
 import { MessageReactions } from "@/components/MessageReactions";
 import { MentionPopup } from "@/components/MentionPopup";
 import { MentionText } from "@/components/MentionText";
+import { AttachmentPicker } from "@/components/AttachmentPicker";
+import { AttachmentGallery } from "@/components/AttachmentGallery";
+import { EmojiPickerButton } from "@/components/EmojiPickerButton";
 import { DmPinnedMessagesModal } from "@/components/DmPinnedMessagesModal";
 import { AddDmParticipantModal } from "@/components/AddDmParticipantModal";
 import { DmProfilePanel } from "@/components/DmProfilePanel";
 import { summarizeReactions, type RawReaction } from "@/lib/reactions";
+import type { RawAttachment } from "@/lib/attachments";
 import {
   findMentionTrigger,
   applyMention,
@@ -55,6 +59,7 @@ export function DmChat({
   currentAvatarSeed,
   initialMessages,
   initialReactions,
+  initialAttachments,
   availableFriendsToAdd,
 }: {
   conversationId: string;
@@ -65,10 +70,12 @@ export function DmChat({
   currentAvatarSeed: string;
   initialMessages: DmMessage[];
   initialReactions: RawReaction[];
+  initialAttachments: RawAttachment[];
   availableFriendsToAdd: Friend[];
 }) {
   const [messages, setMessages] = useState<DmMessage[]>(initialMessages);
   const [reactions, setReactions] = useState<RawReaction[]>(initialReactions);
+  const [attachments, setAttachments] = useState<RawAttachment[]>(initialAttachments);
   const [editingId, setEditingId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -176,6 +183,13 @@ export function DmChat({
           ? prev
           : [...prev, { ...sent, pinned: false }],
       );
+      if (sent.attachments?.length) {
+        const withMessageId = sent.attachments.map((a) => ({ ...a, message_id: sent.id }));
+        setAttachments((prev) => [
+          ...prev,
+          ...withMessageId.filter((a) => !prev.some((p) => p.id === a.id)),
+        ]);
+      }
     }
   }
 
@@ -228,6 +242,16 @@ export function DmChat({
           (payload) => {
             const row = payload.old as { id: string };
             setMessages((prev) => prev.filter((m) => m.id !== row.id));
+          },
+        )
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "dm_message_attachments" },
+          (payload) => {
+            const row = payload.new as RawAttachment;
+            setAttachments((prev) =>
+              prev.some((a) => a.id === row.id) ? prev : [...prev, row],
+            );
           },
         )
         // dm_message_reactions has no conversation_id, so this listens broadly
@@ -286,6 +310,16 @@ export function DmChat({
     () => summarizeReactions(reactions, currentUserId),
     [reactions, currentUserId],
   );
+
+  const attachmentsByMessage = useMemo(() => {
+    const map = new Map<string, RawAttachment[]>();
+    for (const a of attachments) {
+      const list = map.get(a.message_id) ?? [];
+      list.push(a);
+      map.set(a.message_id, list);
+    }
+    return map;
+  }, [attachments]);
 
   return (
     <div className="flex min-h-0 flex-1 overflow-hidden">
@@ -419,6 +453,10 @@ export function DmChat({
                             </p>
                           )}
 
+                          <AttachmentGallery
+                            attachments={attachmentsByMessage.get(message.id) ?? []}
+                          />
+
                           <MessageReactions
                             reactions={reactionsByMessage.get(message.id) ?? []}
                             onToggle={(emoji) =>
@@ -456,7 +494,8 @@ export function DmChat({
             activeIndex={mentionActiveIndex}
             onSelect={selectMention}
           />
-          <div className="flex items-center gap-3 rounded-xl border border-border-soft bg-card-2 px-4 py-2.5 shadow-inner transition focus-within:border-primary/70">
+          <div className="relative flex items-center gap-3 rounded-xl border border-border-soft bg-card-2 px-4 py-2.5 shadow-inner transition focus-within:border-primary/70">
+            <AttachmentPicker />
             <input
               ref={inputRef}
               type="text"
@@ -468,6 +507,7 @@ export function DmChat({
               onKeyDown={handleComposerKeyDown}
               className="flex-1 bg-transparent text-sm text-foreground placeholder-muted outline-none"
             />
+            <EmojiPickerButton targetRef={inputRef} />
             <button
               type="submit"
               aria-label="Enviar mensagem"

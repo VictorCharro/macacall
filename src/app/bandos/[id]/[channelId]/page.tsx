@@ -18,14 +18,24 @@ async function loadThread(
     .limit(100);
 
   const ids = (messages ?? []).map((m) => m.id);
-  const { data: reactions } = ids.length
-    ? await supabase
-        .from("message_reactions")
-        .select("message_id, user_id, emoji")
-        .in("message_id", ids)
-    : { data: [] };
+  const [{ data: reactions }, { data: attachments }] = ids.length
+    ? await Promise.all([
+        supabase
+          .from("message_reactions")
+          .select("message_id, user_id, emoji")
+          .in("message_id", ids),
+        supabase
+          .from("message_attachments")
+          .select("id, message_id, url, name, mime_type")
+          .in("message_id", ids),
+      ])
+    : [{ data: [] }, { data: [] }];
 
-  return { messages: messages ?? [], reactions: reactions ?? [] };
+  return {
+    messages: messages ?? [],
+    reactions: reactions ?? [],
+    attachments: attachments ?? [],
+  };
 }
 
 /** MANAGE_MESSAGES bit -- keep in sync with src/lib/permissions.ts. */
@@ -106,7 +116,7 @@ export default async function ChannelPage({
 
     let textChannel = null;
     if (primaryTextChannel) {
-      const [{ messages, reactions }, canManageMessages] = await Promise.all([
+      const [{ messages, reactions, attachments }, canManageMessages] = await Promise.all([
         loadThread(supabase, primaryTextChannel.id),
         isOwner
           ? Promise.resolve(true)
@@ -119,6 +129,7 @@ export default async function ChannelPage({
         topic: primaryTextChannel.topic,
         initialMessages: messages,
         initialReactions: reactions,
+        initialAttachments: attachments,
         members,
         canManageMessages,
       };
@@ -135,7 +146,7 @@ export default async function ChannelPage({
     );
   }
 
-  const [{ messages, reactions }, canManageMessages] = await Promise.all([
+  const [{ messages, reactions, attachments }, canManageMessages] = await Promise.all([
     loadThread(supabase, channelId),
     isOwner ? Promise.resolve(true) : canManageMessagesIn(supabase, user.id, channelId),
   ]);
@@ -148,6 +159,7 @@ export default async function ChannelPage({
       channelTopic={channel.topic}
       initialMessages={messages}
       initialReactions={reactions}
+      initialAttachments={attachments}
       members={members}
       canManageMessages={canManageMessages}
       currentUserId={user.id}

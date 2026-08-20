@@ -30,6 +30,7 @@ import {
 import { useCall } from "@/components/CallProvider";
 import { ChatChannel } from "@/components/ChatChannel";
 import type { RawReaction } from "@/lib/reactions";
+import type { RawAttachment } from "@/lib/attachments";
 
 type TextChannelData = {
   id: string;
@@ -44,6 +45,7 @@ type TextChannelData = {
     pinned: boolean;
   }[];
   initialReactions: RawReaction[];
+  initialAttachments: RawAttachment[];
   members: Record<string, { username: string; avatarSeed: string }>;
   canManageMessages: boolean;
 };
@@ -116,6 +118,7 @@ export function VoiceChannelView({
           channelTopic={textChannel.topic}
           initialMessages={textChannel.initialMessages}
           initialReactions={textChannel.initialReactions}
+          initialAttachments={textChannel.initialAttachments}
           members={textChannel.members}
           canManageMessages={textChannel.canManageMessages}
           currentUserId={currentUserId}

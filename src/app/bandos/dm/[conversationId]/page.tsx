@@ -79,12 +79,18 @@ export default async function DmPage({
     .map((p) => ({ id: p.id, username: p.username, avatarSeed: p.avatar_seed }));
 
   const messageIds = (messages ?? []).map((m) => m.id);
-  const { data: reactions } = messageIds.length
-    ? await supabase
-        .from("dm_message_reactions")
-        .select("message_id, user_id, emoji")
-        .in("message_id", messageIds)
-    : { data: [] };
+  const [{ data: reactions }, { data: attachments }] = messageIds.length
+    ? await Promise.all([
+        supabase
+          .from("dm_message_reactions")
+          .select("message_id, user_id, emoji")
+          .in("message_id", messageIds),
+        supabase
+          .from("dm_message_attachments")
+          .select("id, message_id, url, name, mime_type")
+          .in("message_id", messageIds),
+      ])
+    : [{ data: [] }, { data: [] }];
 
   const participantIds = new Set(allParticipants.map((p) => p.id));
   const availableFriendsToAdd = (friendships ?? [])
@@ -113,6 +119,7 @@ export default async function DmPage({
         currentAvatarSeed={profile.avatar_seed}
         initialMessages={messages ?? []}
         initialReactions={reactions ?? []}
+        initialAttachments={attachments ?? []}
         availableFriendsToAdd={availableFriendsToAdd}
       />
     </div>
