@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import {
   MoreHorizontal,
   Pin,
@@ -12,6 +12,7 @@ import {
   MessageSquarePlus,
 } from "lucide-react";
 import { QUICK_REACTIONS } from "@/components/MessageReactions";
+import { ContextMenuPortal } from "@/components/ContextMenuPortal";
 
 /**
  * Discord's floating hover bar: quick-react emojis inline, then reply, then
@@ -45,18 +46,17 @@ export function MessageActionsMenu({
 }) {
   const [open, setOpen] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const moreButtonRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setOpen(false);
-      }
+  function toggleOpen() {
+    if (!open) {
+      const rect = moreButtonRef.current?.getBoundingClientRect();
+      if (rect) setMenuPos({ x: rect.right - 176, y: rect.bottom + 4 });
     }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [open]);
+    setOpen((v) => !v);
+  }
 
   return (
     <div
@@ -104,8 +104,9 @@ export function MessageActionsMenu({
       )}
 
       <button
+        ref={moreButtonRef}
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={toggleOpen}
         title="Mais opções"
         aria-label="Mais opções"
         className="rounded p-1 text-muted transition hover:bg-card-2 hover:text-accent"
@@ -113,8 +114,9 @@ export function MessageActionsMenu({
         <MoreHorizontal className="h-3.5 w-3.5" />
       </button>
 
-      {open && (
-        <div className="absolute right-0 top-full z-30 mt-1 min-w-[11rem] animate-modal-in rounded-xl border border-border bg-card-2 p-1.5 shadow-lg">
+      {open && menuPos && (
+        <ContextMenuPortal x={menuPos.x} y={menuPos.y} onClose={() => setOpen(false)}>
+          <div className="flex min-w-[11rem] flex-col gap-0.5">
           {canPin && (
             <button
               type="button"
@@ -165,7 +167,8 @@ export function MessageActionsMenu({
               Apagar mensagem
             </button>
           )}
-        </div>
+          </div>
+        </ContextMenuPortal>
       )}
 
       {confirmingDelete && onDelete && (
