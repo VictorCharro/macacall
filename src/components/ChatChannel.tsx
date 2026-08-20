@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
-import { Hash, Pin, Send, Search, Users, CornerDownRight, X } from "lucide-react";
+import { Hash, Pin, Send, Search, Users, CornerDownRight, X, MessageSquare } from "lucide-react";
 import {
   sendMessage,
   togglePinMessage,
@@ -9,6 +9,7 @@ import {
   deleteMessage,
   type SendMessageState,
 } from "@/app/actions/messages";
+import { createThread } from "@/app/actions/threads";
 import { toggleReaction } from "@/app/actions/reactions";
 import { markChannelRead } from "@/app/actions/reads";
 import { createRealtimeClient } from "@/lib/supabase/realtimeClient";
@@ -20,10 +21,12 @@ import { AttachmentPicker } from "@/components/AttachmentPicker";
 import { AttachmentGallery } from "@/components/AttachmentGallery";
 import { EmojiPickerButton } from "@/components/EmojiPickerButton";
 import { PinnedMessagesModal } from "@/components/PinnedMessagesModal";
+import { ThreadPanel } from "@/components/ThreadPanel";
 import { useMembersPanel } from "@/components/MembersPanelProvider";
 import { useBandoRoles } from "@/components/BandoRolesProvider";
 import { summarizeReactions, type RawReaction } from "@/lib/reactions";
 import type { RawAttachment } from "@/lib/attachments";
+import type { ThreadSummary } from "@/lib/threads";
 import {
   findMentionTrigger,
   applyMention,
@@ -52,6 +55,7 @@ export function ChatChannel({
   initialMessages,
   initialReactions,
   initialAttachments,
+  initialThreads,
   members,
   canManageMessages,
   currentUserId,
@@ -63,6 +67,7 @@ export function ChatChannel({
   initialMessages: ChatMessage[];
   initialReactions: RawReaction[];
   initialAttachments: RawAttachment[];
+  initialThreads: ThreadSummary[];
   members: Record<string, Member>;
   canManageMessages: boolean;
   currentUserId: string;
@@ -72,6 +77,10 @@ export function ChatChannel({
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [reactions, setReactions] = useState<RawReaction[]>(initialReactions);
   const [attachments, setAttachments] = useState<RawAttachment[]>(initialAttachments);
+  const [threads, setThreads] = useState<ThreadSummary[]>(initialThreads);
+  const [openThread, setOpenThread] = useState<{ id: string; name: string; parent: ChatMessage } | null>(
+    null,
+  );
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pinnedModalOpen, setPinnedModalOpen] = useState(false);
@@ -209,7 +218,19 @@ export function ChatChannel({
             filter: `channel_id=eq.${channelId}`,
           },
           (payload) => {
-            const row = payload.new as ChatMessage;
+            // Thread replies share channel_id with their parent channel, so
+            // this filter alone can't exclude them -- they render in the
+            // thread panel, not the main feed. Bump the reply count here
+            // instead so the "N replies" pill stays live.
+            const row = payload.new as ChatMessage & { thread_id: string | null };
+            if (row.thread_id) {
+              setThreads((prev) =>
+                prev.map((t) =>
+                  t.id === row.thread_id ? { ...t, reply_count: t.reply_count + 1 } : t,
+                ),
+              );
+              return;
+            }
             setMessages((prev) =>
               prev.some((m) => m.id === row.id) ? prev : [...prev, row],
             );
@@ -224,7 +245,8 @@ export function ChatChannel({
             filter: `channel_id=eq.${channelId}`,
           },
           (payload) => {
-            const row = payload.new as ChatMessage;
+            const row = payload.new as ChatMessage & { thread_id: string | null };
+            if (row.thread_id) return;
             setMessages((prev) =>
               prev.map((m) => (m.id === row.id ? { ...m, ...row } : m)),
             );
@@ -241,6 +263,23 @@ export function ChatChannel({
           (payload) => {
             const row = payload.old as { id: string };
             setMessages((prev) => prev.filter((m) => m.id !== row.id));
+          },
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "threads",
+            filter: `channel_id=eq.${channelId}`,
+          },
+          (payload) => {
+            const row = payload.new as { id: string; parent_message_id: string; name: string };
+            setThreads((prev) =>
+              prev.some((t) => t.id === row.id)
+                ? prev
+                : [...prev, { ...row, reply_count: 0 }],
+            );
           },
         )
         // Attachments finish uploading slightly after the message row itself
@@ -329,6 +368,29 @@ export function ChatChannel({
     return map;
   }, [attachments]);
 
+  const threadByParentMessage = useMemo(
+    () => new Map(threads.map((t) => [t.parent_message_id, t])),
+    [threads],
+  );
+
+  async function startThread(message: ChatMessage) {
+    const existing = threadByParentMessage.get(message.id);
+    if (existing) {
+      setOpenThread({ id: existing.id, name: existing.name, parent: message });
+      return;
+    }
+    const name = message.content.slice(0, 60) || "Thread";
+    const result = await createThread(channelId, message.id, name);
+    if (result.thread) {
+      setThreads((prev) =>
+        prev.some((t) => t.id === result.thread!.id)
+          ? prev
+          : [...prev, { id: result.thread!.id, parent_message_id: message.id, name, reply_count: 0 }],
+      );
+      setOpenThread({ id: result.thread.id, name: result.thread.name, parent: message });
+    }
+  }
+
   const visibleMessages = search.trim()
     ? messages.filter((m) =>
         m.content.toLowerCase().includes(search.trim().toLowerCase()),
@@ -336,6 +398,7 @@ export function ChatChannel({
     : messages;
 
   return (
+    <div className="flex min-h-0 flex-1 overflow-hidden">
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-card">
       <header className="z-10 flex h-12 shrink-0 items-center justify-between gap-2 border-b border-border-soft bg-card px-4">
         <div className="flex min-w-0 items-center gap-2">
@@ -516,6 +579,20 @@ export function ChatChannel({
                   reactions={reactionsByMessage.get(message.id) ?? []}
                   onToggle={(emoji) => toggleReaction(message.id, emoji)}
                 />
+
+                {threadByParentMessage.has(message.id) && (
+                  <button
+                    type="button"
+                    onClick={() => startThread(message)}
+                    className="mt-1.5 flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold text-secondary transition hover:bg-card-2"
+                  >
+                    <MessageSquare className="h-3.5 w-3.5" />
+                    {threadByParentMessage.get(message.id)!.reply_count}{" "}
+                    {threadByParentMessage.get(message.id)!.reply_count === 1
+                      ? "resposta"
+                      : "respostas"}
+                  </button>
+                )}
               </div>
 
               <MessageActionsMenu
@@ -535,6 +612,9 @@ export function ChatChannel({
                   inputRef.current?.focus();
                 }}
                 onReact={(emoji) => toggleReaction(message.id, emoji)}
+                onStartThread={
+                  threadByParentMessage.has(message.id) ? undefined : () => startThread(message)
+                }
               />
             </div>
           );
@@ -604,6 +684,20 @@ export function ChatChannel({
           onClose={() => setPinnedModalOpen(false)}
         />
       )}
+    </div>
+
+    {openThread && (
+      <ThreadPanel
+        threadId={openThread.id}
+        threadName={openThread.name}
+        channelId={channelId}
+        parentMessage={openThread.parent}
+        members={members}
+        currentUserId={currentUserId}
+        canManageMessages={canManageMessages}
+        onClose={() => setOpenThread(null)}
+      />
+    )}
     </div>
   );
 }

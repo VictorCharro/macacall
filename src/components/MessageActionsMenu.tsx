@@ -9,6 +9,7 @@ import {
   Copy,
   Pencil,
   Trash2,
+  MessageSquarePlus,
 } from "lucide-react";
 import { QUICK_REACTIONS } from "@/components/MessageReactions";
 
@@ -28,6 +29,7 @@ export function MessageActionsMenu({
   onDelete,
   onReply,
   onReact,
+  onStartThread,
 }: {
   content: string;
   pinned: boolean;
@@ -39,6 +41,7 @@ export function MessageActionsMenu({
   onDelete?: () => void;
   onReply?: () => void;
   onReact?: (emoji: string) => void;
+  onStartThread?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -123,6 +126,19 @@ export function MessageActionsMenu({
             >
               {pinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
               {pinned ? "Desafixar mensagem" : "Fixar mensagem"}
+            </button>
+          )}
+          {onStartThread && (
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                onStartThread();
+              }}
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-sm text-foreground transition hover:bg-card"
+            >
+              <MessageSquarePlus className="h-4 w-4" />
+              Criar thread
             </button>
           )}
           <button

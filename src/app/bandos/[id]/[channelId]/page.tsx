@@ -5,7 +5,8 @@ import { VoiceChannelView } from "@/components/VoiceChannelView";
 import type { Profile } from "@/lib/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-/** Loads a text channel's recent messages plus every reaction on them. */
+/** Loads a text channel's top-level messages (thread replies live in the
+ * thread panel, not the main feed) plus every reaction/attachment/thread. */
 async function loadThread(
   supabase: SupabaseClient,
   channelId: string,
@@ -14,11 +15,12 @@ async function loadThread(
     .from("messages")
     .select("id, content, created_at, user_id, reply_to_id, pinned, edited_at")
     .eq("channel_id", channelId)
+    .is("thread_id", null)
     .order("created_at")
     .limit(100);
 
   const ids = (messages ?? []).map((m) => m.id);
-  const [{ data: reactions }, { data: attachments }] = ids.length
+  const [{ data: reactions }, { data: attachments }, { data: threads }] = ids.length
     ? await Promise.all([
         supabase
           .from("message_reactions")
@@ -28,13 +30,15 @@ async function loadThread(
           .from("message_attachments")
           .select("id, message_id, url, name, mime_type")
           .in("message_id", ids),
+        supabase.rpc("channel_threads", { p_channel_id: channelId }),
       ])
-    : [{ data: [] }, { data: [] }];
+    : [{ data: [] }, { data: [] }, { data: [] }];
 
   return {
     messages: messages ?? [],
     reactions: reactions ?? [],
     attachments: attachments ?? [],
+    threads: threads ?? [],
   };
 }
 
@@ -116,7 +120,7 @@ export default async function ChannelPage({
 
     let textChannel = null;
     if (primaryTextChannel) {
-      const [{ messages, reactions, attachments }, canManageMessages] = await Promise.all([
+      const [{ messages, reactions, attachments, threads }, canManageMessages] = await Promise.all([
         loadThread(supabase, primaryTextChannel.id),
         isOwner
           ? Promise.resolve(true)
@@ -130,6 +134,7 @@ export default async function ChannelPage({
         initialMessages: messages,
         initialReactions: reactions,
         initialAttachments: attachments,
+        initialThreads: threads,
         members,
         canManageMessages,
       };
@@ -146,7 +151,7 @@ export default async function ChannelPage({
     );
   }
 
-  const [{ messages, reactions, attachments }, canManageMessages] = await Promise.all([
+  const [{ messages, reactions, attachments, threads }, canManageMessages] = await Promise.all([
     loadThread(supabase, channelId),
     isOwner ? Promise.resolve(true) : canManageMessagesIn(supabase, user.id, channelId),
   ]);
@@ -160,6 +165,7 @@ export default async function ChannelPage({
       initialMessages={messages}
       initialReactions={reactions}
       initialAttachments={attachments}
+      initialThreads={threads}
       members={members}
       canManageMessages={canManageMessages}
       currentUserId={user.id}
