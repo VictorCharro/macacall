@@ -526,7 +526,10 @@ export function ChatChannel({
                 canDelete={message.user_id === currentUserId || canManageMessages}
                 onTogglePin={() => togglePinMessage(message.id, !message.pinned)}
                 onEdit={() => setEditingId(message.id)}
-                onDelete={() => deleteMessage(message.id)}
+                onDelete={() => {
+                  setMessages((prev) => prev.filter((m) => m.id !== message.id));
+                  deleteMessage(message.id);
+                }}
                 onReply={() => {
                   setReplyingTo(message);
                   inputRef.current?.focus();

@@ -65,12 +65,9 @@ export function RoleManagementModal({
     form.set("name", "novo cargo");
     form.set("color", "#99aab5");
     const result = await createRole(bandoId, {}, form);
-    if (!result.error) {
-      // Server action revalidates the page; re-derive the new role isn't
-      // returned, so just close-reopen isn't needed — the layout refetch
-      // will bring it in. We optimistically bump nothing here to keep this
-      // simple and correct.
-      location.reload();
+    if (result.role) {
+      setRoles((prev) => [...prev, result.role!]);
+      setSelectedId(result.role.id);
     }
   }
 

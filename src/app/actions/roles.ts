@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { BandoActionState } from "@/app/actions/bandos";
 import { PERMISSIONS, type PermissionKey } from "@/lib/permissions";
+import type { Role } from "@/lib/types";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -15,11 +16,13 @@ async function requireUser() {
   return { supabase, user };
 }
 
+export type CreateRoleState = BandoActionState & { role?: Role };
+
 export async function createRole(
   bandoId: string,
   _prevState: BandoActionState,
   formData: FormData,
-): Promise<BandoActionState> {
+): Promise<CreateRoleState> {
   const name = String(formData.get("name") ?? "").trim();
   if (name.length < 1) return { error: "Dê um nome ao cargo" };
 
@@ -50,17 +53,21 @@ export async function createRole(
     (myPosition ?? 0) - 1,
   );
 
-  const { error } = await supabase.from("roles").insert({
-    bando_id: bandoId,
-    name,
-    color: String(formData.get("color") ?? "#99aab5"),
-    position: Math.max(nextPosition, 1),
-  });
+  const { data: role, error } = await supabase
+    .from("roles")
+    .insert({
+      bando_id: bandoId,
+      name,
+      color: String(formData.get("color") ?? "#99aab5"),
+      position: Math.max(nextPosition, 1),
+    })
+    .select("*")
+    .single();
 
   if (error) return { error: error.message };
 
   revalidatePath(`/bandos/${bandoId}`, "layout");
-  return {};
+  return { role: role as Role };
 }
 
 export async function updateRole(

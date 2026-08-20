@@ -475,7 +475,10 @@ export function DmChat({
                             toggleDmPinMessage(message.id, !message.pinned)
                           }
                           onEdit={() => setEditingId(message.id)}
-                          onDelete={() => deleteDmMessage(message.id)}
+                          onDelete={() => {
+                            setMessages((prev) => prev.filter((m) => m.id !== message.id));
+                            deleteDmMessage(message.id);
+                          }}
                           onReact={(emoji) =>
                             toggleDmReaction(message.id, emoji)
                           }
