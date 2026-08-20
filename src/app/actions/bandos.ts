@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { logAudit } from "@/lib/auditLog";
 
 export type BandoActionState = { error?: string };
 
@@ -78,6 +79,8 @@ export async function renameBando(
   if (error) {
     return { error: error.message };
   }
+
+  await logAudit(supabase, bandoId, user.id, "rename_bando", name);
 
   revalidatePath("/bandos", "layout");
   return {};

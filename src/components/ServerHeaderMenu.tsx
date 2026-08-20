@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, UserPlus, Shield } from "lucide-react";
+import { ChevronDown, UserPlus, Shield, Settings } from "lucide-react";
 import { Modal } from "@/components/Modal";
 import { RoleManagementModal } from "@/components/RoleManagementModal";
+import { ServerSettingsModal } from "@/components/ServerSettingsModal";
 import type { Role } from "@/lib/types";
 
 export function ServerHeaderMenu({
@@ -12,16 +13,19 @@ export function ServerHeaderMenu({
   inviteUrl,
   roles,
   canManageRoles,
+  canViewSettings,
 }: {
   bandoId: string;
   bandoName: string;
   inviteUrl: string;
   roles: Role[];
   canManageRoles: boolean;
+  canViewSettings: boolean;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [rolesOpen, setRolesOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -75,6 +79,20 @@ export function ServerHeaderMenu({
               <Shield className="h-4 w-4" />
             </button>
           )}
+
+          {canViewSettings && (
+            <button
+              type="button"
+              onClick={() => {
+                setMenuOpen(false);
+                setSettingsOpen(true);
+              }}
+              className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-foreground transition hover:bg-card-3"
+            >
+              Configurações do bando
+              <Settings className="h-4 w-4" />
+            </button>
+          )}
         </div>
       )}
 
@@ -84,6 +102,10 @@ export function ServerHeaderMenu({
           initialRoles={roles}
           onClose={() => setRolesOpen(false)}
         />
+      )}
+
+      {settingsOpen && (
+        <ServerSettingsModal bandoId={bandoId} onClose={() => setSettingsOpen(false)} />
       )}
 
       {inviteOpen && (

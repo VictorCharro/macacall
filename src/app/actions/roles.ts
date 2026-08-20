@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { BandoActionState } from "@/app/actions/bandos";
 import { PERMISSIONS, type PermissionKey } from "@/lib/permissions";
 import type { Role } from "@/lib/types";
+import { logAudit } from "@/lib/auditLog";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -66,6 +67,8 @@ export async function createRole(
 
   if (error) return { error: error.message };
 
+  await logAudit(supabase, bandoId, user.id, "create_role", name);
+
   revalidatePath(`/bandos/${bandoId}`, "layout");
   return { role: role as Role };
 }
@@ -95,10 +98,14 @@ export async function deleteRole(
   roleId: string,
   bandoId: string,
 ): Promise<BandoActionState> {
-  const { supabase } = await requireUser();
+  const { supabase, user } = await requireUser();
+
+  const { data: role } = await supabase.from("roles").select("name").eq("id", roleId).maybeSingle();
 
   const { error } = await supabase.from("roles").delete().eq("id", roleId);
   if (error) return { error: error.message };
+
+  await logAudit(supabase, bandoId, user.id, "delete_role", role?.name);
 
   revalidatePath(`/bandos/${bandoId}`, "layout");
   return {};
@@ -236,11 +243,16 @@ export async function removeChannelOverride(
   return {};
 }
 
+async function targetUsername(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
+  const { data } = await supabase.from("profiles").select("username").eq("id", userId).maybeSingle();
+  return data?.username ?? "um macaco";
+}
+
 export async function kickMember(
   bandoId: string,
   userId: string,
 ): Promise<BandoActionState> {
-  const { supabase } = await requireUser();
+  const { supabase, user } = await requireUser();
 
   const { error } = await supabase
     .from("bando_members")
@@ -249,6 +261,8 @@ export async function kickMember(
     .eq("user_id", userId);
 
   if (error) return { error: error.message };
+
+  await logAudit(supabase, bandoId, user.id, "kick_member", await targetUsername(supabase, userId));
 
   revalidatePath(`/bandos/${bandoId}`, "layout");
   return {};
@@ -275,6 +289,8 @@ export async function banMember(
     .eq("bando_id", bandoId)
     .eq("user_id", userId);
 
+  await logAudit(supabase, bandoId, user.id, "ban_member", await targetUsername(supabase, userId));
+
   revalidatePath(`/bandos/${bandoId}`, "layout");
   return {};
 }
@@ -283,7 +299,9 @@ export async function unbanMember(
   bandoId: string,
   userId: string,
 ): Promise<BandoActionState> {
-  const { supabase } = await requireUser();
+  const { supabase, user } = await requireUser();
+
+  const label = await targetUsername(supabase, userId);
 
   const { error } = await supabase
     .from("banned_users")
@@ -293,8 +311,21 @@ export async function unbanMember(
 
   if (error) return { error: error.message };
 
+  await logAudit(supabase, bandoId, user.id, "unban_member", label);
+
   revalidatePath(`/bandos/${bandoId}`, "layout");
   return {};
+}
+
+/** Bando's banned list, for the settings panel. */
+export async function listBannedMembers(bandoId: string) {
+  const { supabase } = await requireUser();
+  const { data } = await supabase
+    .from("banned_users")
+    .select("user_id, reason, banned_at, profiles(username, avatar_seed)")
+    .eq("bando_id", bandoId)
+    .order("banned_at", { ascending: false });
+  return data ?? [];
 }
 
 export type { PermissionKey };

@@ -81,6 +81,11 @@ export function ChannelSidebar({
   const canManageChannels =
     isOwner || hasPermission(myPermissions, "MANAGE_CHANNELS");
   const canManageRoles = isOwner || hasPermission(myPermissions, "MANAGE_ROLES");
+  const canViewSettings =
+    isOwner ||
+    hasPermission(myPermissions, "MANAGE_BANDO") ||
+    hasPermission(myPermissions, "KICK_MEMBERS") ||
+    hasPermission(myPermissions, "BAN_MEMBERS");
   const canModerate =
     isOwner ||
     hasPermission(myPermissions, "MUTE_MEMBERS") ||
@@ -107,6 +112,7 @@ export function ChannelSidebar({
         inviteUrl={inviteUrl}
         roles={roles}
         canManageRoles={canManageRoles}
+        canViewSettings={canViewSettings}
       />
 
       <div className="scroll-hover flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overflow-x-hidden overscroll-y-contain px-2 py-3">

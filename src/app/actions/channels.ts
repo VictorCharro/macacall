@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { BandoActionState } from "@/app/actions/bandos";
+import { logAudit } from "@/lib/auditLog";
 
 export async function createChannel(
   bandoId: string,
@@ -32,6 +33,8 @@ export async function createChannel(
   if (error) {
     return { error: error.message };
   }
+
+  await logAudit(supabase, bandoId, user.id, "create_channel", name);
 
   revalidatePath(`/bandos/${bandoId}`, "layout");
   return {};
@@ -111,7 +114,15 @@ export async function deleteChannel(bandoId: string, channelId: string) {
 
   if (!user) redirect("/login");
 
+  const { data: channel } = await supabase
+    .from("channels")
+    .select("name")
+    .eq("id", channelId)
+    .maybeSingle();
+
   await supabase.from("channels").delete().eq("id", channelId);
+
+  await logAudit(supabase, bandoId, user.id, "delete_channel", channel?.name);
 
   revalidatePath(`/bandos/${bandoId}`, "layout");
   redirect(`/bandos/${bandoId}`);
