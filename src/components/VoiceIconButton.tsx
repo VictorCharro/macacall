@@ -1,5 +1,8 @@
 "use client";
 
+import { useRef, useState } from "react";
+import { TooltipPortal } from "@/components/TooltipPortal";
+
 export function VoiceIconButton({
   onClick,
   disabled,
@@ -17,9 +20,17 @@ export function VoiceIconButton({
   sublabel?: string;
   children: React.ReactNode;
 }) {
+  const [hovered, setHovered] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
   return (
-    <div className="group/tip relative">
+    <div
+      className="relative"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
       <button
+        ref={buttonRef}
         type="button"
         onClick={onClick}
         disabled={disabled}
@@ -35,10 +46,14 @@ export function VoiceIconButton({
         {children}
       </button>
 
-      <div className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-border bg-card-2 px-2.5 py-1.5 text-center opacity-0 shadow-lg transition-opacity duration-150 group-hover/tip:opacity-100">
-        <p className="text-xs font-semibold text-accent">{label}</p>
-        {sublabel && <p className="text-[10px] text-muted">{sublabel}</p>}
-      </div>
+      {hovered && (
+        <TooltipPortal anchorRef={buttonRef} side="top">
+          <div className="whitespace-nowrap rounded-lg border border-border bg-card-2 px-2.5 py-1.5 text-center shadow-lg">
+            <p className="text-xs font-semibold text-accent">{label}</p>
+            {sublabel && <p className="text-[10px] text-muted">{sublabel}</p>}
+          </div>
+        </TooltipPortal>
+      )}
     </div>
   );
 }

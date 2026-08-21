@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { Plus, MonitorUp } from "lucide-react";
 import { BandoMenu } from "@/components/BandoMenu";
 import { CreateOrJoinBandoModal } from "@/components/CreateOrJoinBandoModal";
+import { TooltipPortal } from "@/components/TooltipPortal";
 
 type RailBando = {
   id: string;
@@ -22,38 +22,6 @@ function getInitials(name: string) {
   if (words.length === 0) return "?";
   if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
   return (words[0][0] + words[1][0]).toUpperCase();
-}
-
-// The rail scrolls vertically (overflow-y-auto), which forces overflow-x to
-// clip too — so a tooltip absolutely positioned off to the right of an icon
-// would get cut off by the rail's own bounds. Portaling it to document.body
-// and positioning it from the icon's own bounding rect sidesteps that.
-function RailTooltipPortal({
-  anchorRef,
-  children,
-}: {
-  anchorRef: React.RefObject<HTMLElement | null>;
-  children: React.ReactNode;
-}) {
-  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
-
-  useEffect(() => {
-    const rect = anchorRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    setPos({ x: rect.right + 12, y: rect.top + rect.height / 2 });
-  }, [anchorRef]);
-
-  if (!pos) return null;
-
-  return createPortal(
-    <div
-      style={{ position: "fixed", left: pos.x, top: pos.y, transform: "translateY(-50%)" }}
-      className="pointer-events-none z-50"
-    >
-      {children}
-    </div>,
-    document.body,
-  );
 }
 
 export function ServerRail({
@@ -118,11 +86,11 @@ export function ServerRail({
             />
           </button>
           {createHovered && (
-            <RailTooltipPortal anchorRef={createButtonRef}>
+            <TooltipPortal anchorRef={createButtonRef}>
               <div className="whitespace-nowrap rounded-lg border border-border bg-card-2 px-3 py-1.5 text-sm font-medium text-accent shadow-lg">
                 Criar ou entrar num bando
               </div>
-            </RailTooltipPortal>
+            </TooltipPortal>
           )}
         </div>
       </div>
@@ -173,11 +141,11 @@ function RailIcon({
       </Link>
 
       {hovered && (
-        <RailTooltipPortal anchorRef={linkRef}>
+        <TooltipPortal anchorRef={linkRef}>
           <div className="whitespace-nowrap rounded-lg border border-border bg-card-2 px-3 py-1.5 text-sm font-medium text-accent shadow-lg">
             {label}
           </div>
-        </RailTooltipPortal>
+        </TooltipPortal>
       )}
     </div>
   );
@@ -260,7 +228,7 @@ function ServerIcon({
       </Link>
 
       {showTooltip && (
-        <RailTooltipPortal anchorRef={linkRef}>
+        <TooltipPortal anchorRef={linkRef}>
           <div className="pointer-events-auto min-w-[10rem] animate-modal-in rounded-xl border border-border bg-card-2 px-3 py-2 text-sm shadow-lg">
             <p className="font-semibold text-accent">{bando.name}</p>
             {participants && participants.length > 0 && (
@@ -279,7 +247,7 @@ function ServerIcon({
               </ul>
             )}
           </div>
-        </RailTooltipPortal>
+        </TooltipPortal>
       )}
 
       {isOwner && contextMenuPos && (
