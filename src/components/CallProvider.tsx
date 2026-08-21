@@ -16,7 +16,7 @@ import {
   useRemoteParticipants,
   useRoomContext,
 } from "@livekit/components-react";
-import { ParticipantEvent, Track, type Room } from "livekit-client";
+import { ConnectionState, ParticipantEvent, Track, type Room } from "livekit-client";
 import "@livekit/components-styles";
 
 type ActiveCall = { roomId: string; roomName: string; href: string };
@@ -150,6 +150,20 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? "Falha ao entrar na call");
         if (joinRequestRef.current !== requestId) return; // superseded
+
+        // Room.connect() is a no-op while already Connected -- it just logs
+        // "already connected to room X" and resolves without switching. So
+        // simply changing the `token`/`serverUrl` props on the persisting
+        // LiveKitRoom (see the note below on why we keep it mounted) is not
+        // enough on its own: the client silently stays in the OLD room even
+        // though our own UI has already moved on, which is exactly the
+        // "still shows me in the old call" bug this once caused. Has to be
+        // disconnected explicitly first so the room is back in a state
+        // where connect() will actually do something.
+        if (roomRef.current && roomRef.current.state === ConnectionState.Connected) {
+          await roomRef.current.disconnect();
+        }
+        if (joinRequestRef.current !== requestId) return; // superseded meanwhile
 
         // Setting both together in the same tick means `connected` (derived
         // from activeCall+tokenInfo agreeing) never dips to false in

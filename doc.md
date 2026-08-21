@@ -292,6 +292,25 @@ ações. Resumo:
   (perfil, é canal de voz?, é DM?) paralelizadas com `Promise.all` em
   vez de rodarem em série — eram independentes, só usam `user.id`/
   `roomId`.
+- **Bug real introduzido pelo fix acima: ficava mostrando o canal
+  errado como "ativo" depois de trocar de sala.** Manter a mesma
+  instância de `Room` e só trocar os props `token`/`serverUrl` parecia
+  a jogada certa, mas **`Room.connect()` é um no-op se o room já está
+  no estado `Connected`** — só loga "already connected to room X" e
+  resolve sem fazer nada (confirmado lendo o bundle de
+  `livekit-client`). Como o `Room` nunca desconectava da sala antiga
+  antes do `joinCall` trocar `activeCall`/`tokenInfo`, o efeito interno
+  do `useLiveKitRoom` (que reage a mudança em `token` chamando
+  `room.connect()` de novo) não fazia nada — o cliente ficava
+  silenciosamente conectado na sala VELHA pra sempre, mesmo com a UI
+  (header, sidebar) já mostrando a sala nova. Fix: antes de setar o
+  `tokenInfo`/`activeCall` novos, `joinCall` agora chama
+  `roomRef.current.disconnect()` explicitamente se o room ainda estiver
+  `ConnectionState.Connected` — só depois disso o `connect()` seguinte
+  de fato funciona. Ainda mais rápido que o bug original (token já foi
+  buscado antes, sem esperar o desmonte completo do componente), mas
+  não dá pra evitar esse disconnect explícito — é assim que o SDK
+  exige trocar de sala com a mesma instância.
 - **Moderação de voz (mutar/ensurdecer/mover membros)**:
   `POST /api/livekit/moderate` ({action: "mute"|"unmute"|"deafen"|
   "undeafen"|"move", channelId, targetUserId, destinationChannelId?}),
