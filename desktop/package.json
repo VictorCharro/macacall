@@ -21,6 +21,11 @@
       "preload.js",
       "icon.ico"
     ],
+    "publish": {
+      "provider": "github",
+      "owner": "VictorCharro",
+      "repo": "macacall"
+    },
     "win": {
       "target": "nsis",
       "icon": "icon.ico"
@@ -30,7 +35,11 @@
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
+      "createStartMenuShortcut": true,
+      "artifactName": "${productName}-Setup-${version}.${ext}"
     }
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
   }
 }

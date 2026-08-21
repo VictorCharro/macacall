@@ -1,5 +1,6 @@
-const { app, BrowserWindow, Tray, Menu, shell, nativeImage } = require("electron");
+const { app, BrowserWindow, Tray, Menu, shell, nativeImage, dialog } = require("electron");
 const path = require("path");
+const { autoUpdater } = require("electron-updater");
 
 const APP_URL = "https://macacall.vercel.app";
 const ICON_PATH = path.join(__dirname, "icon.ico");
@@ -42,6 +43,8 @@ if (!gotSingleInstanceLock) {
       if (BrowserWindow.getAllWindows().length === 0) createWindow();
       else mainWindow?.show();
     });
+
+    setupAutoUpdater();
   });
 
   app.on("before-quit", () => {
@@ -162,6 +165,11 @@ function createTray() {
     },
     { type: "separator" },
     {
+      label: "Verificar atualizações",
+      click: () => checkForUpdates({ manual: true }),
+    },
+    { type: "separator" },
+    {
       label: "Sair",
       click: () => {
         isQuitting = true;
@@ -175,4 +183,69 @@ function createTray() {
     mainWindow?.show();
     mainWindow?.focus();
   });
+}
+
+// Checks GitHub Releases (via the `publish` config in package.json) for a
+// newer tagged version, downloads it in the background, and prompts to
+// restart once it's ready -- no manual .exe download needed for updates
+// after this first release. `manual` controls whether "you're already up
+// to date" / errors get a dialog (tray menu click) or stay silent
+// (the automatic startup check, which shouldn't nag on every launch).
+let manualCheckInFlight = false;
+
+function setupAutoUpdater() {
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on("update-downloaded", (info) => {
+    dialog
+      .showMessageBox(mainWindow, {
+        type: "info",
+        title: "Atualização do MacaCall pronta",
+        message: `A versão ${info.version} foi baixada. Reiniciar agora pra instalar?`,
+        buttons: ["Reiniciar agora", "Depois"],
+        defaultId: 0,
+        cancelId: 1,
+      })
+      .then(({ response }) => {
+        if (response === 0) {
+          isQuitting = true;
+          autoUpdater.quitAndInstall();
+        }
+      });
+  });
+
+  autoUpdater.on("error", (err) => {
+    if (manualCheckInFlight) {
+      dialog.showMessageBox(mainWindow, {
+        type: "error",
+        title: "Erro ao buscar atualização",
+        message: err?.message ?? String(err),
+      });
+    }
+    manualCheckInFlight = false;
+  });
+
+  autoUpdater.on("update-not-available", () => {
+    if (manualCheckInFlight) {
+      dialog.showMessageBox(mainWindow, {
+        type: "info",
+        title: "MacaCall",
+        message: "Você já está na versão mais recente.",
+      });
+    }
+    manualCheckInFlight = false;
+  });
+
+  // Silent check on startup -- only surfaces UI once an update actually
+  // finishes downloading (the dialog above).
+  checkForUpdates({ manual: false });
+}
+
+function checkForUpdates({ manual }) {
+  manualCheckInFlight = manual;
+  // Errors surface through the "error" event below (electron-updater fires
+  // both that and a rejected promise for the same failure) -- catching here
+  // too would just double the dialog.
+  autoUpdater.checkForUpdates().catch(() => {});
 }
