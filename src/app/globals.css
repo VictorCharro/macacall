@@ -1,22 +1,27 @@
 @import "tailwindcss";
 
 :root {
-  --background: #111413;
-  --foreground: #e4e4e7;
-  --card: #161c18;
-  --card-2: #1a231d;
-  --card-3: #121614;
-  --border: #232c25;
-  --border-soft: #1f2722;
-  --primary: #f59e0b;
-  --primary-foreground: #09090b;
-  --secondary: #059669;
+  /* Discord's actual dark theme palette -- the app kept its own "jungle/
+     amber" tokens through the reskin phase, but the goal now is genuine
+     visual parity with Discord, not just structural similarity. Every
+     value below is Discord's real one; only the token *names* (and the
+     macaco/bando microcopy elsewhere) stay MacaCall's own. */
+  --background: #313338; /* message area -- deliberately lighter than the sidebars */
+  --foreground: #f2f3f5;
+  --card: #2b2d31; /* channel list + member list sidebars */
+  --card-2: #35373c; /* hover state on rows */
+  --card-3: #1e1f22; /* server rail + bottom user bar -- darkest surface */
+  --border: #26282c;
+  --border-soft: #1e1f22;
+  --primary: #5865f2; /* Discord "blurple" */
+  --primary-foreground: #ffffff;
+  --secondary: #23a55a; /* Discord online-green, doubles as the "call connected" color */
   --secondary-foreground: #ffffff;
-  --accent: #f4f4f5;
-  --danger: #e11d48;
-  --muted: #a1a1aa;
+  --accent: #ffffff;
+  --danger: #da373c;
+  --muted: #949ba4;
   /* Call stage sits a shade below every other surface so video pops off it. */
-  --stage: #0d120f;
+  --stage: #0a0a0b;
 }
 
 @theme inline {
@@ -86,13 +91,13 @@ button:disabled {
 }
 
 .macacall-call {
-  --lk-bg: #111413;
-  --lk-bg2: #161c18;
-  --lk-bg3: #1f2722;
-  --lk-accent-bg: #f59e0b;
-  --lk-accent-fg: #09090b;
-  --lk-danger: #e11d48;
-  --lk-fg: #e4e4e7;
+  --lk-bg: #313338;
+  --lk-bg2: #2b2d31;
+  --lk-bg3: #1e1f22;
+  --lk-accent-bg: #5865f2;
+  --lk-accent-fg: #ffffff;
+  --lk-danger: #da373c;
+  --lk-fg: #f2f3f5;
 }
 
 @keyframes overlay-in {

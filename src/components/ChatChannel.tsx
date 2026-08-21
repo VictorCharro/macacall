@@ -399,8 +399,8 @@ export function ChatChannel({
 
   return (
     <div className="flex min-h-0 flex-1 overflow-hidden">
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-card">
-      <header className="z-10 flex h-12 shrink-0 items-center justify-between gap-2 border-b border-border-soft bg-card px-4">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background">
+      <header className="z-10 flex h-12 shrink-0 items-center justify-between gap-2 border-b border-border-soft bg-background px-4">
         <div className="flex min-w-0 items-center gap-2">
           <Hash className="h-5 w-5 shrink-0 text-muted" />
           <span className="truncate text-sm font-bold text-accent">

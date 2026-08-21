@@ -329,7 +329,7 @@ export function DmChat({
   return (
     <div className="flex min-h-0 flex-1 overflow-hidden">
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <header className="flex h-12 items-center gap-2 border-b border-border-soft bg-card px-4">
+        <header className="flex h-12 items-center gap-2 border-b border-border-soft bg-background px-4">
           <img
             src={`https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(participants[0]?.avatarSeed ?? conversationId)}`}
             alt=""

@@ -109,7 +109,7 @@ export function FriendsHome({
       />
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <header className="flex h-12 items-center gap-2 border-b border-border-soft bg-card px-4">
+        <header className="flex h-12 items-center gap-2 border-b border-border-soft bg-background px-4">
           <Users className="h-5 w-5 text-muted" />
           <h1 className="text-sm font-bold text-accent">Amigos</h1>
           <div className="ml-2 h-5 w-px bg-border-soft" />
