@@ -239,6 +239,20 @@ ações. Resumo:
   `useCall()`), câmera, compartilhar tela e desconectar — o botão de
   ensurdecer ficava só no `UserPanel` (sidebar) antes, sem equivalente
   dentro da própria tela de call.
+- **Mover membro também dá pra fazer arrastando** (drag-and-drop), além do
+  "Mover para..." no menu de contexto — `ChannelSidebar.tsx`. A linha do
+  participante (`VoiceParticipantRow`) fica `draggable` quando o usuário
+  tem `MOVE_MEMBERS`, e no `dragStart` guarda `{identity,
+  sourceChannelId}` num MIME próprio (`MEMBER_DRAG_MIME =
+  "application/x-macacall-move-member"`, namespaced de propósito pra não
+  bater com outro tipo de drag do navegador). Todo `ChannelRow` de canal
+  de voz vira um alvo de drop (`onDragOver`/`onDrop`), com destaque verde
+  (`ring-2 ring-secondary`) enquanto arrasta por cima — igual ao
+  destaque de canal "ativo"/"ao vivo", só que mais forte pra ficar óbvio
+  que é um alvo de drop. Chama o mesmo endpoint que o "Mover para..." do
+  menu de contexto (`moveParticipant` em `ChannelSidebar.tsx`, POST
+  action="move" em `/api/livekit/moderate`) — são dois caminhos de UI
+  pro mesmo mecanismo de sinal via atributo, não duas implementações.
 - **Moderação de voz (mutar/ensurdecer/mover membros)**:
   `POST /api/livekit/moderate` ({action: "mute"|"unmute"|"deafen"|
   "undeafen"|"move", channelId, targetUserId, destinationChannelId?}),

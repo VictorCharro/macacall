@@ -27,6 +27,11 @@ import { hasPermission } from "@/lib/permissions";
 import { avatarUrl } from "@/lib/avatar";
 import type { Role } from "@/lib/types";
 
+/** Custom MIME used to drag a connected member's row onto a voice channel
+ * to move them there — namespaced so we never accidentally match some
+ * other drag payload (file drops, browser link drags, etc). */
+const MEMBER_DRAG_MIME = "application/x-macacall-move-member";
+
 type ChannelInfo = {
   id: string;
   name: string;
@@ -79,6 +84,7 @@ export function ChannelSidebar({
 }) {
   const pathname = usePathname();
   const participants = useBandoParticipants();
+  const refreshParticipants = useRefreshBandoParticipants();
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
   const canManageChannels =
@@ -89,11 +95,40 @@ export function ChannelSidebar({
     hasPermission(myPermissions, "MANAGE_BANDO") ||
     hasPermission(myPermissions, "KICK_MEMBERS") ||
     hasPermission(myPermissions, "BAN_MEMBERS");
+  const canMoveMembers = isOwner || hasPermission(myPermissions, "MOVE_MEMBERS");
   const canModerate =
     isOwner ||
     hasPermission(myPermissions, "MUTE_MEMBERS") ||
-    hasPermission(myPermissions, "MOVE_MEMBERS") ||
+    canMoveMembers ||
     hasPermission(myPermissions, "DEAFEN_MEMBERS");
+
+  async function moveParticipant(
+    identity: string,
+    sourceChannelId: string,
+    destinationChannelId: string,
+  ) {
+    if (sourceChannelId === destinationChannelId) return;
+    try {
+      const res = await fetch("/api/livekit/moderate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "move",
+          channelId: sourceChannelId,
+          targetUserId: identity,
+          destinationChannelId,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        console.error("Falha ao mover membro:", data.error ?? res.statusText);
+        return;
+      }
+      refreshParticipants();
+    } catch (err) {
+      console.error("Falha ao mover membro:", err);
+    }
+  }
 
   function toggleCategory(name: string) {
     setCollapsed((prev) => {
@@ -182,6 +217,10 @@ export function ChannelSidebar({
                         live={isInThisCall}
                         asListItem={false}
                         isVoice
+                        acceptsMemberDrop={canMoveMembers}
+                        onDropMember={(identity, sourceChannelId) =>
+                          moveParticipant(identity, sourceChannelId, channel.id)
+                        }
                       >
                         <Volume2
                           className={`h-4 w-4 shrink-0 ${
@@ -202,6 +241,7 @@ export function ChannelSidebar({
                               channelId={channel.id}
                               voiceChannels={voiceChannels}
                               canModerate={canModerate}
+                              canMove={canMoveMembers}
                               isSelf={p.identity === selfUserId}
                             />
                           ))}
@@ -265,6 +305,8 @@ function ChannelRow({
   live = false,
   asListItem = true,
   isVoice = false,
+  acceptsMemberDrop = false,
+  onDropMember,
   children,
 }: {
   bandoId: string;
@@ -275,10 +317,17 @@ function ChannelRow({
   live?: boolean;
   asListItem?: boolean;
   isVoice?: boolean;
+  /** Whether the current user can drag a connected member's row onto this
+   * channel to move them here (MOVE_MEMBERS permission). */
+  acceptsMemberDrop?: boolean;
+  onDropMember?: (identity: string, sourceChannelId: string) => void;
   children: React.ReactNode;
 }) {
   const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null);
+  const [dragOver, setDragOver] = useState(false);
   const { joinCall } = useCall();
+
+  const canAcceptDrop = isVoice && acceptsMemberDrop && onDropMember;
 
   const row = (
     <div
@@ -288,6 +337,36 @@ function ChannelRow({
           ? (e) => {
               e.preventDefault();
               setMenuPos({ x: e.clientX, y: e.clientY });
+            }
+          : undefined
+      }
+      onDragOver={
+        canAcceptDrop
+          ? (e) => {
+              if (!e.dataTransfer.types.includes(MEMBER_DRAG_MIME)) return;
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "move";
+              setDragOver(true);
+            }
+          : undefined
+      }
+      onDragLeave={canAcceptDrop ? () => setDragOver(false) : undefined}
+      onDrop={
+        canAcceptDrop
+          ? (e) => {
+              e.preventDefault();
+              setDragOver(false);
+              const raw = e.dataTransfer.getData(MEMBER_DRAG_MIME);
+              if (!raw) return;
+              try {
+                const { identity, sourceChannelId } = JSON.parse(raw) as {
+                  identity: string;
+                  sourceChannelId: string;
+                };
+                onDropMember(identity, sourceChannelId);
+              } catch {
+                // ignora payload malformado
+              }
             }
           : undefined
       }
@@ -310,11 +389,13 @@ function ChannelRow({
             : undefined
         }
         className={`flex items-center justify-between gap-2 rounded px-2 py-1.5 text-xs font-medium transition ${
-          active
-            ? "bg-card-2 font-semibold text-accent"
-            : live
-              ? "border border-secondary/30 bg-secondary/10 font-semibold text-secondary"
-              : "text-muted hover:bg-card-2/60 hover:text-foreground"
+          dragOver
+            ? "border border-secondary bg-secondary/20 font-semibold text-secondary ring-2 ring-secondary"
+            : active
+              ? "bg-card-2 font-semibold text-accent"
+              : live
+                ? "border border-secondary/30 bg-secondary/10 font-semibold text-secondary"
+                : "text-muted hover:bg-card-2/60 hover:text-foreground"
         }`}
       >
         <div className="flex min-w-0 items-center gap-2">{children}</div>
@@ -349,15 +430,18 @@ function VoiceParticipantRow({
   channelId,
   voiceChannels,
   canModerate,
+  canMove,
   isSelf,
 }: {
   participant: BandoParticipant;
   channelId: string;
   voiceChannels: ChannelInfo[];
   canModerate: boolean;
+  canMove: boolean;
   isSelf: boolean;
 }) {
   const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null);
+  const [dragging, setDragging] = useState(false);
   // The poll behind `participant` only refreshes every 4s and depends on the
   // LiveKit server having already observed a published/unpublished track —
   // for our OWN row we already know the real state instantly from the call
@@ -369,7 +453,23 @@ function VoiceParticipantRow({
 
   return (
     <li
-      className="flex items-center justify-between gap-2 py-0.5 text-xs text-muted"
+      draggable={canMove}
+      onDragStart={
+        canMove
+          ? (e) => {
+              e.dataTransfer.effectAllowed = "move";
+              e.dataTransfer.setData(
+                MEMBER_DRAG_MIME,
+                JSON.stringify({ identity: participant.identity, sourceChannelId: channelId }),
+              );
+              setDragging(true);
+            }
+          : undefined
+      }
+      onDragEnd={canMove ? () => setDragging(false) : undefined}
+      className={`flex items-center justify-between gap-2 py-0.5 text-xs text-muted transition ${
+        canMove ? "cursor-grab active:cursor-grabbing" : ""
+      } ${dragging ? "opacity-40" : ""}`}
       onContextMenu={
         canModerate
           ? (e) => {
