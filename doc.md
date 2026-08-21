@@ -153,8 +153,31 @@ ações. Resumo:
 - Canal de voz mostra o vídeo/grid **acima** do chat de texto, não troca um
   pelo outro (decisão explícita — ver commit "dock voice call above text
   chat").
-- Entrar num canal de voz exige clique explícito — nunca auto-conecta ao
-  navegar pra página do canal.
+- **Clicar num canal de voz na sidebar já conecta** (clique simples), igual
+  ao Discord — o `onClick` do `Link` chama `joinCall` junto com a navegação.
+  Isso *substitui* a convenção antiga ("nunca auto-conecta ao navegar"): o
+  que continua valendo é que **carregar a página do canal não conecta
+  sozinho** — num refresh ou link direto aparece uma barra compacta com
+  "Entrar na call", também como no Discord (que te desconecta da voz no
+  reload em vez de reabrir seu microfone sem você pedir).
+- `joinCall` é **no-op se você já está naquela sala**. Um objeto `activeCall`
+  novo refaz o fetch do token e remonta o `LiveKitRoom`, o que derrubaria e
+  reconectaria a call — clicar no canal em que você já está só traz a view
+  de volta.
+- **Bug já corrigido (não reintroduzir)**: a sidebar chamava
+  `joinCall(bandoId, channel.id, channel.name)` contra a assinatura
+  `joinCall(roomId, roomName, href)`, então conectava numa sala com o id do
+  *bando*. Como `roomId` e `href` ficavam errados, duas checagens
+  silenciosamente nunca batiam: `activeCall?.roomId === channelId`
+  (`VoiceChannelView` mostrava "Pronto pra entrar" mesmo conectado) e
+  `pathname === activeCall.href` (`VoiceConnectedBar` aparecia na própria
+  página da call). Se algum desses sintomas voltar, conferir os argumentos
+  de `joinCall` primeiro.
+- Trocar pra um canal de **texto** enquanto está em call mantém a conexão:
+  `CallProvider` mora em `app/bandos/layout.tsx`, acima do `children`, então
+  o `LiveKitRoom` não desmonta ao navegar dentro de `/bandos`. A
+  `VoiceConnectedBar` (sidebar) aparece justamente quando
+  `connected && pathname !== activeCall.href`.
 - A barra de controles da call (`VoiceChannelView.tsx`, `CallInterface`)
   tem mic, ensurdecer (`toggleDeafen`/`deafened`/`forceDeafened` de
   `useCall()`), câmera, compartilhar tela e desconectar — o botão de
