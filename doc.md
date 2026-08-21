@@ -253,6 +253,17 @@ ações. Resumo:
   menu de contexto (`moveParticipant` em `ChannelSidebar.tsx`, POST
   action="move" em `/api/livekit/moderate`) — são dois caminhos de UI
   pro mesmo mecanismo de sinal via atributo, não duas implementações.
+- **Mover demorava a refletir no sidebar** (até uns 4s às vezes) —
+  `refreshParticipants()` era chamado uma vez só, logo depois do POST de
+  `/api/livekit/moderate` responder. Mas "mover" é só um sinal: a pessoa
+  movida ainda precisa buscar um token novo e reconectar no LiveKit da
+  sala nova antes do servidor refletir ela lá — isso demora mais que a
+  resposta do POST, então esse primeiro refresh quase sempre pegava
+  dado velho, e só o próximo tick agendado do poll (até 4s depois)
+  mostrava o estado certo. Fix: `moveParticipant` em `ChannelSidebar.tsx`
+  agora dispara `refreshParticipants()` mais duas vezes (800ms e 2000ms
+  depois), pra pegar a janela em que a reconexão termina sem esperar o
+  poll de 4s.
 - **Moderação de voz (mutar/ensurdecer/mover membros)**:
   `POST /api/livekit/moderate` ({action: "mute"|"unmute"|"deafen"|
   "undeafen"|"move", channelId, targetUserId, destinationChannelId?}),

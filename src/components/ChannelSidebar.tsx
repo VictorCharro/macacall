@@ -124,7 +124,14 @@ export function ChannelSidebar({
         console.error("Falha ao mover membro:", data.error ?? res.statusText);
         return;
       }
+      // A single refresh right away is usually too early: the move is just a
+      // signal, the moved person's own client still has to fetch a fresh
+      // token and reconnect to the new LiveKit room before the server's
+      // participant list reflects it. Without these, the sidebar could sit
+      // on stale data for up to 4s (the next scheduled poll) after that.
       refreshParticipants();
+      setTimeout(refreshParticipants, 800);
+      setTimeout(refreshParticipants, 2000);
     } catch (err) {
       console.error("Falha ao mover membro:", err);
     }
