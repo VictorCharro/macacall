@@ -1,0 +1,36 @@
+{
+  "name": "macacall-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MacaCall desktop shell -- a native window around https://macacall.vercel.app, same idea as Discord's own Electron client.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win"
+  },
+  "devDependencies": {
+    "electron": "^43.4.1",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "com.macacall.desktop",
+    "productName": "MacaCall",
+    "icon": "icon.ico",
+    "files": [
+      "main.js",
+      "preload.js",
+      "icon.ico"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  }
+}
