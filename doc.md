@@ -21,6 +21,9 @@ amigos. "Bando" = servidor. "Macaco" = usuário/membro.
 - **lucide-react** pros ícones (não usar emoji solto em UI nova — o app migrou
   de emoji pra ícones de verdade)
 - Deploy: Vercel, projeto `macacall`. Supabase project_id: `geuvkhkqektkkihquvii`
+- **App desktop (Windows)**: pasta `desktop/` — shell Electron fino em cima
+  do site já deployado (não roda o Next.js local). Ver seção própria
+  abaixo.
 
 ## Convenções de trabalho
 
@@ -312,6 +315,58 @@ ações. Resumo:
   desligado até ele mesmo reativar — só o travamento do moderador é que
   some).
 
+## App desktop (Electron, Windows)
+
+Pasta `desktop/` — repositório separado em termos de dependências
+(`desktop/package.json` próprio, `npm install` ali dentro, não na raiz),
+mas versionado no mesmo repo Git. **Não roda o Next.js localmente**: é só
+uma janela do Electron apontando pra `https://macacall.vercel.app` (igual
+o cliente desktop de verdade do Discord) — então mudar o site (`src/`) não
+exige rebuildar o desktop, só muda quando `desktop/` em si muda (janela,
+tray, ícone, auto-update). Detalhes completos em `desktop/README.md`
+(como rodar local, gerar o instalador, processo de release).
+
+- **Arquivos**: `main.js` (processo principal — janela, tray, single
+  instance lock, minimizar-pra-tray), `preload.js` (vazio de propósito —
+  o site não precisa de nenhuma API Electron-específica,
+  `contextIsolation`/`nodeIntegration` ficam travados), `icon.ico`
+  (cópia de `src/app/favicon.ico` — trocar os dois juntos se o ícone
+  mudar).
+- **Auto-update via GitHub Releases** (`electron-updater`,
+  `setupAutoUpdater()` em `main.js`): checa ao abrir, baixa em segundo
+  plano, pergunta se quer reiniciar. **Só funciona se toda release tiver
+  os dois arquivos** que `npm run dist` gera em `desktop/dist/`: o
+  instalador (`MacaCall-Setup-<versão>.exe`) e `latest.yml` (sem esse
+  arquivo o `electron-updater` nunca enxerga a release nova).
+- **Diálogo de update não é o `dialog.showMessageBox` nativo do
+  Windows** — trocado por uma janela própria (`dialog.html` +
+  `dialog-preload.js`) estilizada igual ao app, porque o nativo parecia
+  uma caixa de erro do sistema, nada a ver com o resto. E "reiniciar
+  agora" não deve reabrir o instalador completo (o assistente do NSIS) —
+  só reiniciar direto na versão já baixada.
+- **Compartilhar tela precisa de dois ajustes, não só um** — os dois já
+  foram feitos, mas é fácil esquecer o segundo achando que só o primeiro
+  resolve:
+  1. Electron não mostra o seletor de tela/janela sozinho pra
+     `getDisplayMedia()` como um Chrome normal mostra — precisa de
+     `setDisplayMediaRequestHandler` própria.
+  2. Mesmo com isso, `setPermissionRequestHandler` só liberando
+     `"notifications"` e `"media"` **bloqueia silenciosamente** a
+     permissão `"display-capture"` que o Chromium checa antes de sequer
+     chamar o handler acima — falha muda, sem erro nenhum visível. As
+     duas causas juntas faziam parecer que "compartilhar tela não faz
+     nada" mesmo depois do primeiro fix.
+- **Barra de título** (o site não tem uma própria — é um `<header>` de
+  página web normal): o Electron injeta `-webkit-app-region: drag` no
+  `<header>` de cada tela via `insertCSS` (não mexe no código-fonte do
+  site, só em runtime — usuário de navegador normal não é afetado),
+  marcando elementos interativos como `no-drag` pra continuarem
+  clicáveis. Os botões nativos de minimizar/maximizar/fechar (overlay do
+  Windows) ganham uma **faixa reservada de verdade** no topo da janela
+  (empurra o app pra baixo por essa altura), em vez de desenhar por cima
+  do conteúdo em y=0 — a primeira tentativa deixava os botões nativos
+  sobrepostos na lista de membros.
+
 ## Realtime
 
 - Chat, reações, presença: tudo via Supabase Realtime.
@@ -381,6 +436,7 @@ ações. Resumo:
 | Presença (online/ausente/etc) | `components/PresenceProvider.tsx`, `lib/presence.ts` |
 | Chamadas | `components/CallProvider.tsx`, `components/VoiceChannelView.tsx`, `api/livekit/*` |
 | Perfil do usuário (popout) | `components/ProfilePopout.tsx` |
+| App desktop (Windows/Electron) | `desktop/main.js`, `desktop/README.md` |
 
 ## Roadmap "Discord 2" (issues no GitHub, uma por feature grande)
 
@@ -396,18 +452,36 @@ lá (`gh issue list`) antes de assumir que algo falta ou já foi feito.
   tem esse conceito, só o autor). `edited_at` em `messages`/`dm_messages`,
   RLS de UPDATE/DELETE, realtime DELETE, form inline reaproveitado
   (`EditMessageForm`, exportado de `ChatChannel.tsx`) entre canal e DM.
-- ⬜ #3 Menções (@usuário e @cargo)
-- ⬜ #4 Upload de arquivo/imagem (Supabase Storage) + emoji picker
-- ⬜ #5 Notificações (push do navegador + in-app)
-- ⬜ #6 Threads (avaliar se faz sentido pra arquitetura atual)
-- ⬜ #7 Configurações de servidor/administração completa (nome, ícone,
-  log de auditoria -- kick/ban já existem via moderação de cargos)
-- ⬜ #8 Configurações de voz: troca de dispositivo, teste de mic
-  (mute/deafen/move de terceiros já existem via `/api/livekit/moderate`)
-- ⬜ #9 Responsividade mobile completa (layout hoje assume desktop)
+- ✅ #3 Menções (@usuário, @cargo e @everyone) em canais e DMs.
+- ✅ #4 Upload de arquivo/imagem (Supabase Storage) + emoji picker em
+  canais e DMs.
+- ✅ #5 Notificações push do navegador + badge de DM não lida.
+- ✅ #6 Threads em canais de texto.
+- ✅ #7 Modal de configurações de servidor -- lista de banidos + log de
+  auditoria (kick/ban em si já existiam via moderação de cargos).
+- ✅ #8 Configurações de voz/vídeo: troca de dispositivo (mic/câmera/
+  saída), teste de nível de mic (mute/deafen/move de terceiros já
+  existiam via `/api/livekit/moderate`).
+- ⬜ #9 Responsividade mobile completa (layout hoje assume desktop).
+- ✅ App desktop Windows (Electron) -- não era uma issue do roadmap
+  "Discord 2", mas é a mesma ideia de fidelidade ao Discord de verdade
+  (cliente nativo em vez de só navegador). Ver seção "App desktop"
+  acima.
 
 ## Histórico resumido (mais recente primeiro)
 
+- Performance de navegação (`loading.tsx` + queries paralelizadas em
+  todas as rotas de bando e de Amigos/DMs, dedupe de `getUser()`).
+- Moderação de voz completa (mutar/ensurdecer/mover membros) + ícones de
+  mic/fone mudo corrigidos (self vs. forçado por moderador).
+- App desktop Windows via Electron (`desktop/`): wrapper nativo em cima
+  do site deployado, auto-update via GitHub Releases, tray, barra de
+  título customizada, compartilhamento de tela.
+- Configurações de voz/vídeo (troca de dispositivo, teste de mic),
+  paleta visual trocada pra cores reais do Discord + fonte Inter.
+- Threads em canais de texto, notificações push do navegador, menções
+  (@usuário/@cargo/@everyone), upload de arquivo/imagem + emoji picker,
+  modal de configurações de servidor (banidos + log de auditoria).
 - Edição e exclusão de mensagens (canais + DMs), roadmap "Discord 2" nas
   issues do GitHub.
 - Editar perfil (bio + cor do banner), menu de contexto nas DMs 1:1 da
