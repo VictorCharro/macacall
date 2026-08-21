@@ -14,6 +14,8 @@ export type BandoParticipant = {
   identity: string;
   name: string;
   channelId: string;
+  avatarSeed: string;
+  avatarUrl: string | null;
   sharingScreen: boolean;
   micMuted: boolean;
   deafened: boolean;

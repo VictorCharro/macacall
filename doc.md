@@ -134,6 +134,23 @@ busca cargos/permissões do usuário atual pra esse bando.
   INSERT/UPDATE/DELETE só no próprio path (`(storage.foldername(name))[1]
   = auth.uid()::text`) — mesmo padrão de `bando-photos`, só que por
   usuário em vez de por dono de bando.
+- **Dois lugares ficaram de fora da primeira leva de propagação porque
+  não vêm de uma query Supabase direta com `avatar_seed`, e sim de
+  participantes LiveKit** (identificados só por `identity` = user id) —
+  apareciam como o emoji 🐵 fixo em vez de avatar:
+  - **Lista compacta de voz** (`ChannelSidebar.tsx`, `VoiceParticipantRow`):
+    `/api/livekit/participants` agora também busca `avatar_seed`/
+    `avatar_url` em `profiles` pra todo `identity` presente na sala (um
+    `select .in("id", identities)` batelado, não por participante) e
+    devolve junto no JSON — `BandoParticipant` ganhou os dois campos.
+  - **Tile da call** (`VoiceChannelView.tsx`, componente `Tile`, usado
+    tanto em canal de bando quanto em DM): não dá pra reusar o mesmo
+    truque porque esse componente não sabe se está num bando ou numa DM
+    (não tem uma query de `bando_members` central pra apoiar) — busca o
+    avatar direto com `getUserProfile(participant.identity)` (a mesma
+    action do popup de perfil clicável) num `useEffect` só quando o
+    trackRef não existe (foto substitui o placeholder de câmera
+    desligada).
 
 ## Autenticação
 

@@ -24,6 +24,7 @@ import {
 import type { BandoParticipant } from "@/components/BandoParticipants";
 import { ContextMenuPortal } from "@/components/ContextMenuPortal";
 import { hasPermission } from "@/lib/permissions";
+import { avatarUrl } from "@/lib/avatar";
 import type { Role } from "@/lib/types";
 
 type ChannelInfo = {
@@ -379,12 +380,11 @@ function VoiceParticipantRow({
       }
     >
       <span className="flex min-w-0 items-center gap-2">
-        <span
-          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-card-3 text-[10px] ring-1 ring-secondary/40"
-          aria-hidden="true"
-        >
-          🐵
-        </span>
+        <img
+          src={avatarUrl(participant.avatarSeed, participant.avatarUrl)}
+          alt=""
+          className="h-5 w-5 shrink-0 rounded-full bg-card-3 object-cover ring-1 ring-secondary/40"
+        />
         <span className="truncate">{participant.name}</span>
       </span>
 

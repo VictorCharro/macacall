@@ -6,6 +6,8 @@ type ParticipantInfo = {
   identity: string;
   name: string;
   channelId: string;
+  avatarSeed: string;
+  avatarUrl: string | null;
   sharingScreen: boolean;
   micMuted: boolean;
   deafened: boolean;
@@ -69,30 +71,51 @@ export async function GET(request: Request) {
   const roomService = new RoomServiceClient(httpUrl, apiKey, apiSecret);
 
   try {
-    const results = await Promise.all(
+    const perChannel = await Promise.all(
       voiceChannels.map(async (channel) => {
         try {
           const participants = await roomService.listParticipants(channel.id);
-          return participants.map((p): ParticipantInfo => {
-            const micTrack = p.tracks.find(
-              (t) => t.source === TrackSource.MICROPHONE,
-            );
-            return {
-              identity: p.identity,
-              name: p.name || "Macaco anônimo",
-              channelId: channel.id,
-              sharingScreen: p.tracks.some(
-                (t) => t.source === TrackSource.SCREEN_SHARE,
-              ),
-              micMuted: micTrack ? micTrack.muted : true,
-              deafened: p.attributes?.deafened === "true",
-              forceMuted: p.attributes?.forceMuted === "true",
-              forceDeafened: p.attributes?.forceDeafened === "true",
-            };
-          });
+          return { channel, participants };
         } catch {
-          return [];
+          return { channel, participants: [] };
         }
+      }),
+    );
+
+    const allIdentities = [
+      ...new Set(
+        perChannel.flatMap(({ participants }) => participants.map((p) => p.identity)),
+      ),
+    ];
+
+    const { data: profiles } =
+      allIdentities.length > 0
+        ? await supabase
+            .from("profiles")
+            .select("id, avatar_seed, avatar_url")
+            .in("id", allIdentities)
+        : { data: [] };
+
+    const avatarById = new Map(
+      (profiles ?? []).map((p) => [p.id, { seed: p.avatar_seed, url: p.avatar_url }]),
+    );
+
+    const results = perChannel.map(({ channel, participants }) =>
+      participants.map((p): ParticipantInfo => {
+        const micTrack = p.tracks.find((t) => t.source === TrackSource.MICROPHONE);
+        const avatar = avatarById.get(p.identity);
+        return {
+          identity: p.identity,
+          name: p.name || "Macaco anônimo",
+          channelId: channel.id,
+          avatarSeed: avatar?.seed ?? p.identity,
+          avatarUrl: avatar?.url ?? null,
+          sharingScreen: p.tracks.some((t) => t.source === TrackSource.SCREEN_SHARE),
+          micMuted: micTrack ? micTrack.muted : true,
+          deafened: p.attributes?.deafened === "true",
+          forceMuted: p.attributes?.forceMuted === "true",
+          forceDeafened: p.attributes?.forceDeafened === "true",
+        };
       }),
     );
 

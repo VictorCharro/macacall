@@ -31,6 +31,8 @@ import { useCall } from "@/components/CallProvider";
 import { ChatChannel } from "@/components/ChatChannel";
 import { ContextMenuPortal } from "@/components/ContextMenuPortal";
 import { UserProfileModal } from "@/components/UserProfileModal";
+import { getUserProfile } from "@/app/actions/profiles";
+import { avatarUrl } from "@/lib/avatar";
 import type { RawReaction } from "@/lib/reactions";
 import type { RawAttachment } from "@/lib/attachments";
 import type { ThreadSummary } from "@/lib/threads";
@@ -498,6 +500,7 @@ function Tile({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [volumeMenuPos, setVolumeMenuPos] = useState<{ x: number; y: number } | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [avatar, setAvatar] = useState<{ seed: string; url: string | null } | null>(null);
   const { isMuted } = useTrackMutedIndicator({
     participant,
     source: Track.Source.Microphone,
@@ -512,6 +515,16 @@ function Tile({
   const [volume, setVolumeState] = useState(
     () => remoteParticipant?.getVolume(volumeSource) ?? 1,
   );
+
+  useEffect(() => {
+    let cancelled = false;
+    getUserProfile(participant.identity).then((p) => {
+      if (!cancelled && p) setAvatar({ seed: p.avatarSeed, url: p.avatarUrl });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [participant.identity]);
 
   useEffect(() => {
     if (!allowFullscreen) return;
@@ -565,17 +578,17 @@ function Tile({
       ) : (
         <div className="flex h-full w-full items-center justify-center bg-card-2 p-4">
           <div className="relative">
-            <div
-              className={`flex items-center justify-center rounded-full border-4 bg-background transition-transform duration-200 ${
-                size === "thumb" ? "h-12 w-12 text-xl" : "h-24 w-24 text-4xl"
+            <img
+              src={avatarUrl(avatar?.seed ?? participant.identity, avatar?.url)}
+              alt=""
+              className={`rounded-full border-4 bg-background object-cover transition-transform duration-200 ${
+                size === "thumb" ? "h-12 w-12" : "h-24 w-24"
               } ${
                 isSpeaking
                   ? "scale-105 border-secondary shadow-xl shadow-secondary/40"
                   : "border-border"
               }`}
-            >
-              🐵
-            </div>
+            />
             {isSpeaking && (
               <span className="pointer-events-none absolute inset-0 animate-ping rounded-full border-2 border-secondary opacity-60" />
             )}
