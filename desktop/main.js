@@ -32,11 +32,26 @@ if (!gotSingleInstanceLock) {
 
     // Let the site's own Notification.requestPermission() / push subscribe
     // flow through without an extra native prompt -- this *is* the trusted
-    // shell for our own domain, there's nothing to gate here.
+    // shell for our own domain, there's nothing to gate here. Missing
+    // "display-capture" here was the actual reason screen share did
+    // nothing when clicked: this handler was rejecting the permission
+    // before setDisplayMediaRequestHandler below ever got a chance to show
+    // the picker, so getDisplayMedia() just failed silently.
     mainWindow.webContents.session.setPermissionRequestHandler(
       (_webContents, permission, callback) => {
-        callback(permission === "notifications" || permission === "media");
+        callback(
+          permission === "notifications" ||
+            permission === "media" ||
+            permission === "display-capture",
+        );
       },
+    );
+    // Chromium runs a synchronous "check" ahead of some permission requests
+    // -- belt-and-suspenders alongside the request handler above.
+    // ("display-capture" isn't one of the permissions this particular
+    // handler ever gets asked about, only the request handler above.)
+    mainWindow.webContents.session.setPermissionCheckHandler(
+      (_webContents, permission) => permission === "notifications" || permission === "media",
     );
 
     // A regular Chrome browser shows its own screen/window picker for
