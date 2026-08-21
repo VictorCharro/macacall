@@ -173,6 +173,7 @@ function createWindow() {
   `;
   mainWindow.webContents.on("did-finish-load", () => {
     mainWindow.webContents.insertCSS(dragRegionCss);
+    mainWindow.webContents.executeJavaScript(updateButtonScript(TITLE_BAR_HEIGHT)).catch(() => {});
   });
 
   // Keep the app scoped to our own domain -- anything that would open a new
@@ -196,6 +197,52 @@ function createWindow() {
     event.preventDefault();
     mainWindow.hide();
   });
+}
+
+// Builds a small pill button next to the native minimize/maximize/close
+// overlay (same reserved title-bar strip as the drag region above), hidden
+// until an update is actually ready. Injected as a script rather than baked
+// into the site's own source -- like the drag region, this only exists in
+// the desktop shell, browser users never see it. Talks to main.js through
+// window.macacallUpdater (preload.js), which is the only bridge exposed
+// with contextIsolation on.
+function updateButtonScript(titleBarHeight) {
+  return `(() => {
+    if (document.getElementById("macacall-update-btn")) return;
+    const btn = document.createElement("button");
+    btn.id = "macacall-update-btn";
+    btn.type = "button";
+    btn.style.cssText = \`
+      position: fixed; top: ${(titleBarHeight - 28) / 2}px; right: 150px;
+      z-index: 2147483647; display: none; align-items: center; gap: 6px;
+      height: 28px; padding: 0 12px; border: none; border-radius: 14px;
+      background: #5865f2; color: #fff; font: 700 12px "Segoe UI", Inter, Arial, sans-serif;
+      cursor: pointer; -webkit-app-region: no-drag; box-shadow: 0 2px 6px rgba(0,0,0,.35);
+    \`;
+    document.body.appendChild(btn);
+
+    btn.addEventListener("click", () => {
+      if (btn.dataset.state !== "ready") return;
+      btn.disabled = true;
+      btn.textContent = "Reiniciando...";
+      window.macacallUpdater.triggerUpdate();
+    });
+
+    window.macacallUpdater.onStatus((data) => {
+      btn.dataset.state = data.state;
+      if (data.state === "downloading") {
+        btn.style.display = "inline-flex";
+        btn.disabled = true;
+        btn.textContent = "Baixando atualização...";
+      } else if (data.state === "ready") {
+        btn.style.display = "inline-flex";
+        btn.disabled = false;
+        btn.textContent = "🐒 Atualizar agora";
+      } else {
+        btn.style.display = "none";
+      }
+    });
+  })();`;
 }
 
 // Lists available screens/windows and shows a small themed picker
@@ -365,27 +412,33 @@ function createTray() {
 // (the automatic startup check, which shouldn't nag on every launch).
 let manualCheckInFlight = false;
 
+function sendUpdateStatus(data) {
+  mainWindow?.webContents.send("update-status", data);
+}
+
+// Clicking the injected title-bar button (updateButtonScript above) is the
+// one-click "just update it" flow the modal dialog never really was --
+// quitAndInstall(true, true) below is the same silent/no-wizard install the
+// dialog used to trigger, just without making the user read a popup first.
+ipcMain.on("trigger-update", () => {
+  isQuitting = true;
+  autoUpdater.quitAndInstall(true, true);
+});
+
 function setupAutoUpdater() {
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
 
-  autoUpdater.on("update-downloaded", async (info) => {
-    const index = await showCustomDialog({
-      icon: "🐒",
-      title: "Atualização pronta",
-      message: `A versão ${info.version} foi baixada. Reiniciar agora pra instalar?`,
-      buttons: ["Reiniciar agora", "Depois"],
-      defaultIndex: 0,
-    });
-    if (index === 0) {
-      isQuitting = true;
-      // isSilent, isForceRunAfter -- without isSilent this runs the full
-      // interactive NSIS wizard again (install-for-me/all-users, directory
-      // picker...), which is exactly the multi-click flow this is meant to
-      // replace. oneClick:false in the build config only affects the
-      // *manual* first install; this is the separate lever for updates.
-      autoUpdater.quitAndInstall(true, true);
-    }
+  autoUpdater.on("update-available", (info) => {
+    sendUpdateStatus({ state: "downloading", version: info.version });
+  });
+
+  autoUpdater.on("update-downloaded", (info) => {
+    // No more interrupting modal here -- the title-bar button (next to
+    // minimize) lights up instead, and updating is just one click on it
+    // whenever the user's ready, same as Chrome/Discord's own "relaunch to
+    // update" pill.
+    sendUpdateStatus({ state: "ready", version: info.version });
   });
 
   autoUpdater.on("error", (err) => {
