@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, shell, nativeImage, dialog } = require("electron");
+const { app, BrowserWindow, Tray, Menu, shell, nativeImage, ipcMain } = require("electron");
 const path = require("path");
 const { autoUpdater } = require("electron-updater");
 
@@ -153,6 +153,60 @@ function createWindow() {
   });
 }
 
+// Native dialog.showMessageBox is the plain OS-styled box -- looks nothing
+// like the app. This is our own small themed window instead (dialog.html +
+// dialog-preload.js), resolving to the index of whichever button was
+// clicked (or -1 if the window was closed without choosing).
+function showCustomDialog({ title, message, icon, buttons = ["OK"], defaultIndex = 0 }) {
+  return new Promise((resolve) => {
+    let settled = false;
+    const settle = (value) => {
+      if (settled) return;
+      settled = true;
+      resolve(value);
+    };
+
+    const dlg = new BrowserWindow({
+      width: 380,
+      height: 190,
+      parent: mainWindow ?? undefined,
+      modal: !!mainWindow,
+      resizable: false,
+      minimizable: false,
+      maximizable: false,
+      frame: false,
+      backgroundColor: TITLE_BAR_COLOR,
+      show: false,
+      webPreferences: {
+        preload: path.join(__dirname, "dialog-preload.js"),
+        contextIsolation: true,
+        nodeIntegration: false,
+      },
+    });
+
+    dlg.setMenuBarVisibility(false);
+    dlg.loadFile(path.join(__dirname, "dialog.html"));
+
+    dlg.once("ready-to-show", () => {
+      dlg.webContents.send("dialog-init", { title, message, icon, buttons, defaultIndex });
+      dlg.show();
+    });
+
+    function onResponse(event, index) {
+      if (event.sender !== dlg.webContents) return;
+      ipcMain.removeListener("dialog-response", onResponse);
+      settle(index);
+      dlg.close();
+    }
+    ipcMain.on("dialog-response", onResponse);
+
+    dlg.on("closed", () => {
+      ipcMain.removeListener("dialog-response", onResponse);
+      settle(-1);
+    });
+  });
+}
+
 function createTray() {
   tray = new Tray(nativeImage.createFromPath(ICON_PATH));
   tray.setToolTip("MacaCall");
@@ -207,28 +261,29 @@ function setupAutoUpdater() {
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
 
-  autoUpdater.on("update-downloaded", (info) => {
-    dialog
-      .showMessageBox(mainWindow, {
-        type: "info",
-        title: "Atualização do MacaCall pronta",
-        message: `A versão ${info.version} foi baixada. Reiniciar agora pra instalar?`,
-        buttons: ["Reiniciar agora", "Depois"],
-        defaultId: 0,
-        cancelId: 1,
-      })
-      .then(({ response }) => {
-        if (response === 0) {
-          isQuitting = true;
-          autoUpdater.quitAndInstall();
-        }
-      });
+  autoUpdater.on("update-downloaded", async (info) => {
+    const index = await showCustomDialog({
+      icon: "🐒",
+      title: "Atualização pronta",
+      message: `A versão ${info.version} foi baixada. Reiniciar agora pra instalar?`,
+      buttons: ["Reiniciar agora", "Depois"],
+      defaultIndex: 0,
+    });
+    if (index === 0) {
+      isQuitting = true;
+      // isSilent, isForceRunAfter -- without isSilent this runs the full
+      // interactive NSIS wizard again (install-for-me/all-users, directory
+      // picker...), which is exactly the multi-click flow this is meant to
+      // replace. oneClick:false in the build config only affects the
+      // *manual* first install; this is the separate lever for updates.
+      autoUpdater.quitAndInstall(true, true);
+    }
   });
 
   autoUpdater.on("error", (err) => {
     if (manualCheckInFlight) {
-      dialog.showMessageBox(mainWindow, {
-        type: "error",
+      showCustomDialog({
+        icon: "⚠️",
         title: "Erro ao buscar atualização",
         message: err?.message ?? String(err),
       });
@@ -238,8 +293,8 @@ function setupAutoUpdater() {
 
   autoUpdater.on("update-not-available", () => {
     if (manualCheckInFlight) {
-      dialog.showMessageBox(mainWindow, {
-        type: "info",
+      showCustomDialog({
+        icon: "🐵",
         title: "MacaCall",
         message: "Você já está na versão mais recente.",
       });

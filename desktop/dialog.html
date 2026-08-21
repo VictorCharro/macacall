@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8" />
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: #1e1f22;
+    color: #f2f3f5;
+    font-family: "Segoe UI", Inter, -apple-system, Arial, sans-serif;
+    -webkit-app-region: drag;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    user-select: none;
+  }
+  .content {
+    padding: 20px 22px 16px;
+    flex: 1;
+  }
+  .icon { font-size: 30px; margin-bottom: 8px; line-height: 1; }
+  h1 { font-size: 15px; margin: 0 0 8px; font-weight: 700; color: #ffffff; }
+  p { font-size: 13px; line-height: 1.5; color: #b5bac1; margin: 0; }
+  .actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    padding: 14px 18px;
+    background: #2b2d31;
+    -webkit-app-region: no-drag;
+  }
+  button {
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    border: none;
+    border-radius: 6px;
+    padding: 9px 16px;
+    cursor: pointer;
+  }
+  .primary { background: #5865f2; color: #fff; }
+  .primary:hover { background: #4752c4; }
+  .secondary { background: transparent; color: #b5bac1; }
+  .secondary:hover { color: #fff; }
+</style>
+</head>
+<body>
+  <div class="content">
+    <div class="icon" id="icon">🐵</div>
+    <h1 id="title"></h1>
+    <p id="message"></p>
+  </div>
+  <div class="actions" id="actions"></div>
+
+  <script>
+    window.dialogAPI.onInit((data) => {
+      document.getElementById("icon").textContent = data.icon || "🐵";
+      document.getElementById("title").textContent = data.title || "";
+      document.getElementById("message").textContent = data.message || "";
+
+      const actions = document.getElementById("actions");
+      (data.buttons || ["OK"]).forEach((label, i) => {
+        const btn = document.createElement("button");
+        btn.textContent = label;
+        btn.className = i === (data.defaultIndex ?? 0) ? "primary" : "secondary";
+        btn.onclick = () => window.dialogAPI.respond(i);
+        actions.appendChild(btn);
+      });
+    });
+  </script>
+</body>
+</html>
