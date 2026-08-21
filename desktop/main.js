@@ -84,6 +84,29 @@ function createWindow() {
 
   mainWindow.loadURL(APP_URL);
 
+  // The web app has no dedicated title-bar strip of its own (unlike
+  // Discord's real client, which reserves that space) -- with no
+  // -webkit-app-region declared anywhere, the whole custom-colored title
+  // bar area was undraggable. Injected purely from the shell side (not
+  // touching the site's own source, so regular browser users are
+  // unaffected): each screen's top <header> bar becomes a drag handle,
+  // while every interactive element keeps working normally as a click
+  // target instead of starting a drag.
+  const dragRegionCss = `
+    header { -webkit-app-region: drag; }
+    header button,
+    header a,
+    header input,
+    header select,
+    header textarea,
+    header [role="button"] {
+      -webkit-app-region: no-drag;
+    }
+  `;
+  mainWindow.webContents.on("did-finish-load", () => {
+    mainWindow.webContents.insertCSS(dragRegionCss);
+  });
+
   // Keep the app scoped to our own domain -- anything that would open a new
   // window (an external link, an OAuth popup, whatever) opens in the user's
   // real browser instead of spawning another Electron window.
