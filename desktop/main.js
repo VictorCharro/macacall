@@ -1,4 +1,13 @@
-const { app, BrowserWindow, Tray, Menu, shell, nativeImage, ipcMain } = require("electron");
+const {
+  app,
+  BrowserWindow,
+  Tray,
+  Menu,
+  shell,
+  nativeImage,
+  ipcMain,
+  desktopCapturer,
+} = require("electron");
 const path = require("path");
 const { autoUpdater } = require("electron-updater");
 
@@ -47,21 +56,42 @@ if (!gotSingleInstanceLock) {
       },
     );
     // Chromium runs a synchronous "check" ahead of some permission requests
-    // -- belt-and-suspenders alongside the request handler above.
-    // ("display-capture" isn't one of the permissions this particular
-    // handler ever gets asked about, only the request handler above.)
+    // -- turns out "display-capture" IS one of them (contrary to what the
+    // comment here used to claim): without it listed too, this handler
+    // silently vetoed getDisplayMedia() before setDisplayMediaRequestHandler
+    // below ever ran, so the share button did nothing at all -- no picker,
+    // no error, nothing. That's on top of the setPermissionRequestHandler
+    // fix from before, which alone wasn't enough.
     mainWindow.webContents.session.setPermissionCheckHandler(
-      (_webContents, permission) => permission === "notifications" || permission === "media",
+      (_webContents, permission) =>
+        permission === "notifications" ||
+        permission === "media" ||
+        permission === "display-capture",
     );
 
     // A regular Chrome browser shows its own screen/window picker for
     // getDisplayMedia() automatically; Electron doesn't, so without this
     // handler the call just hangs/rejects and screen share never starts.
-    // useSystemPicker hands it off to Windows' own native picker instead of
-    // building a custom source-selection UI here.
+    // Not using useSystemPicker here (tried previously) -- it only hands
+    // off to the OS's own native picker on Windows 10 2004+/Windows 11 and
+    // recent macOS, and silently shows nothing at all on anything older,
+    // which looked identical to "the button does nothing" from the user's
+    // side. desktopCapturer + our own picker window works the same way on
+    // every supported OS/Electron combo instead of depending on that.
     mainWindow.webContents.session.setDisplayMediaRequestHandler(
-      (_request, callback) => callback({}),
-      { useSystemPicker: true },
+      async (_request, callback) => {
+        const source = await pickScreenSource();
+        if (!source) {
+          callback({});
+          return;
+        }
+        callback({
+          video: source,
+          // Only a full screen (not a specific window) can carry system
+          // audio on Windows via Electron's "loopback" pseudo-device.
+          audio: source.id.startsWith("screen:") ? "loopback" : undefined,
+        });
+      },
     );
 
     app.on("activate", () => {
@@ -165,6 +195,69 @@ function createWindow() {
     if (isQuitting) return;
     event.preventDefault();
     mainWindow.hide();
+  });
+}
+
+// Lists available screens/windows and shows a small themed picker
+// (picker.html + picker-preload.js) for the user to choose one, resolving
+// to the chosen DesktopCapturerSource or null if cancelled/closed.
+async function pickScreenSource() {
+  const rawSources = await desktopCapturer.getSources({
+    types: ["screen", "window"],
+    thumbnailSize: { width: 300, height: 170 },
+  });
+  const sources = rawSources.map((s) => ({
+    id: s.id,
+    name: s.name,
+    thumbnail: s.thumbnail.toDataURL(),
+  }));
+
+  return new Promise((resolve) => {
+    let settled = false;
+    const settle = (value) => {
+      if (settled) return;
+      settled = true;
+      resolve(value);
+    };
+
+    const picker = new BrowserWindow({
+      width: 560,
+      height: 420,
+      parent: mainWindow ?? undefined,
+      modal: !!mainWindow,
+      resizable: false,
+      minimizable: false,
+      maximizable: false,
+      frame: false,
+      backgroundColor: TITLE_BAR_COLOR,
+      show: false,
+      webPreferences: {
+        preload: path.join(__dirname, "picker-preload.js"),
+        contextIsolation: true,
+        nodeIntegration: false,
+      },
+    });
+
+    picker.setMenuBarVisibility(false);
+    picker.loadFile(path.join(__dirname, "picker.html"));
+
+    picker.once("ready-to-show", () => {
+      picker.webContents.send("picker-sources", sources);
+      picker.show();
+    });
+
+    function onResponse(event, sourceId) {
+      if (event.sender !== picker.webContents) return;
+      ipcMain.removeListener("picker-response", onResponse);
+      settle(sourceId ? rawSources.find((s) => s.id === sourceId) ?? null : null);
+      picker.close();
+    }
+    ipcMain.on("picker-response", onResponse);
+
+    picker.on("closed", () => {
+      ipcMain.removeListener("picker-response", onResponse);
+      settle(null);
+    });
   });
 }
 

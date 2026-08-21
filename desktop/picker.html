@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8" />
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: #1e1f22;
+    color: #f2f3f5;
+    font-family: "Segoe UI", Inter, -apple-system, Arial, sans-serif;
+    -webkit-app-region: drag;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    user-select: none;
+  }
+  .header {
+    padding: 16px 20px 4px;
+  }
+  h1 { font-size: 15px; margin: 0 0 2px; font-weight: 700; color: #ffffff; }
+  p { font-size: 12px; color: #b5bac1; margin: 0; }
+  .grid {
+    flex: 1;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    padding: 14px 20px;
+    -webkit-app-region: no-drag;
+  }
+  .source {
+    background: #2b2d31;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    padding: 6px;
+    cursor: pointer;
+    text-align: left;
+  }
+  .source:hover { border-color: #5865f2; }
+  .thumb {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    border-radius: 4px;
+    background: #1e1f22;
+    display: block;
+  }
+  .name {
+    font-size: 11px;
+    color: #dbdee1;
+    margin-top: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .empty {
+    padding: 20px;
+    font-size: 13px;
+    color: #b5bac1;
+  }
+  .actions {
+    display: flex;
+    justify-content: flex-end;
+    padding: 12px 18px;
+    background: #2b2d31;
+    -webkit-app-region: no-drag;
+  }
+  button {
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    border: none;
+    border-radius: 6px;
+    padding: 9px 16px;
+    cursor: pointer;
+    background: transparent;
+    color: #b5bac1;
+  }
+  button:hover { color: #fff; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <h1>🐒 Compartilhar tela</h1>
+    <p>Escolha uma tela ou janela pra compartilhar</p>
+  </div>
+  <div class="grid" id="grid"></div>
+  <div class="actions">
+    <button id="cancel">Cancelar</button>
+  </div>
+
+  <script>
+    document.getElementById("cancel").onclick = () => window.pickerAPI.cancel();
+
+    window.pickerAPI.onSources((sources) => {
+      const grid = document.getElementById("grid");
+      if (!sources.length) {
+        grid.innerHTML = '<div class="empty">Nenhuma tela ou janela encontrada.</div>';
+        return;
+      }
+      sources.forEach((source) => {
+        const btn = document.createElement("button");
+        btn.className = "source";
+        btn.innerHTML = `
+          <img class="thumb" src="${source.thumbnail}" alt="" />
+          <div class="name">${source.name}</div>
+        `;
+        btn.onclick = () => window.pickerAPI.choose(source.id);
+        grid.appendChild(btn);
+      });
+    });
+  </script>
+</body>
+</html>

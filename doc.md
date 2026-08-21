@@ -469,18 +469,31 @@ tray, ícone, auto-update). Detalhes completos em `desktop/README.md`
   uma caixa de erro do sistema, nada a ver com o resto. E "reiniciar
   agora" não deve reabrir o instalador completo (o assistente do NSIS) —
   só reiniciar direto na versão já baixada.
-- **Compartilhar tela precisa de dois ajustes, não só um** — os dois já
-  foram feitos, mas é fácil esquecer o segundo achando que só o primeiro
-  resolve:
+- **Compartilhar tela precisava de TRÊS ajustes, não dois** — as duas
+  primeiras tentativas (ver histórico do arquivo) ainda deixavam "nada
+  acontece" ao clicar, porque faltava a terceira causa:
   1. Electron não mostra o seletor de tela/janela sozinho pra
      `getDisplayMedia()` como um Chrome normal mostra — precisa de
      `setDisplayMediaRequestHandler` própria.
-  2. Mesmo com isso, `setPermissionRequestHandler` só liberando
-     `"notifications"` e `"media"` **bloqueia silenciosamente** a
-     permissão `"display-capture"` que o Chromium checa antes de sequer
-     chamar o handler acima — falha muda, sem erro nenhum visível. As
-     duas causas juntas faziam parecer que "compartilhar tela não faz
-     nada" mesmo depois do primeiro fix.
+  2. `setPermissionRequestHandler` só liberando `"notifications"` e
+     `"media"` bloqueia a permissão `"display-capture"`.
+  3. **A causa que faltava**: `setPermissionCheckHandler` (o "check"
+     síncrono que o Chromium roda ANTES de alguns pedidos de permissão)
+     também precisa liberar `"display-capture"` — só arrumar o
+     `setPermissionRequestHandler` (item 2) não bastava, porque esse
+     check síncrono vetava a chamada silenciosamente antes mesmo do
+     request handler ser consultado. Sem erro nenhum visível, exatamente
+     como "o botão não faz nada".
+  - **Também trocado**: a primeira versão do
+    `setDisplayMediaRequestHandler` usava a opção `useSystemPicker: true`
+    do Electron, que só funciona (mostra o seletor nativo do SO) em
+    Windows 10 build 2004+/Windows 11 e macOS recente — em qualquer outra
+    versão, não mostra seletor nenhum, silenciosamente, de novo
+    indistinguível de "o botão não faz nada". Trocado por um seletor
+    próprio (`desktop/picker.html` + `picker-preload.js`, construído com
+    `desktopCapturer.getSources()`) que funciona igual em qualquer
+    combinação de SO/versão do Electron suportada, sem depender do
+    picker nativo do sistema.
 - **Barra de título** (o site não tem uma própria — é um `<header>` de
   página web normal): o Electron injeta `-webkit-app-region: drag` no
   `<header>` de cada tela via `insertCSS` (não mexe no código-fonte do
