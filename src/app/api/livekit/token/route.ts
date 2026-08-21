@@ -18,30 +18,26 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "não autenticado" }, { status: 401 });
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("username")
-    .eq("id", user.id)
-    .maybeSingle();
+  // Independent of each other -- a room is either a voice channel or a DM,
+  // never both, so there's no reason to check one and only then the other.
+  const [{ data: profile }, { data: channel }, { data: participant }] =
+    await Promise.all([
+      supabase.from("profiles").select("username").eq("id", user.id).maybeSingle(),
+      supabase
+        .from("channels")
+        .select("id")
+        .eq("id", roomId)
+        .eq("type", "voice")
+        .maybeSingle(),
+      supabase
+        .from("dm_participants")
+        .select("conversation_id")
+        .eq("conversation_id", roomId)
+        .eq("user_id", user.id)
+        .maybeSingle(),
+    ]);
 
-  const { data: channel } = await supabase
-    .from("channels")
-    .select("id")
-    .eq("id", roomId)
-    .eq("type", "voice")
-    .maybeSingle();
-
-  let authorized = Boolean(channel);
-
-  if (!authorized) {
-    const { data: participant } = await supabase
-      .from("dm_participants")
-      .select("conversation_id")
-      .eq("conversation_id", roomId)
-      .eq("user_id", user.id)
-      .maybeSingle();
-    authorized = Boolean(participant);
-  }
+  const authorized = Boolean(channel) || Boolean(participant);
 
   if (!authorized) {
     return NextResponse.json(

@@ -264,6 +264,34 @@ ações. Resumo:
   agora dispara `refreshParticipants()` mais duas vezes (800ms e 2000ms
   depois), pra pegar a janela em que a reconexão termina sem esperar o
   poll de 4s.
+- **Causa raiz real do "sumiço" de ~5s ao mover**: o fix acima (mais
+  refreshes) só ataca o sintoma no sidebar — o problema de verdade era
+  que a pessoa movida ficava genuinamente fora de qualquer sala LiveKit
+  por vários segundos. Em `CallProvider.tsx`, `joinCall` mudava
+  `activeCall` (novo `roomId`) e SÓ DEPOIS um `useEffect` separado ia
+  buscar o token da sala nova — nesse intervalo, `connected` (que exige
+  `tokenInfo.roomId === activeCall.roomId`) virava `false`
+  imediatamente, desmontando `<LiveKitRoom>` por completo (RTCPeerConnection
+  inteira destruída) antes mesmo do token novo existir. Só depois do
+  token chegar é que `<LiveKitRoom>` remontava do zero e reconectava —
+  ou seja, todo o tempo de ida-e-volta do POST /api/livekit/token *mais*
+  a reconexão WebRTC inteira aconteciam com a pessoa 100% fora de
+  qualquer sala. Fix: `joinCall` agora é assíncrono e busca o token
+  **antes** de tocar em `activeCall`/`tokenInfo` — os dois states são
+  setados juntos, no mesmo tick, então `connected` nunca passa por
+  `false` no meio da troca. Isso importa porque o hook interno do
+  `LiveKitRoom` (`useLiveKitRoom` em `@livekit/components-react`) reage
+  a mudança no prop `token` chamando `room.connect(serverUrl, token)`
+  de novo **na mesma instância de `Room`**, em vez de destruir e recriar
+  tudo — troca de sala vira só uma reconexão da instância existente, não
+  um desmonte/remonte completo do componente React. Tem um
+  `joinRequestRef` (contador incrementado a cada chamada) pra descartar
+  a resposta de um fetch de token que ficou pra trás caso `joinCall`
+  seja chamado de novo antes do anterior responder (ex: movido duas
+  vezes rápido). `/api/livekit/token` também teve suas 3 queries
+  (perfil, é canal de voz?, é DM?) paralelizadas com `Promise.all` em
+  vez de rodarem em série — eram independentes, só usam `user.id`/
+  `roomId`.
 - **Moderação de voz (mutar/ensurdecer/mover membros)**:
   `POST /api/livekit/moderate` ({action: "mute"|"unmute"|"deafen"|
   "undeafen"|"move", channelId, targetUserId, destinationChannelId?}),

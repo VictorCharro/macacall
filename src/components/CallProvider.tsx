@@ -84,6 +84,10 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     loadDevicePreferences,
   );
   const roomRef = useRef<Room | null>(null);
+  const activeCallRef = useRef<ActiveCall | null>(null);
+  useEffect(() => {
+    activeCallRef.current = activeCall;
+  }, [activeCall]);
 
   const setDevicePreference = useCallback((kind: DeviceKind, deviceId: string) => {
     setDevicePreferences((prev) => {
@@ -116,22 +120,50 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     });
   }, [forceDeafened]);
 
+  // Tracks the most recently requested room so a slow/stale token fetch
+  // (e.g. from a move that's since been followed by another) can't clobber
+  // a newer one landing first.
+  const joinRequestRef = useRef(0);
+
   const joinCall = useCallback(
-    (
+    async (
       roomId: string,
       roomName: string,
       href: string,
       options?: { camera?: boolean },
     ) => {
+      // Clicking the voice channel you're already in shouldn't tear the
+      // connection down and rebuild it -- Discord just brings the view back
+      // into focus.
+      if (activeCallRef.current?.roomId === roomId) return;
+
       setError(null);
       setCamOnJoin(Boolean(options?.camera));
-      // Clicking the voice channel you're already in shouldn't tear the
-      // connection down and rebuild it -- a new activeCall object refetches
-      // the token and remounts LiveKitRoom, which would drop and rejoin the
-      // call. Discord just brings the view back into focus.
-      setActiveCall((prev) =>
-        prev?.roomId === roomId ? prev : { roomId, roomName, href },
-      );
+      const requestId = ++joinRequestRef.current;
+
+      try {
+        const res = await fetch("/api/livekit/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ roomId }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? "Falha ao entrar na call");
+        if (joinRequestRef.current !== requestId) return; // superseded
+
+        // Setting both together in the same tick means `connected` (derived
+        // from activeCall+tokenInfo agreeing) never dips to false in
+        // between -- LiveKitRoom stays mounted across the switch and just
+        // reconnects to the new room/token instead of fully unmounting and
+        // rebuilding the whole peer connection from scratch, which is what
+        // made moving between channels feel like a multi-second dropout.
+        setTokenInfo({ roomId, token: data.token, serverUrl: data.url });
+        setActiveCall({ roomId, roomName, href });
+      } catch (err) {
+        if (joinRequestRef.current === requestId) {
+          setError(err instanceof Error ? err.message : "Falha ao entrar na call");
+        }
+      }
     },
     [],
   );
@@ -143,32 +175,6 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     setForceMuted(false);
     setForceDeafened(false);
   }, []);
-
-  useEffect(() => {
-    if (!activeCall) return;
-    let cancelled = false;
-    const roomId = activeCall.roomId;
-
-    fetch("/api/livekit/token", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ roomId }),
-    })
-      .then(async (res) => {
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error ?? "Falha ao entrar na call");
-        if (!cancelled) {
-          setTokenInfo({ roomId, token: data.token, serverUrl: data.url });
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) setError(err.message);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [activeCall]);
 
   const connected = Boolean(
     activeCall && tokenInfo && tokenInfo.roomId === activeCall.roomId,
