@@ -32,6 +32,31 @@ Windows SmartScreen will warn on first run -- click "Mais informações" ->
 "Executar assim mesmo". A real code-signing certificate (~US$200-400/year)
 removes that warning if this ever needs to go out more broadly.
 
+## Releasing an update
+
+The app checks GitHub Releases for updates (see "Auto-update" below), which
+only works if **every** release includes both files `npm run dist` produces
+in `desktop/dist/`:
+
+- `MacaCall-Setup-<version>.exe` -- the installer itself
+- `latest.yml` -- tells electron-updater a newer version exists and where
+  to get it; without this file the app just never sees the release
+
+1. Bump `"version"` in `desktop/package.json`.
+2. `npm run dist`.
+3. Create a GitHub release (tag can be anything, e.g. `desktop-v1.1.0`) and
+   attach both files from `desktop/dist/` -- the `.blockmap` too if present,
+   it lets electron-updater download only the changed bytes instead of the
+   whole installer again.
+
+## Auto-update
+
+Wired through `electron-updater` (see `setupAutoUpdater()` in `main.js`):
+checks silently on startup, downloads a newer version in the background,
+and asks to restart once it's ready. The tray's "Verificar atualizações"
+does the same check on demand, but (unlike the silent startup check) tells
+you if you're already current or if the check failed.
+
 ## Files
 
 - `main.js` -- Electron main process: window creation, tray, single-instance
