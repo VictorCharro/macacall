@@ -93,17 +93,18 @@ export function VoiceChannelView({
         </div>
       )}
 
+      {/* Clicking a voice channel connects straight away, so this only shows
+          on a refresh or a direct link -- same as Discord, which also drops
+          you from voice on reload rather than silently reopening your mic. */}
       {!isThisChannel && (
-        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border-soft bg-card-3/60 px-6 py-3">
-          <div className="flex items-center gap-2">
-            <Volume2 className="h-4 w-4 text-secondary" />
-            <p className="text-sm text-accent">
-              Pronto pra entrar em {channelName}
-            </p>
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border-soft bg-card-3/60 px-4 py-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <Volume2 className="h-4 w-4 shrink-0 text-muted" />
+            <p className="truncate text-sm text-muted">{channelName}</p>
           </div>
           <button
             onClick={() => joinCall(channelId, channelName, href)}
-            className="rounded-full bg-secondary px-4 py-1.5 text-sm font-semibold text-secondary-foreground transition hover:brightness-95"
+            className="shrink-0 rounded bg-secondary px-3 py-1 text-xs font-semibold text-secondary-foreground transition hover:brightness-95"
           >
             Entrar na call
           </button>

@@ -125,7 +125,13 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     ) => {
       setError(null);
       setCamOnJoin(Boolean(options?.camera));
-      setActiveCall({ roomId, roomName, href });
+      // Clicking the voice channel you're already in shouldn't tear the
+      // connection down and rebuild it -- a new activeCall object refetches
+      // the token and remounts LiveKitRoom, which would drop and rejoin the
+      // call. Discord just brings the view back into focus.
+      setActiveCall((prev) =>
+        prev?.roomId === roomId ? prev : { roomId, roomName, href },
+      );
     },
     [],
   );

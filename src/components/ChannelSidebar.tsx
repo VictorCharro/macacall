@@ -287,8 +287,20 @@ function ChannelRow({
     >
       <Link
         href={`/bandos/${bandoId}/${channel.id}`}
-        onDoubleClick={
-          isVoice ? () => joinCall(bandoId, channel.id, channel.name) : undefined
+        // Discord joins a voice channel on a single click -- the navigation
+        // and the connection happen together, there's no "preview it first"
+        // step. (This used to be onDoubleClick *and* passed the wrong
+        // arguments, so it joined a room keyed by bandoId instead of the
+        // channel.)
+        onClick={
+          isVoice
+            ? () =>
+                joinCall(
+                  channel.id,
+                  channel.name,
+                  `/bandos/${bandoId}/${channel.id}`,
+                )
+            : undefined
         }
         className={`flex items-center justify-between gap-2 rounded px-2 py-1.5 text-xs font-medium transition ${
           active
