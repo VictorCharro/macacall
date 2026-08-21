@@ -6,6 +6,7 @@ export type ViewedProfile = {
   id: string;
   username: string;
   avatarSeed: string;
+  avatarUrl: string | null;
   bio: string | null;
   bannerColor: string | null;
   statusMessage: string | null;
@@ -24,7 +25,7 @@ export async function getUserProfile(userId: string): Promise<ViewedProfile | nu
 
   const { data } = await supabase
     .from("profiles")
-    .select("id, username, avatar_seed, bio, banner_color, status_message")
+    .select("id, username, avatar_seed, avatar_url, bio, banner_color, status_message")
     .eq("id", userId)
     .maybeSingle();
 
@@ -34,6 +35,7 @@ export async function getUserProfile(userId: string): Promise<ViewedProfile | nu
     id: data.id,
     username: data.username,
     avatarSeed: data.avatar_seed,
+    avatarUrl: data.avatar_url,
     bio: data.bio,
     bannerColor: data.banner_color,
     statusMessage: data.status_message,

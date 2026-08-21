@@ -36,6 +36,7 @@ import {
   renderMentionSegments,
   type Mentionable,
 } from "@/lib/mentions";
+import { avatarUrl } from "@/lib/avatar";
 
 type DmMessage = {
   id: string;
@@ -46,9 +47,19 @@ type DmMessage = {
   edited_at?: string | null;
 };
 
-type Participant = { id: string; username: string; avatarSeed: string };
-type Friend = { id: string; username: string; avatarSeed: string };
-type Member = { username: string; avatarSeed: string };
+type Participant = {
+  id: string;
+  username: string;
+  avatarSeed: string;
+  avatarUrl: string | null;
+};
+type Friend = {
+  id: string;
+  username: string;
+  avatarSeed: string;
+  avatarUrl: string | null;
+};
+type Member = { username: string; avatarSeed: string; avatarUrl: string | null };
 
 const initialState: SendDmState = {};
 
@@ -59,6 +70,7 @@ export function DmChat({
   participants,
   currentUserId,
   currentAvatarSeed,
+  currentAvatarUrl,
   initialMessages,
   initialReactions,
   initialAttachments,
@@ -70,6 +82,7 @@ export function DmChat({
   participants: Participant[];
   currentUserId: string;
   currentAvatarSeed: string;
+  currentAvatarUrl: string | null;
   initialMessages: DmMessage[];
   initialReactions: RawReaction[];
   initialAttachments: RawAttachment[];
@@ -105,8 +118,14 @@ export function DmChat({
   }, []);
 
   const members: Record<string, Member> = Object.fromEntries([
-    ...participants.map((p) => [p.id, { username: p.username, avatarSeed: p.avatarSeed }]),
-    [currentUserId, { username: "Você", avatarSeed: currentAvatarSeed }],
+    ...participants.map((p) => [
+      p.id,
+      { username: p.username, avatarSeed: p.avatarSeed, avatarUrl: p.avatarUrl },
+    ]),
+    [
+      currentUserId,
+      { username: "Você", avatarSeed: currentAvatarSeed, avatarUrl: currentAvatarUrl },
+    ],
   ]);
 
   // Only other participants -- mentioning yourself in a DM does nothing.
@@ -333,9 +352,9 @@ export function DmChat({
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <header className="flex h-12 items-center gap-2 border-b border-border-soft bg-background px-4">
           <img
-            src={`https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(participants[0]?.avatarSeed ?? conversationId)}`}
+            src={avatarUrl(participants[0]?.avatarSeed ?? conversationId, participants[0]?.avatarUrl)}
             alt=""
-            className="h-7 w-7 rounded-full bg-background"
+            className="h-7 w-7 rounded-full bg-background object-cover"
           />
           <h1 className="min-w-0 flex-1 truncate text-sm font-bold text-accent">
             {displayName}
@@ -417,10 +436,10 @@ export function DmChat({
                         }`}
                       >
                         <img
-                          src={`https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(member?.avatarSeed ?? message.user_id)}`}
+                          src={avatarUrl(member?.avatarSeed ?? message.user_id, member?.avatarUrl)}
                           alt=""
                           onClick={() => setViewingProfile(message.user_id)}
-                          className="h-9 w-9 shrink-0 cursor-pointer rounded-full bg-background"
+                          className="h-9 w-9 shrink-0 cursor-pointer rounded-full bg-background object-cover"
                         />
                         <div className="min-w-0">
                           <div className="flex items-baseline gap-2">

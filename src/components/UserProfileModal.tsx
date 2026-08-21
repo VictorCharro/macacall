@@ -5,6 +5,7 @@ import { X, MessageSquare } from "lucide-react";
 import { getUserProfile, type ViewedProfile } from "@/app/actions/profiles";
 import { startDm } from "@/app/actions/dms";
 import { colorFromSeed } from "@/lib/colorFromSeed";
+import { avatarUrl } from "@/lib/avatar";
 
 /** Generic "click a name/avatar anywhere -> see their profile" popup. Fetches
  * on open instead of requiring every caller to plumb bio/banner/status down
@@ -63,9 +64,9 @@ export function UserProfileModal({
 
             <div className="relative -mt-9 px-4 pb-4">
               <img
-                src={`https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(profile.avatarSeed)}`}
+                src={avatarUrl(profile.avatarSeed, profile.avatarUrl)}
                 alt=""
-                className="h-18 w-18 rounded-full border-4 border-card-3 bg-card-2 shadow-xl"
+                className="h-18 w-18 rounded-full border-4 border-card-3 bg-card-2 object-cover shadow-xl"
               />
 
               <p className="mt-2 truncate text-lg font-black text-accent">

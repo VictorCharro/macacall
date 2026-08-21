@@ -21,6 +21,7 @@ type FriendEntry = {
   id: string;
   username: string;
   avatarSeed: string;
+  avatarUrl: string | null;
   status: PresenceStatus;
 };
 
@@ -29,6 +30,7 @@ type DmEntry = {
   id: string;
   username: string;
   avatarSeed: string;
+  avatarUrl: string | null;
   isGroup?: boolean;
 };
 
@@ -38,6 +40,7 @@ export function FriendsHome({
   currentUserId,
   selfUsername,
   selfAvatarSeed,
+  selfAvatarUrl,
   friends,
   incoming,
   outgoing,
@@ -46,6 +49,7 @@ export function FriendsHome({
   currentUserId: string;
   selfUsername: string;
   selfAvatarSeed: string;
+  selfAvatarUrl: string | null;
   friends: FriendEntry[];
   incoming: FriendEntry[];
   outgoing: FriendEntry[];
@@ -105,6 +109,7 @@ export function FriendsHome({
       <FriendsSidebar
         selfUsername={selfUsername}
         selfAvatarSeed={selfAvatarSeed}
+        selfAvatarUrl={selfAvatarUrl}
         dms={dms}
       />
 

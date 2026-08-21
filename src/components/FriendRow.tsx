@@ -6,12 +6,14 @@ import {
   useFriendContextMenu,
 } from "@/components/FriendContextMenu";
 import { STATUS_META } from "@/lib/presence";
+import { avatarUrl } from "@/lib/avatar";
 import type { PresenceStatus } from "@/lib/types";
 
 type FriendLike = {
   id: string;
   username: string;
   avatarSeed: string;
+  avatarUrl: string | null;
 };
 
 export function useEffectiveStatus(friendId: string) {
@@ -40,9 +42,9 @@ export function FriendRow({
     >
       <div className="relative shrink-0">
         <img
-          src={`https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(friend.avatarSeed)}`}
+          src={avatarUrl(friend.avatarSeed, friend.avatarUrl)}
           alt=""
-          className={`h-10 w-10 rounded-full bg-background ${status ? "" : "opacity-50 grayscale"}`}
+          className={`h-10 w-10 rounded-full bg-background object-cover ${status ? "" : "opacity-50 grayscale"}`}
         />
         <span
           className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-card ${

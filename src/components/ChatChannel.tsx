@@ -35,8 +35,9 @@ import {
   renderMentionSegments,
   type Mentionable,
 } from "@/lib/mentions";
+import { avatarUrl } from "@/lib/avatar";
 
-type Member = { username: string; avatarSeed: string };
+type Member = { username: string; avatarSeed: string; avatarUrl: string | null };
 type ChatMessage = {
   id: string;
   content: string;
@@ -521,10 +522,10 @@ export function ChatChannel({
               )}
 
               <img
-                src={`https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(member?.avatarSeed ?? message.user_id)}`}
+                src={avatarUrl(member?.avatarSeed ?? message.user_id, member?.avatarUrl)}
                 alt=""
                 onClick={() => setViewingProfile(message.user_id)}
-                className="mt-0.5 h-10 w-10 shrink-0 cursor-pointer rounded-full border border-border bg-card-3"
+                className="mt-0.5 h-10 w-10 shrink-0 cursor-pointer rounded-full border border-border bg-card-3 object-cover"
               />
 
               <div className="min-w-0 flex-1">

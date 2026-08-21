@@ -79,7 +79,7 @@ export default async function ChannelPage({
     supabase.from("bandos").select("owner_id").eq("id", id).maybeSingle(),
     supabase
       .from("bando_members")
-      .select("profiles(id, username, avatar_seed)")
+      .select("profiles(id, username, avatar_seed, avatar_url)")
       .eq("bando_id", id),
   ]);
 
@@ -94,13 +94,17 @@ export default async function ChannelPage({
         (m) =>
           m.profiles as unknown as Pick<
             Profile,
-            "id" | "username" | "avatar_seed"
+            "id" | "username" | "avatar_seed" | "avatar_url"
           >,
       )
       .filter(Boolean)
       .map((profile) => [
         profile.id,
-        { username: profile.username, avatarSeed: profile.avatar_seed },
+        {
+          username: profile.username,
+          avatarSeed: profile.avatar_seed,
+          avatarUrl: profile.avatar_url,
+        },
       ]),
   );
 

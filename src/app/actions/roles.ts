@@ -322,7 +322,7 @@ export async function listBannedMembers(bandoId: string) {
   const { supabase } = await requireUser();
   const { data } = await supabase
     .from("banned_users")
-    .select("user_id, reason, banned_at, profiles(username, avatar_seed)")
+    .select("user_id, reason, banned_at, profiles(username, avatar_seed, avatar_url)")
     .eq("bando_id", bandoId)
     .order("banned_at", { ascending: false });
   return data ?? [];

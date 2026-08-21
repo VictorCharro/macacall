@@ -4,6 +4,7 @@ export type Profile = {
   id: string;
   username: string;
   avatar_seed: string;
+  avatar_url: string | null;
   status: PresenceStatus;
   status_message: string | null;
   bio: string | null;

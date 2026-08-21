@@ -5,7 +5,7 @@ import { DmChat } from "@/components/DmChat";
 import { buildDmSidebarEntries } from "@/lib/dm-helpers";
 import type { Profile } from "@/lib/types";
 
-type ProfileRow = Pick<Profile, "id" | "username" | "avatar_seed">;
+type ProfileRow = Pick<Profile, "id" | "username" | "avatar_seed" | "avatar_url">;
 
 export default async function DmPage({
   params,
@@ -33,7 +33,7 @@ export default async function DmPage({
   ] = await Promise.all([
     supabase
       .from("profiles")
-      .select("id, username, avatar_seed")
+      .select("id, username, avatar_seed, avatar_url")
       .eq("id", user.id)
       .maybeSingle(),
     supabase
@@ -43,7 +43,7 @@ export default async function DmPage({
       .maybeSingle(),
     supabase
       .from("dm_participants")
-      .select("user_id, profiles(id, username, avatar_seed)")
+      .select("user_id, profiles(id, username, avatar_seed, avatar_url)")
       .eq("conversation_id", conversationId),
     supabase
       .from("dm_messages")
@@ -54,7 +54,7 @@ export default async function DmPage({
     supabase
       .from("friendships")
       .select(
-        "requester_id, addressee_id, requester:profiles!friendships_requester_id_fkey(id, username, avatar_seed), addressee:profiles!friendships_addressee_id_fkey(id, username, avatar_seed)",
+        "requester_id, addressee_id, requester:profiles!friendships_requester_id_fkey(id, username, avatar_seed, avatar_url), addressee:profiles!friendships_addressee_id_fkey(id, username, avatar_seed, avatar_url)",
       )
       .eq("status", "accepted")
       .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`),
@@ -76,7 +76,12 @@ export default async function DmPage({
 
   const otherParticipants = allParticipants
     .filter((p) => p.id !== user.id)
-    .map((p) => ({ id: p.id, username: p.username, avatarSeed: p.avatar_seed }));
+    .map((p) => ({
+      id: p.id,
+      username: p.username,
+      avatarSeed: p.avatar_seed,
+      avatarUrl: p.avatar_url,
+    }));
 
   const messageIds = (messages ?? []).map((m) => m.id);
   const [{ data: reactions }, { data: attachments }] = messageIds.length
@@ -98,7 +103,12 @@ export default async function DmPage({
       (f.requester_id === user.id ? f.addressee : f.requester) as unknown as ProfileRow,
     )
     .filter((p) => p && !participantIds.has(p.id))
-    .map((p) => ({ id: p.id, username: p.username, avatarSeed: p.avatar_seed }));
+    .map((p) => ({
+      id: p.id,
+      username: p.username,
+      avatarSeed: p.avatar_seed,
+      avatarUrl: p.avatar_url,
+    }));
 
   const dmEntries = await buildDmSidebarEntries(supabase, user.id, dmRows ?? []);
 
@@ -107,6 +117,7 @@ export default async function DmPage({
       <FriendsSidebar
         selfUsername={profile.username}
         selfAvatarSeed={profile.avatar_seed}
+        selfAvatarUrl={profile.avatar_url}
         dms={dmEntries}
       />
       <DmChat
@@ -117,6 +128,7 @@ export default async function DmPage({
         participants={otherParticipants}
         currentUserId={user.id}
         currentAvatarSeed={profile.avatar_seed}
+        currentAvatarUrl={profile.avatar_url}
         initialMessages={messages ?? []}
         initialReactions={reactions ?? []}
         initialAttachments={attachments ?? []}

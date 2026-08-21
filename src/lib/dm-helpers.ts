@@ -1,7 +1,7 @@
 import type { createClient } from "@/lib/supabase/server";
 import type { Profile } from "@/lib/types";
 
-type ProfileRow = Pick<Profile, "id" | "username" | "avatar_seed">;
+type ProfileRow = Pick<Profile, "id" | "username" | "avatar_seed" | "avatar_url">;
 
 export async function buildDmSidebarEntries(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -13,7 +13,7 @@ export async function buildDmSidebarEntries(
   const [{ data: allParticipants }, { data: unreadRows }] = await Promise.all([
     supabase
       .from("dm_participants")
-      .select("conversation_id, profiles(id, username, avatar_seed)")
+      .select("conversation_id, profiles(id, username, avatar_seed, avatar_url)")
       .in(
         "conversation_id",
         dmRows.map((r) => r.conversation_id),
@@ -49,6 +49,7 @@ export async function buildDmSidebarEntries(
             ? others.map((o) => o.username).join(", ")
             : first.username,
         avatarSeed: first.avatar_seed,
+        avatarUrl: first.avatar_url,
         // A group DM has no single "other person", so anything that acts on
         // one specific user (the right-click menu) stays off for those.
         isGroup: others.length > 1,

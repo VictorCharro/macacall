@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { X, Hash, Send } from "lucide-react";
+import { avatarUrl } from "@/lib/avatar";
 import {
   sendThreadMessage,
   getThreadMessages,
@@ -24,7 +25,7 @@ import { summarizeReactions, type RawReaction } from "@/lib/reactions";
 import type { RawAttachment } from "@/lib/attachments";
 import { findMentionTrigger, applyMention, type Mentionable } from "@/lib/mentions";
 
-type Member = { username: string; avatarSeed: string };
+type Member = { username: string; avatarSeed: string; avatarUrl: string | null };
 type ThreadMessage = {
   id: string;
   content: string;
@@ -276,7 +277,7 @@ export function ThreadPanel({
           return (
             <div key={message.id} className="group relative flex gap-2.5 rounded px-1 py-1">
               <img
-                src={`https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(member?.avatarSeed ?? message.user_id)}`}
+                src={avatarUrl(member?.avatarSeed ?? message.user_id, member?.avatarUrl)}
                 alt=""
                 onClick={() => setViewingProfile(message.user_id)}
                 className="mt-0.5 h-7 w-7 shrink-0 cursor-pointer rounded-full border border-border bg-card-3"

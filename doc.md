@@ -99,6 +99,42 @@ busca cargos/permissões do usuário atual pra esse bando.
   (depende de `messageIds`, que só existe depois de `messages` voltar) e
   `dmEntries` (depende de `dmRows`) realmente precisam esperar algo.
 
+## Avatares (foto de perfil real vs. gerado)
+
+- Todo avatar no app cai num de dois casos: **gerado** (Dicebear "thumbs",
+  seed = `profiles.avatar_seed`, um UUID/id estável desde o cadastro) ou
+  **foto de verdade** (`profiles.avatar_url`, upload via "Editar perfil").
+  A regra de qual mostrar está centralizada em **`src/lib/avatar.ts`**
+  (`avatarUrl(seed, url)` — usa `url` se existir, senão monta a URL do
+  Dicebear a partir de `seed`) e é a **única** função que monta URL de
+  avatar no app inteiro — nenhum componente deve montar a URL do Dicebear
+  na mão de novo.
+- Upload: botão "Editar perfil" no popout do próprio usuário
+  (`UserPanel` → `ProfilePopout` → `EditProfileModal`). Ações em
+  `app/actions/profile.ts`: `uploadAvatar` (valida imagem/5MB, sobe pro
+  bucket `avatars` no Storage em `{userId}/avatar-{timestamp}.{ext}`,
+  atualiza `profiles.avatar_url`) e `removeAvatar` (limpa a coluna, volta
+  a cair no gerado). Mesmo padrão de upload que `updateBandoPhoto`
+  (`app/actions/bandos.ts`) — arquivo escondido + clique programático,
+  ver `BandoMenu.tsx` pro precedente.
+- **`avatar_url` precisa ser selecionado em toda query que já busca
+  `avatar_seed`**, e passado como prop irmã em todo componente que recebe
+  `avatarSeed` — são ~20 arquivos entre `app/` e `components/` (self no
+  layout de bando/Amigos/DM, `MembersSidebar`, `ChatChannel`/`DmChat` e
+  tudo que herda o mapa de `members` deles — `ThreadPanel`,
+  `PinnedMessagesModal`, `DmPinnedMessagesModal` —, `FriendRow`/
+  `ActiveNowPanel`/`FriendsSidebar`, `DmProfilePanel`,
+  `AddDmParticipantModal`, `ServerSettingsModal` (banidos),
+  `getUserProfile` em `actions/profiles.ts` que serve o `UserProfileModal`
+  genérico "clicar num nome/avatar em qualquer lugar"). Esquecer um
+  desses de novo é o jeito mais fácil de reintroduzir esse bug — se
+  alguém trocar a foto e ela não aparecer em algum lugar específico, é
+  quase sempre uma query faltando `avatar_url` no select.
+- Bucket `avatars` no Supabase Storage: público pra leitura, mas
+  INSERT/UPDATE/DELETE só no próprio path (`(storage.foldername(name))[1]
+  = auth.uid()::text`) — mesmo padrão de `bando-photos`, só que por
+  usuário em vez de por dono de bando.
+
 ## Autenticação
 
 - Email/senha normal, **ou** convidado (`guestSignIn` em `actions/auth.ts` →
@@ -436,6 +472,7 @@ tray, ícone, auto-update). Detalhes completos em `desktop/README.md`
 | Presença (online/ausente/etc) | `components/PresenceProvider.tsx`, `lib/presence.ts` |
 | Chamadas | `components/CallProvider.tsx`, `components/VoiceChannelView.tsx`, `api/livekit/*` |
 | Perfil do usuário (popout) | `components/ProfilePopout.tsx` |
+| Avatares (gerado vs. foto real) | `lib/avatar.ts`, `app/actions/profile.ts`, `components/EditProfileModal.tsx` |
 | App desktop (Windows/Electron) | `desktop/main.js`, `desktop/README.md` |
 
 ## Roadmap "Discord 2" (issues no GitHub, uma por feature grande)
@@ -470,6 +507,8 @@ lá (`gh issue list`) antes de assumir que algo falta ou já foi feito.
 
 ## Histórico resumido (mais recente primeiro)
 
+- Upload de foto de perfil real (avatar deixa de ser só o gerado do
+  Dicebear) via "Editar perfil", propagado pelo app inteiro.
 - Performance de navegação (`loading.tsx` + queries paralelizadas em
   todas as rotas de bando e de Amigos/DMs, dedupe de `getUser()`).
 - Moderação de voz completa (mutar/ensurdecer/mover membros) + ícones de

@@ -50,7 +50,10 @@ type TextChannelData = {
   initialReactions: RawReaction[];
   initialAttachments: RawAttachment[];
   initialThreads: ThreadSummary[];
-  members: Record<string, { username: string; avatarSeed: string }>;
+  members: Record<
+    string,
+    { username: string; avatarSeed: string; avatarUrl: string | null }
+  >;
   canManageMessages: boolean;
 };
 

@@ -60,6 +60,7 @@ export function ChannelSidebar({
   voiceChannels,
   selfUsername,
   selfAvatarSeed,
+  selfAvatarUrl,
   selfUserId,
 }: {
   bandoId: string;
@@ -72,6 +73,7 @@ export function ChannelSidebar({
   voiceChannels: ChannelInfo[];
   selfUsername: string;
   selfAvatarSeed: string;
+  selfAvatarUrl: string | null;
   selfUserId: string;
 }) {
   const pathname = usePathname();
@@ -214,7 +216,11 @@ export function ChannelSidebar({
       </div>
 
       <VoiceConnectedBar />
-      <UserPanel username={selfUsername} avatarSeed={selfAvatarSeed} />
+      <UserPanel
+        username={selfUsername}
+        avatarSeed={selfAvatarSeed}
+        avatarUrl={selfAvatarUrl}
+      />
     </nav>
   );
 }

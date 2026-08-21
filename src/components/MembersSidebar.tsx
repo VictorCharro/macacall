@@ -7,6 +7,7 @@ import { useMembersPanel } from "@/components/MembersPanelProvider";
 import { usePresence } from "@/components/PresenceProvider";
 import { STATUS_META } from "@/lib/presence";
 import { colorFromSeed } from "@/lib/colorFromSeed";
+import { avatarUrl } from "@/lib/avatar";
 import { startDm } from "@/app/actions/dms";
 import {
   assignRole,
@@ -21,6 +22,7 @@ type Member = {
   id: string;
   username: string;
   avatarSeed: string;
+  avatarUrl: string | null;
   isOwner: boolean;
   statusMessage: string | null;
   bio: string | null;
@@ -122,9 +124,9 @@ export function MembersSidebar({
             >
               <div className="relative shrink-0">
                 <img
-                  src={`https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(member.avatarSeed)}`}
+                  src={avatarUrl(member.avatarSeed, member.avatarUrl)}
                   alt=""
-                  className="h-8 w-8 rounded-full border border-border bg-card-3"
+                  className="h-8 w-8 rounded-full border border-border bg-card-3 object-cover"
                 />
                 <span
                   className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-card ${
@@ -281,9 +283,9 @@ function MemberProfileModal({
         <div className="relative -mt-10 max-h-[70vh] overflow-y-auto scroll-hover px-4 pb-4">
           <div className="relative inline-block">
             <img
-              src={`https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(member.avatarSeed)}`}
+              src={avatarUrl(member.avatarSeed, member.avatarUrl)}
               alt=""
-              className="h-20 w-20 rounded-full border-4 border-card-3 bg-card-2 shadow-xl"
+              className="h-20 w-20 rounded-full border-4 border-card-3 bg-card-2 object-cover shadow-xl"
             />
             <span
               className={`absolute bottom-1 right-1 h-4 w-4 rounded-full border-2 border-card-3 ${

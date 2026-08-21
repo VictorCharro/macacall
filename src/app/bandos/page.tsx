@@ -4,7 +4,10 @@ import { FriendsHome } from "@/components/FriendsHome";
 import { buildDmSidebarEntries } from "@/lib/dm-helpers";
 import type { PresenceStatus, Profile } from "@/lib/types";
 
-type ProfileRow = Pick<Profile, "id" | "username" | "avatar_seed" | "status">;
+type ProfileRow = Pick<
+  Profile,
+  "id" | "username" | "avatar_seed" | "avatar_url" | "status"
+>;
 
 export default async function BandosPage() {
   const supabase = await createClient();
@@ -18,13 +21,13 @@ export default async function BandosPage() {
     await Promise.all([
       supabase
         .from("profiles")
-        .select("id, username, avatar_seed, status")
+        .select("id, username, avatar_seed, avatar_url, status")
         .eq("id", user.id)
         .maybeSingle(),
       supabase
         .from("friendships")
         .select(
-          "id, requester_id, addressee_id, status, requester:profiles!friendships_requester_id_fkey(id, username, avatar_seed, status), addressee:profiles!friendships_addressee_id_fkey(id, username, avatar_seed, status)",
+          "id, requester_id, addressee_id, status, requester:profiles!friendships_requester_id_fkey(id, username, avatar_seed, avatar_url, status), addressee:profiles!friendships_addressee_id_fkey(id, username, avatar_seed, avatar_url, status)",
         )
         .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`),
       supabase.from("dm_participants").select("conversation_id").eq("user_id", user.id),
@@ -59,11 +62,13 @@ export default async function BandosPage() {
       currentUserId={user.id}
       selfUsername={profile.username}
       selfAvatarSeed={profile.avatar_seed}
+      selfAvatarUrl={profile.avatar_url}
       friends={friends.map((f) => ({
         friendshipId: f.friendshipId,
         id: f.profile.id,
         username: f.profile.username,
         avatarSeed: f.profile.avatar_seed,
+        avatarUrl: f.profile.avatar_url,
         status: f.profile.status as PresenceStatus,
       }))}
       incoming={incoming.map((f) => ({
@@ -71,6 +76,7 @@ export default async function BandosPage() {
         id: f.profile.id,
         username: f.profile.username,
         avatarSeed: f.profile.avatar_seed,
+        avatarUrl: f.profile.avatar_url,
         status: f.profile.status as PresenceStatus,
       }))}
       outgoing={outgoing.map((f) => ({
@@ -78,6 +84,7 @@ export default async function BandosPage() {
         id: f.profile.id,
         username: f.profile.username,
         avatarSeed: f.profile.avatar_seed,
+        avatarUrl: f.profile.avatar_url,
         status: f.profile.status as PresenceStatus,
       }))}
       dms={dmEntries}

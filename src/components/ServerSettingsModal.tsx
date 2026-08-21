@@ -5,12 +5,13 @@ import { X, UserX, ScrollText } from "lucide-react";
 import { listBannedMembers, unbanMember } from "@/app/actions/roles";
 import { listAuditLog, type AuditEntry } from "@/app/actions/audit";
 import { AUDIT_ACTION_LABELS, type AuditAction } from "@/lib/auditLog";
+import { avatarUrl } from "@/lib/avatar";
 
 type BannedRow = {
   user_id: string;
   reason: string | null;
   banned_at: string;
-  profiles: { username: string; avatar_seed: string } | null;
+  profiles: { username: string; avatar_seed: string; avatar_url: string | null } | null;
 };
 
 type Tab = "banned" | "audit";
@@ -103,9 +104,9 @@ export function ServerSettingsModal({
                   >
                     <div className="flex min-w-0 items-center gap-2.5">
                       <img
-                        src={`https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(b.profiles?.avatar_seed ?? b.user_id)}`}
+                        src={avatarUrl(b.profiles?.avatar_seed ?? b.user_id, b.profiles?.avatar_url)}
                         alt=""
-                        className="h-8 w-8 shrink-0 rounded-full border border-border bg-card-3"
+                        className="h-8 w-8 shrink-0 rounded-full border border-border bg-card-3 object-cover"
                       />
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold text-foreground">

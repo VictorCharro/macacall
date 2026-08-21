@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { addDmParticipant } from "@/app/actions/dms";
 import { Modal } from "@/components/Modal";
+import { avatarUrl } from "@/lib/avatar";
 
-type Friend = { id: string; username: string; avatarSeed: string };
+type Friend = { id: string; username: string; avatarSeed: string; avatarUrl: string | null };
 
 export function AddDmParticipantModal({
   conversationId,
@@ -34,9 +35,9 @@ export function AddDmParticipantModal({
               className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-card-2"
             >
               <img
-                src={`https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(friend.avatarSeed)}`}
+                src={avatarUrl(friend.avatarSeed, friend.avatarUrl)}
                 alt=""
-                className="h-8 w-8 shrink-0 rounded-full bg-background"
+                className="h-8 w-8 shrink-0 rounded-full bg-background object-cover"
               />
               <span className="flex-1 truncate text-sm font-medium text-foreground">
                 {friend.username}

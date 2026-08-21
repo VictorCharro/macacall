@@ -1,10 +1,18 @@
 "use client";
 
-import { useState } from "react";
-import { Check } from "lucide-react";
-import { updateProfileDetails } from "@/app/actions/profile";
+import { useActionState, useEffect, useRef, useState } from "react";
+import { Check, Pencil, X } from "lucide-react";
+import {
+  updateProfileDetails,
+  uploadAvatar,
+  removeAvatar,
+  type AvatarActionState,
+} from "@/app/actions/profile";
 import { Modal } from "@/components/Modal";
 import { colorFromSeed } from "@/lib/colorFromSeed";
+import { avatarUrl } from "@/lib/avatar";
+
+const initialAvatarState: AvatarActionState = {};
 
 const BANNER_COLORS = [
   "#1f2722",
@@ -22,16 +30,20 @@ const MAX_BIO = 300;
 export function EditProfileModal({
   username,
   avatarSeed,
+  avatarUrl: photoUrl,
   initialBio,
   initialBannerColor,
   onSaved,
+  onAvatarChanged,
   onClose,
 }: {
   username: string;
   avatarSeed: string;
+  avatarUrl: string | null;
   initialBio: string | null;
   initialBannerColor: string | null;
   onSaved: (bio: string | null, bannerColor: string | null) => void;
+  onAvatarChanged: (url: string | null) => void;
   onClose: () => void;
 }) {
   const [bio, setBio] = useState(initialBio ?? "");
@@ -39,6 +51,25 @@ export function EditProfileModal({
   const [bannerColor, setBannerColor] = useState<string | null>(initialBannerColor);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [removingAvatar, setRemovingAvatar] = useState(false);
+  const [avatarState, avatarAction, avatarPending] = useActionState(
+    uploadAvatar,
+    initialAvatarState,
+  );
+
+  useEffect(() => {
+    if (avatarState.url) onAvatarChanged(avatarState.url);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [avatarState]);
+
+  async function handleRemoveAvatar() {
+    setRemovingAvatar(true);
+    const result = await removeAvatar();
+    setRemovingAvatar(false);
+    if (!result.error) onAvatarChanged(null);
+  }
 
   const previewBanner = bannerColor ?? colorFromSeed(avatarSeed);
 
@@ -63,15 +94,51 @@ export function EditProfileModal({
       <div className="mt-4 overflow-hidden rounded-xl border border-border">
         <div className="h-14 w-full" style={{ backgroundColor: previewBanner }} />
         <div className="flex items-center gap-2 bg-card-3 px-3 pb-3 pt-0">
-          <img
-            src={`https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(avatarSeed)}`}
-            alt=""
-            className="-mt-5 h-12 w-12 rounded-full border-4 border-card-3 bg-background"
-          />
+          <form action={avatarAction} className="hidden">
+            <input
+              ref={fileInputRef}
+              type="file"
+              name="avatar"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              onChange={(e) => {
+                if (e.target.files?.length) e.target.form?.requestSubmit();
+              }}
+            />
+          </form>
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={avatarPending}
+            title="Trocar foto de perfil"
+            className="group relative -mt-5 h-12 w-12 shrink-0 overflow-hidden rounded-full border-4 border-card-3 bg-background disabled:opacity-70"
+          >
+            <img
+              src={avatarUrl(avatarSeed, avatarState.url ?? photoUrl)}
+              alt=""
+              className="h-full w-full object-cover"
+            />
+            <span className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition group-hover:opacity-100">
+              <Pencil className="h-4 w-4 text-white" />
+            </span>
+          </button>
           <span className="truncate pt-2 text-sm font-bold text-foreground">
             {username}
           </span>
+          {(avatarState.url ?? photoUrl) && (
+            <button
+              type="button"
+              onClick={handleRemoveAvatar}
+              disabled={removingAvatar}
+              title="Remover foto (voltar ao avatar padrão)"
+              className="ml-auto mt-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-muted transition hover:bg-card-2 hover:text-danger disabled:opacity-60"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
+        {avatarState.error && (
+          <p className="bg-card-3 px-3 pb-2 text-xs text-danger">{avatarState.error}</p>
+        )}
       </div>
 
       <label className="mt-4 block text-xs font-bold uppercase tracking-wide text-muted">

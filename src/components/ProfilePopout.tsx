@@ -7,6 +7,7 @@ import { EditProfileModal } from "@/components/EditProfileModal";
 import { updateStatusMessage } from "@/app/actions/friends";
 import { usePresence } from "@/components/PresenceProvider";
 import { colorFromSeed } from "@/lib/colorFromSeed";
+import { avatarUrl } from "@/lib/avatar";
 import { randomStatusQuote } from "@/lib/statusQuotes";
 import { STATUS_META } from "@/lib/presence";
 import { ContextMenuPortal } from "@/components/ContextMenuPortal";
@@ -28,6 +29,7 @@ export function ProfilePopout({
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [bio, setBio] = useState<string | null>(null);
   const [bannerColorOverride, setBannerColorOverride] = useState<string | null>(null);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
@@ -50,13 +52,14 @@ export function ProfilePopout({
       if (!user) return;
       const { data } = await supabase
         .from("profiles")
-        .select("status_message, bio, banner_color")
+        .select("status_message, bio, banner_color, avatar_url")
         .eq("id", user.id)
         .maybeSingle();
       if (!cancelled) {
         setStatusMessage(data?.status_message ?? null);
         setBio(data?.bio ?? null);
         setBannerColorOverride(data?.banner_color ?? null);
+        setPhotoUrl(data?.avatar_url ?? null);
         setLoaded(true);
       }
     });
@@ -108,9 +111,9 @@ export function ProfilePopout({
         <div className="-mt-8 flex items-end gap-1.5">
           <div className="relative shrink-0">
             <img
-              src={`https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(avatarSeed)}`}
+              src={avatarUrl(avatarSeed, photoUrl)}
               alt=""
-              className="h-16 w-16 rounded-full border-4 border-card bg-background"
+              className="h-16 w-16 rounded-full border-4 border-card bg-background object-cover"
             />
             <span
               className={`absolute bottom-0 right-0 h-4 w-4 rounded-full border-2 border-card ${STATUS_META[myStatus].dotClass}`}
@@ -279,12 +282,14 @@ export function ProfilePopout({
         <EditProfileModal
           username={username}
           avatarSeed={avatarSeed}
+          avatarUrl={photoUrl}
           initialBio={bio}
           initialBannerColor={bannerColorOverride}
           onSaved={(nextBio, nextBanner) => {
             setBio(nextBio);
             setBannerColorOverride(nextBanner);
           }}
+          onAvatarChanged={setPhotoUrl}
           onClose={() => setEditProfileOpen(false)}
         />
       )}

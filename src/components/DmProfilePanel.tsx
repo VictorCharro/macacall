@@ -1,6 +1,13 @@
 "use client";
 
-type Participant = { id: string; username: string; avatarSeed: string };
+import { avatarUrl } from "@/lib/avatar";
+
+type Participant = {
+  id: string;
+  username: string;
+  avatarSeed: string;
+  avatarUrl: string | null;
+};
 
 export function DmProfilePanel({
   participants,
@@ -14,9 +21,9 @@ export function DmProfilePanel({
       {!isGroup && participants[0] ? (
         <div className="flex flex-col items-center gap-3 py-4 text-center">
           <img
-            src={`https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(participants[0].avatarSeed)}`}
+            src={avatarUrl(participants[0].avatarSeed, participants[0].avatarUrl)}
             alt=""
-            className="h-24 w-24 rounded-full bg-background"
+            className="h-24 w-24 rounded-full bg-background object-cover"
           />
           <div>
             <p className="text-lg font-bold text-accent">
@@ -36,9 +43,9 @@ export function DmProfilePanel({
                 className="flex items-center gap-3 rounded-lg px-2 py-2 transition hover:bg-card-2"
               >
                 <img
-                  src={`https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(p.avatarSeed)}`}
+                  src={avatarUrl(p.avatarSeed, p.avatarUrl)}
                   alt=""
-                  className="h-9 w-9 shrink-0 rounded-full bg-background"
+                  className="h-9 w-9 shrink-0 rounded-full bg-background object-cover"
                 />
                 <span className="truncate text-sm font-medium text-foreground">
                   {p.username}

@@ -61,7 +61,7 @@ export default async function BandoLayout({
     supabase
       .from("bando_members")
       .select(
-        "profiles(id, username, avatar_seed, status_message, bio, banner_color)",
+        "profiles(id, username, avatar_seed, avatar_url, status_message, bio, banner_color)",
       )
       .eq("bando_id", id),
     supabase
@@ -128,6 +128,7 @@ export default async function BandoLayout({
           | "id"
           | "username"
           | "avatar_seed"
+          | "avatar_url"
           | "status_message"
           | "bio"
           | "banner_color"
@@ -140,6 +141,7 @@ export default async function BandoLayout({
         id: profile.id,
         username: profile.username,
         avatarSeed: profile.avatar_seed,
+        avatarUrl: profile.avatar_url,
         isOwner: profile.id === bando.owner_id,
         statusMessage: profile.status_message,
         bio: profile.bio,
@@ -190,6 +192,7 @@ export default async function BandoLayout({
             voiceChannels={voiceChannels}
             selfUsername={self?.username ?? "Macaco"}
             selfAvatarSeed={self?.avatarSeed ?? user.id}
+            selfAvatarUrl={self?.avatarUrl ?? null}
             selfUserId={user.id}
           />
 

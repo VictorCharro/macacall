@@ -9,12 +9,14 @@ import {
   useFriendContextMenu,
 } from "@/components/FriendContextMenu";
 import { UserPanel } from "@/components/UserPanel";
+import { avatarUrl } from "@/lib/avatar";
 
 type DmEntry = {
   conversationId: string;
   id: string;
   username: string;
   avatarSeed: string;
+  avatarUrl: string | null;
   isGroup?: boolean;
   unread?: number;
 };
@@ -22,10 +24,12 @@ type DmEntry = {
 export function FriendsSidebar({
   selfUsername,
   selfAvatarSeed,
+  selfAvatarUrl,
   dms,
 }: {
   selfUsername: string;
   selfAvatarSeed: string;
+  selfAvatarUrl: string | null;
   dms: DmEntry[];
 }) {
   const pathname = usePathname();
@@ -77,7 +81,11 @@ export function FriendsSidebar({
         )}
       </div>
 
-      <UserPanel username={selfUsername} avatarSeed={selfAvatarSeed} />
+      <UserPanel
+        username={selfUsername}
+        avatarSeed={selfAvatarSeed}
+        avatarUrl={selfAvatarUrl}
+      />
     </nav>
   );
 }
@@ -98,9 +106,9 @@ function DmListItem({ dm, active }: { dm: DmEntry; active: boolean }) {
       >
         <div className="relative shrink-0">
           <img
-            src={`https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(dm.avatarSeed)}`}
+            src={avatarUrl(dm.avatarSeed, dm.avatarUrl)}
             alt=""
-            className="h-7 w-7 rounded-full bg-background"
+            className="h-7 w-7 rounded-full bg-background object-cover"
           />
           <span
             className={`absolute bottom-0 right-0 h-2 w-2 rounded-full border-2 border-card ${

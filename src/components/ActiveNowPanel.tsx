@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import { Mic } from "lucide-react";
 import { usePresence } from "@/components/PresenceProvider";
 import { STATUS_META } from "@/lib/presence";
+import { avatarUrl } from "@/lib/avatar";
 
-type Friend = { id: string; username: string; avatarSeed: string };
+type Friend = { id: string; username: string; avatarSeed: string; avatarUrl: string | null };
 type Activity = { friendId: string; bandoName: string; channelName: string };
 
 export function ActiveNowPanel({ friends }: { friends: Friend[] }) {
@@ -60,9 +61,9 @@ export function ActiveNowPanel({ friends }: { friends: Friend[] }) {
               >
                 <div className="relative shrink-0">
                   <img
-                    src={`https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(friend.avatarSeed)}`}
+                    src={avatarUrl(friend.avatarSeed, friend.avatarUrl)}
                     alt=""
-                    className="h-9 w-9 rounded-full bg-background"
+                    className="h-9 w-9 rounded-full bg-background object-cover"
                   />
                   <span
                     className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-card ${

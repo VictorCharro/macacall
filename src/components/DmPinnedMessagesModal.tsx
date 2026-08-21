@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { toggleDmPinMessage } from "@/app/actions/dms";
 import { Modal } from "@/components/Modal";
+import { avatarUrl } from "@/lib/avatar";
 
-type Member = { username: string; avatarSeed: string };
+type Member = { username: string; avatarSeed: string; avatarUrl: string | null };
 type PinnedMessage = {
   id: string;
   content: string;
@@ -67,9 +68,9 @@ export function DmPinnedMessagesModal({
                   className="flex items-start gap-2 rounded-lg border border-border p-2"
                 >
                   <img
-                    src={`https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(member?.avatarSeed ?? message.user_id)}`}
+                    src={avatarUrl(member?.avatarSeed ?? message.user_id, member?.avatarUrl)}
                     alt=""
-                    className="h-7 w-7 shrink-0 rounded-full bg-background"
+                    className="h-7 w-7 shrink-0 rounded-full bg-background object-cover"
                   />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-accent">

@@ -8,13 +8,16 @@ import { ProfilePopout } from "@/components/ProfilePopout";
 import { PushNotificationToggle } from "@/components/PushNotificationToggle";
 import { VoiceSettingsModal } from "@/components/VoiceSettingsModal";
 import { STATUS_META } from "@/lib/presence";
+import { avatarUrl } from "@/lib/avatar";
 
 export function UserPanel({
   username,
   avatarSeed,
+  avatarUrl: photoUrl,
 }: {
   username: string;
   avatarSeed: string;
+  avatarUrl?: string | null;
 }) {
   const {
     connected,
@@ -39,9 +42,9 @@ export function UserPanel({
         >
           <div className="relative shrink-0">
             <img
-              src={`https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(avatarSeed)}`}
+              src={avatarUrl(avatarSeed, photoUrl)}
               alt=""
-              className="h-8 w-8 rounded-full border border-secondary/40 bg-background"
+              className="h-8 w-8 rounded-full border border-secondary/40 bg-background object-cover"
             />
             <span
               className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-card-3 ${STATUS_META[myStatus].dotClass}`}
