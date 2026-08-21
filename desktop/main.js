@@ -84,24 +84,34 @@ function createWindow() {
 
   mainWindow.loadURL(APP_URL);
 
-  // The web app has no dedicated title-bar strip of its own (unlike
-  // Discord's real client, which reserves that space) -- with no
-  // -webkit-app-region declared anywhere, the whole custom-colored title
-  // bar area was undraggable. Injected purely from the shell side (not
-  // touching the site's own source, so regular browser users are
-  // unaffected): each screen's top <header> bar becomes a drag handle,
-  // while every interactive element keeps working normally as a click
-  // target instead of starting a drag.
+  // Discord's real client reserves an actual strip at the top of the window
+  // for its title bar -- nothing else renders under it. Our page has no
+  // such reserved space, so the native min/max/close overlay was drawing
+  // straight on top of real app content (the members list, in the report
+  // that caught this). Fixed the right way, not just "make the top
+  // draggable": push the whole app down by the bar's height and paint a
+  // real bar in its place, all injected from the shell side only -- the
+  // site's own source is untouched, so browser users see none of this.
+  const TITLE_BAR_HEIGHT = 36;
   const dragRegionCss = `
-    header { -webkit-app-region: drag; }
-    header button,
-    header a,
-    header input,
-    header select,
-    header textarea,
-    header [role="button"] {
-      -webkit-app-region: no-drag;
+    :root { --electron-titlebar-h: ${TITLE_BAR_HEIGHT}px; }
+
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: var(--electron-titlebar-h);
+      background: ${TITLE_BAR_COLOR};
+      z-index: 2147483647;
+      -webkit-app-region: drag;
     }
+
+    /* The app shell at /bandos uses fixed inset-0 instead of normal
+       document flow, so body padding alone wouldn't move it -- shift its
+       top down explicitly. Everything else (landing, login, signup) is
+       normal flow and just needs body's padding. */
+    .fixed.inset-0 { top: var(--electron-titlebar-h) !important; }
+    body { padding-top: var(--electron-titlebar-h); }
   `;
   mainWindow.webContents.on("did-finish-load", () => {
     mainWindow.webContents.insertCSS(dragRegionCss);
