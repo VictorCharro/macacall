@@ -9,7 +9,7 @@ import {
   useIsSpeaking,
   VideoTrack,
 } from "@livekit/components-react";
-import { Track, type Participant } from "livekit-client";
+import { Track, type Participant, type RemoteParticipant } from "livekit-client";
 import type { TrackReference } from "@livekit/components-core";
 import {
   Mic,
@@ -29,6 +29,8 @@ import {
 } from "lucide-react";
 import { useCall } from "@/components/CallProvider";
 import { ChatChannel } from "@/components/ChatChannel";
+import { ContextMenuPortal } from "@/components/ContextMenuPortal";
+import { UserProfileModal } from "@/components/UserProfileModal";
 import type { RawReaction } from "@/lib/reactions";
 import type { RawAttachment } from "@/lib/attachments";
 import type { ThreadSummary } from "@/lib/threads";
@@ -69,6 +71,7 @@ export function VoiceChannelView({
   const href = `/bandos/${bandoId}/${channelId}`;
 
   const isThisChannel = activeCall?.roomId === channelId;
+  const [stageCollapsed, setStageCollapsed] = useState(false);
 
   return (
     <div className="macacall-call flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -111,7 +114,14 @@ export function VoiceChannelView({
         </div>
       )}
 
-      {isThisChannel && connected && <CallInterface channelName={channelName} />}
+      {isThisChannel && connected && (
+        <CallInterface
+          channelName={channelName}
+          compact
+          stageCollapsed={stageCollapsed}
+          onToggleStageCollapsed={() => setStageCollapsed((v) => !v)}
+        />
+      )}
 
       {textChannel ? (
         <ChatChannel
@@ -147,6 +157,8 @@ export function CallInterface({
   compact = false,
   chatHidden = false,
   onToggleChatHidden,
+  stageCollapsed = false,
+  onToggleStageCollapsed,
 }: {
   channelName: string;
   /** Used when a persistent text chat already exists alongside the call
@@ -157,6 +169,11 @@ export function CallInterface({
   chatHidden?: boolean;
   /** DM-only: show a control-bar button to hide/show the message thread. */
   onToggleChatHidden?: () => void;
+  /** Channel-only: the inverse of chatHidden -- collapses the video stage
+   * itself down to a slim strip so the *text channel* below gets the room,
+   * instead of hiding text to give the call more room. */
+  stageCollapsed?: boolean;
+  onToggleStageCollapsed?: () => void;
 }) {
   const {
     leaveCall,
@@ -282,31 +299,50 @@ export function CallInterface({
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => {
-            setForceGrid((v) => !v);
-            setFocusedKey(null);
-          }}
-          title={forceGrid ? "Voltar ao palco" : "Ver em grade"}
-          aria-label={forceGrid ? "Voltar ao palco" : "Ver em grade"}
-          className={`shrink-0 rounded-lg p-1.5 transition ${
-            forceGrid
-              ? "bg-secondary/20 text-secondary"
-              : "bg-card-2 text-muted hover:text-accent"
-          }`}
-        >
-          <Grid className="h-4 w-4" />
-        </button>
+        <div className="flex shrink-0 items-center gap-1.5">
+          {onToggleStageCollapsed && (
+            <button
+              type="button"
+              onClick={onToggleStageCollapsed}
+              title={stageCollapsed ? "Mostrar vídeo" : "Minimizar vídeo"}
+              aria-label={stageCollapsed ? "Mostrar vídeo" : "Minimizar vídeo"}
+              className="rounded-lg bg-card-2 p-1.5 text-muted transition hover:text-accent"
+            >
+              {stageCollapsed ? (
+                <Maximize2 className="h-4 w-4" />
+              ) : (
+                <Minimize2 className="h-4 w-4" />
+              )}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              setForceGrid((v) => !v);
+              setFocusedKey(null);
+            }}
+            title={forceGrid ? "Voltar ao palco" : "Ver em grade"}
+            aria-label={forceGrid ? "Voltar ao palco" : "Ver em grade"}
+            className={`rounded-lg p-1.5 transition ${
+              forceGrid
+                ? "bg-secondary/20 text-secondary"
+                : "bg-card-2 text-muted hover:text-accent"
+            }`}
+          >
+            <Grid className="h-4 w-4" />
+          </button>
+        </div>
       </header>
 
-      <div
-        className={`scroll-hover min-h-0 overflow-y-auto overscroll-y-contain p-4 ${
-          compact && !chatHidden ? "max-h-[45vh]" : "flex-1"
-        }`}
-      >
-        {stageContent}
-      </div>
+      {!stageCollapsed && (
+        <div
+          className={`scroll-hover min-h-0 overflow-y-auto overscroll-y-contain p-4 ${
+            compact && !chatHidden ? "max-h-[45vh]" : "flex-1"
+          }`}
+        >
+          {stageContent}
+        </div>
+      )}
 
       <div className="flex h-20 shrink-0 items-center justify-center gap-3 border-t border-border-soft bg-card-3 px-6">
         <CallButton
@@ -457,11 +493,22 @@ function Tile({
   const isScreenShare = trackRef?.source === Track.Source.ScreenShare;
   const containerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [volumeMenuPos, setVolumeMenuPos] = useState<{ x: number; y: number } | null>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
   const { isMuted } = useTrackMutedIndicator({
     participant,
     source: Track.Source.Microphone,
   });
   const isSpeaking = useIsSpeaking(participant);
+
+  // Only remote participants expose setVolume -- adjusting your own volume
+  // makes no sense, so the tile just skips the right-click menu for it.
+  // Mic and screen-share audio are separately adjustable per participant.
+  const remoteParticipant = !participant.isLocal ? (participant as RemoteParticipant) : null;
+  const volumeSource = isScreenShare ? Track.Source.ScreenShareAudio : Track.Source.Microphone;
+  const [volume, setVolumeState] = useState(
+    () => remoteParticipant?.getVolume(volumeSource) ?? 1,
+  );
 
   useEffect(() => {
     if (!allowFullscreen) return;
@@ -481,12 +528,20 @@ function Tile({
     }
   }
 
+  function handleContextMenu(e: React.MouseEvent) {
+    if (!remoteParticipant) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setVolumeMenuPos({ x: e.clientX, y: e.clientY });
+  }
+
   const name = participant.name || participant.identity;
 
   return (
     <div
       ref={containerRef}
       onClick={onFocus}
+      onContextMenu={handleContextMenu}
       className={`group relative overflow-hidden rounded-2xl border-2 bg-card-2 shadow-xl transition ${TILE_SIZE[size]} ${
         isSpeaking
           ? "border-secondary shadow-secondary/20 ring-4 ring-secondary/25"
@@ -527,7 +582,15 @@ function Tile({
 
       <span className="absolute bottom-3 left-3 z-20 flex max-w-[calc(100%-1.5rem)] items-center gap-2 rounded-lg border border-white/10 bg-black/60 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur">
         {isScreenShare && <Monitor className="h-3.5 w-3.5 shrink-0 text-primary" />}
-        <span className="truncate">
+        <span
+          role="button"
+          tabIndex={0}
+          onClick={(e) => {
+            e.stopPropagation();
+            setProfileOpen(true);
+          }}
+          className="truncate hover:underline"
+        >
           {isScreenShare ? `Tela de ${name}` : name}
         </span>
         {!isScreenShare &&
@@ -568,6 +631,39 @@ function Tile({
             <Maximize2 className="h-4 w-4" />
           )}
         </button>
+      )}
+
+      {volumeMenuPos && remoteParticipant && (
+        <ContextMenuPortal x={volumeMenuPos.x} y={volumeMenuPos.y} onClose={() => setVolumeMenuPos(null)}>
+          <div className="w-56 p-2" onClick={(e) => e.stopPropagation()}>
+            <p className="mb-2 truncate text-xs font-bold text-foreground">
+              {isScreenShare ? `Volume da tela de ${name}` : `Volume de ${name}`}
+            </p>
+            <div className="flex items-center gap-2">
+              <Volume2 className="h-4 w-4 shrink-0 text-muted" />
+              <input
+                type="range"
+                min={0}
+                max={2}
+                step={0.05}
+                value={volume}
+                onChange={(e) => {
+                  const next = Number(e.target.value);
+                  setVolumeState(next);
+                  remoteParticipant.setVolume(next, volumeSource);
+                }}
+                className="w-full accent-primary"
+              />
+              <span className="w-9 shrink-0 text-right text-xs text-muted">
+                {Math.round(volume * 100)}%
+              </span>
+            </div>
+          </div>
+        </ContextMenuPortal>
+      )}
+
+      {profileOpen && (
+        <UserProfileModal userId={participant.identity} onClose={() => setProfileOpen(false)} />
       )}
     </div>
   );

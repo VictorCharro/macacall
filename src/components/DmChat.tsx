@@ -26,6 +26,7 @@ import { EmojiPickerButton } from "@/components/EmojiPickerButton";
 import { DmPinnedMessagesModal } from "@/components/DmPinnedMessagesModal";
 import { AddDmParticipantModal } from "@/components/AddDmParticipantModal";
 import { DmProfilePanel } from "@/components/DmProfilePanel";
+import { UserProfileModal } from "@/components/UserProfileModal";
 import { summarizeReactions, type RawReaction } from "@/lib/reactions";
 import type { RawAttachment } from "@/lib/attachments";
 import {
@@ -78,6 +79,7 @@ export function DmChat({
   const [reactions, setReactions] = useState<RawReaction[]>(initialReactions);
   const [attachments, setAttachments] = useState<RawAttachment[]>(initialAttachments);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [viewingProfile, setViewingProfile] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [inputKey, setInputKey] = useState(0);
@@ -417,11 +419,15 @@ export function DmChat({
                         <img
                           src={`https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(member?.avatarSeed ?? message.user_id)}`}
                           alt=""
-                          className="h-9 w-9 shrink-0 rounded-full bg-background"
+                          onClick={() => setViewingProfile(message.user_id)}
+                          className="h-9 w-9 shrink-0 cursor-pointer rounded-full bg-background"
                         />
                         <div className="min-w-0">
                           <div className="flex items-baseline gap-2">
-                            <span className="font-semibold text-accent">
+                            <span
+                              onClick={() => setViewingProfile(message.user_id)}
+                              className="cursor-pointer font-semibold text-accent hover:underline"
+                            >
                               {member?.username ?? "Macaco"}
                             </span>
                             <span className="text-xs text-muted">
@@ -550,6 +556,10 @@ export function DmChat({
           availableFriends={availableFriendsToAdd}
           onClose={() => setAddOpen(false)}
         />
+      )}
+
+      {viewingProfile && (
+        <UserProfileModal userId={viewingProfile} onClose={() => setViewingProfile(null)} />
       )}
     </div>
   );

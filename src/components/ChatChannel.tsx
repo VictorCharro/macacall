@@ -22,6 +22,7 @@ import { AttachmentGallery } from "@/components/AttachmentGallery";
 import { EmojiPickerButton } from "@/components/EmojiPickerButton";
 import { PinnedMessagesModal } from "@/components/PinnedMessagesModal";
 import { ThreadPanel } from "@/components/ThreadPanel";
+import { UserProfileModal } from "@/components/UserProfileModal";
 import { useMembersPanel } from "@/components/MembersPanelProvider";
 import { useBandoRoles } from "@/components/BandoRolesProvider";
 import { summarizeReactions, type RawReaction } from "@/lib/reactions";
@@ -83,6 +84,7 @@ export function ChatChannel({
   );
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [viewingProfile, setViewingProfile] = useState<string | null>(null);
   const [pinnedModalOpen, setPinnedModalOpen] = useState(false);
   const [search, setSearch] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -521,12 +523,14 @@ export function ChatChannel({
               <img
                 src={`https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(member?.avatarSeed ?? message.user_id)}`}
                 alt=""
-                className="mt-0.5 h-10 w-10 shrink-0 rounded-full border border-border bg-card-3"
+                onClick={() => setViewingProfile(message.user_id)}
+                className="mt-0.5 h-10 w-10 shrink-0 cursor-pointer rounded-full border border-border bg-card-3"
               />
 
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span
+                    onClick={() => setViewingProfile(message.user_id)}
                     className="cursor-pointer text-sm font-bold text-foreground hover:underline"
                     style={{ color: roleColorByUserId[message.user_id] ?? undefined }}
                   >
@@ -697,6 +701,10 @@ export function ChatChannel({
         canManageMessages={canManageMessages}
         onClose={() => setOpenThread(null)}
       />
+    )}
+
+    {viewingProfile && (
+      <UserProfileModal userId={viewingProfile} onClose={() => setViewingProfile(null)} />
     )}
     </div>
   );

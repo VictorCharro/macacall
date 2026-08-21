@@ -19,6 +19,7 @@ import { AttachmentPicker } from "@/components/AttachmentPicker";
 import { AttachmentGallery } from "@/components/AttachmentGallery";
 import { EmojiPickerButton } from "@/components/EmojiPickerButton";
 import { useBandoRoles } from "@/components/BandoRolesProvider";
+import { UserProfileModal } from "@/components/UserProfileModal";
 import { summarizeReactions, type RawReaction } from "@/lib/reactions";
 import type { RawAttachment } from "@/lib/attachments";
 import { findMentionTrigger, applyMention, type Mentionable } from "@/lib/mentions";
@@ -58,6 +59,7 @@ export function ThreadPanel({
   const [attachments, setAttachments] = useState<RawAttachment[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [viewingProfile, setViewingProfile] = useState<string | null>(null);
   const [inputKey, setInputKey] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -276,12 +278,14 @@ export function ThreadPanel({
               <img
                 src={`https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(member?.avatarSeed ?? message.user_id)}`}
                 alt=""
-                className="mt-0.5 h-7 w-7 shrink-0 rounded-full border border-border bg-card-3"
+                onClick={() => setViewingProfile(message.user_id)}
+                className="mt-0.5 h-7 w-7 shrink-0 cursor-pointer rounded-full border border-border bg-card-3"
               />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
                   <span
-                    className="text-xs font-bold text-foreground"
+                    onClick={() => setViewingProfile(message.user_id)}
+                    className="cursor-pointer text-xs font-bold text-foreground hover:underline"
                     style={{ color: roleColorByUserId[message.user_id] ?? undefined }}
                   >
                     {member?.username ?? "Macaco"}
@@ -392,6 +396,10 @@ export function ThreadPanel({
         </div>
         {state.error && <p className="mt-1 text-xs text-danger">{state.error}</p>}
       </form>
+
+      {viewingProfile && (
+        <UserProfileModal userId={viewingProfile} onClose={() => setViewingProfile(null)} />
+      )}
     </aside>
   );
 }
