@@ -39,6 +39,16 @@ if (!gotSingleInstanceLock) {
       },
     );
 
+    // A regular Chrome browser shows its own screen/window picker for
+    // getDisplayMedia() automatically; Electron doesn't, so without this
+    // handler the call just hangs/rejects and screen share never starts.
+    // useSystemPicker hands it off to Windows' own native picker instead of
+    // building a custom source-selection UI here.
+    mainWindow.webContents.session.setDisplayMediaRequestHandler(
+      (_request, callback) => callback({}),
+      { useSystemPicker: true },
+    );
+
     app.on("activate", () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow();
       else mainWindow?.show();
