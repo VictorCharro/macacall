@@ -1,6 +1,6 @@
 {
   "name": "macacall-desktop",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "private": true,
   "description": "MacaCall desktop shell -- a native window around https://macacall.vercel.app, same idea as Discord's own Electron client.",
   "main": "main.js",

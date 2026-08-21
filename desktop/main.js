@@ -204,7 +204,7 @@ function createWindow() {
 async function pickScreenSource() {
   const rawSources = await desktopCapturer.getSources({
     types: ["screen", "window"],
-    thumbnailSize: { width: 300, height: 170 },
+    thumbnailSize: { width: 480, height: 270 },
   });
   const sources = rawSources.map((s) => ({
     id: s.id,
@@ -221,8 +221,8 @@ async function pickScreenSource() {
     };
 
     const picker = new BrowserWindow({
-      width: 560,
-      height: 420,
+      width: 820,
+      height: 600,
       parent: mainWindow ?? undefined,
       modal: !!mainWindow,
       resizable: false,
