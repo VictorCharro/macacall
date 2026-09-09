@@ -671,35 +671,64 @@ antes de escalar, `[P2]` = qualidade sem urgência, `[P3]` = hygiene/baixa
 prioridade). Confira o estado das issues antes de assumir que algo já foi
 feito.
 
-- **#10 [P0]**: `/api/livekit/moderate` (ação "move") não confere que o
-  canal de destino é do mesmo bando do canal de origem -- gap de escopo
-  de permissão real, não cosmético.
-- **#11/#12 [P1]**: os dois polls HTTP recorrentes do app (participantes
+- ✅ **#10 [P0]**: `/api/livekit/moderate` (ação "move") agora confere
+  que o canal de destino é do mesmo bando do canal de origem antes de
+  sinalizar a mudança (era um gap de escopo de permissão real).
+- ⬜ **#11/#12 [P1]**: os dois polls HTTP recorrentes do app (participantes
   de voz a cada 4s em `BandoParticipants.tsx`, atividade de amigos a cada
   5s em `ActiveNowPanel.tsx`) -- candidatos a virar push via Realtime.
-- **#13 [P1]**: duplicação grande entre `ChatChannel.tsx`/`DmChat.tsx`/
+  **Deliberadamente não feito ainda**: precisa de LiveKit webhooks
+  configurados no dashboard do projeto (fora do código) e não dava pra
+  testar contra uma sala/call real neste ambiente -- risco alto de
+  quebrar silenciosamente sem forma de validar.
+- ⬜ **#13 [P1]**: duplicação grande entre `ChatChannel.tsx`/`DmChat.tsx`/
   `ThreadPanel.tsx` (mentions, wiring de Realtime, memoização de
   anexos/reações) -- candidato a `useMessageFeed(table, filterColumn, id)`
-  compartilhado.
-- **#14 [P1]**: falta validação de tamanho máximo/charset em vários
-  inputs (username, nome de bando/canal, emoji, memberIds de grupo DM).
-- **#15 [P1]**: `addDmParticipant` promove DM pra grupo sem checar
-  membership na própria Action -- depende só da RLS, vale confirmar a
-  policy de UPDATE em `dm_conversations`.
-- **#16 [P1]**: sem rate limiting em ações sensíveis + `generateInviteCode()`
-  usa `Math.random()` (não criptográfico, brute-forceável).
-- **#17 [P1]**: `Promise.all` perdidos em `roles.ts`/`dms.ts`/`messages.ts`
-  + `.select("*")` desnecessário em `roles.ts` -- mesmo padrão que a seção
-  "Performance de navegação" já corrigiu em outros lugares.
-- **#18-#21 [P2]**: memoização ausente em `PresenceProvider`/
-  `MembersSidebar`/`ActiveNowPanel`/`ChannelSidebar`/`DmChat`, code-split
-  do LiveKit via `next/dynamic` (hoje todo usuário carrega o bundle do
-  LiveKit mesmo sem abrir call), unificar `PinnedMessagesModal`/
-  `DmPinnedMessagesModal`.
-- **#22-#25 [P3]**: uso inconsistente de `getCachedUser()` (~40 pontos
-  ainda chamando `auth.getUser()` direto), sem `app/error.tsx`, avatares
-  Dicebear via `<img>` cru sem `next/image`, `requireUser()` copiado à
-  mão em cada arquivo de `actions/` em vez de um helper único.
+  compartilhado. **Deliberadamente não feito ainda**: refactor grande
+  demais pra ir sem QA manual no chat/DM/threads depois.
+- ✅ **#14 [P1]**: validação de tamanho máximo/charset adicionada em
+  username, nome de bando/canal + categoria, emoji de reação, memberIds
+  de grupo DM (dedupe + cap de 10 participantes), busca de username em
+  pedido de amizade.
+- ✅ **#15 [P1]**: `addDmParticipant` agora confere membership explicitamente
+  antes de promover a DM pra grupo (defesa em profundidade -- a policy de
+  RLS de `dm_conversations` em si não foi auditada, sem acesso ao projeto
+  Supabase nesta sessão).
+- 🟡 **#16 [P1] (parcial)**: `generateInviteCode()` trocado pra
+  `crypto.randomInt`. Rate limiting em si (`guestSignIn`/
+  `sendFriendRequest`/`sendMessage`) continua faltando -- precisa de uma
+  decisão de infra (Redis/Upstash/Vercel KV) que não é pra tomar sem o
+  dono do projeto.
+- ✅ **#17 [P1]**: `Promise.all` aplicados em `roles.ts` (`createRole`,
+  `kickMember`/`banMember`/`unbanMember`), `dms.ts`
+  (`getOrCreateDmConversationId`), `messages.ts` (mention lookup do
+  `sendMessage` roda em paralelo com o insert) + `.select("*")` de
+  `createRole` trocado por colunas explícitas.
+- ✅ **#18/#19 [P2]**: `useMemo`/`useCallback` adicionados em
+  `PresenceProvider` (value do contexto + `setMyStatus`),
+  `MembersSidebar` (`grouped`), `ActiveNowPanel` (`activityByFriend`/
+  `activeFriends`), `ChannelSidebar` (participantes agrupados por
+  `channelId` num `Map` em vez de `.filter()` por canal), `DmChat`
+  (`members`).
+- ⬜ **#20 [P2]**: code-split do LiveKit via `next/dynamic` -- não feito,
+  mesmo motivo do #11/#12: toca a mesma lógica frágil de reconexão já
+  documentada acima em "Chamadas de voz/vídeo", sem call real pra validar.
+- ✅ **#21 [P2]**: `PinnedMessagesModal`/`DmPinnedMessagesModal` unificados
+  num componente só (`fetchPinned`/`onUnpin`/`canUnpin`/`emptyLabel` como
+  props) -- `DmPinnedMessagesModal.tsx` foi deletado.
+- ✅ **#22/#25 [P3]**: `getCachedUser()` adotado em todo `actions/`,
+  `api/**/route.ts` e as poucas Server Component pages que ainda
+  chamavam `auth.getUser()` direto; `requireUser()` (era copiado à mão em
+  cada arquivo, `roles.ts` tinha sua própria cópia local) virou um helper
+  único em `src/lib/authGuard.ts`.
+- ✅ **#23 [P3]**: `src/app/error.tsx` (com botão "Tentar de novo") e
+  `src/app/global-error.tsx` (caso raro do próprio root layout falhar,
+  precisa do próprio `<html>/<body>`) adicionados.
+- ⬜ **#24 [P3]**: avatares via `<img>` cru sem `next/image` --
+  não feito: seria uma mudança mecânica mas espalhada por ~15 arquivos, e
+  sem conseguir logar com credenciais reais neste ambiente pra confirmar
+  visualmente que nada quebrou (`next/image` exige `width`/`height`/`fill`
+  corretos, ou o layout quebra silenciosamente).
 
 ## Histórico resumido (mais recente primeiro)
 

@@ -13,6 +13,7 @@ import {
 import { toggleDmReaction } from "@/app/actions/reactions";
 import { markDmRead } from "@/app/actions/reads";
 import { createRealtimeClient } from "@/lib/supabase/realtimeClient";
+import { createClient } from "@/lib/supabase/client";
 import { useCall } from "@/components/CallProvider";
 import { CallInterface } from "@/components/VoiceChannelView";
 import { EditMessageForm } from "@/components/ChatChannel";
@@ -23,7 +24,7 @@ import { MentionText } from "@/components/MentionText";
 import { AttachmentPicker } from "@/components/AttachmentPicker";
 import { AttachmentGallery } from "@/components/AttachmentGallery";
 import { EmojiPickerButton } from "@/components/EmojiPickerButton";
-import { DmPinnedMessagesModal } from "@/components/DmPinnedMessagesModal";
+import { PinnedMessagesModal } from "@/components/PinnedMessagesModal";
 import { AddDmParticipantModal } from "@/components/AddDmParticipantModal";
 import { DmProfilePanel } from "@/components/DmProfilePanel";
 import { UserProfileModal } from "@/components/UserProfileModal";
@@ -566,9 +567,20 @@ export function DmChat({
       )}
 
       {pinnedOpen && (
-        <DmPinnedMessagesModal
-          conversationId={conversationId}
+        <PinnedMessagesModal
+          fetchPinned={async () => {
+            const { data } = await createClient()
+              .from("dm_messages")
+              .select("id, content, created_at, user_id")
+              .eq("conversation_id", conversationId)
+              .eq("pinned", true)
+              .order("created_at");
+            return data ?? [];
+          }}
+          onUnpin={(messageId) => toggleDmPinMessage(messageId, false)}
           members={members}
+          canUnpin
+          emptyLabel="Nenhuma mensagem fixada ainda nessa conversa."
           onClose={() => setPinnedOpen(false)}
         />
       )}

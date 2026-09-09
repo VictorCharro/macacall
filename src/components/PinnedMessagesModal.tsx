@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
-import { togglePinMessage } from "@/app/actions/messages";
 import { Modal } from "@/components/Modal";
 import { avatarUrl } from "@/lib/avatar";
 
@@ -14,37 +12,41 @@ type PinnedMessage = {
   user_id: string;
 };
 
+/**
+ * Shared by the channel and DM pinned-messages panels -- they used to be
+ * two near-identical components differing only in which table/action to
+ * hit and whether unpinning is gated. `fetchPinned`/`onUnpin` let each
+ * caller supply that without this component knowing about channels vs DMs.
+ */
 export function PinnedMessagesModal({
-  channelId,
-  members,
+  fetchPinned,
+  onUnpin,
   canUnpin,
   onClose,
+  members,
+  emptyLabel,
 }: {
-  channelId: string;
-  members: Record<string, Member>;
+  fetchPinned: () => Promise<PinnedMessage[]>;
+  onUnpin: (messageId: string) => Promise<unknown>;
   canUnpin: boolean;
   onClose: () => void;
+  members: Record<string, Member>;
+  emptyLabel: string;
 }) {
   const [messages, setMessages] = useState<PinnedMessage[] | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    const supabase = createClient();
 
-    supabase
-      .from("messages")
-      .select("id, content, created_at, user_id")
-      .eq("channel_id", channelId)
-      .eq("pinned", true)
-      .order("created_at")
-      .then(({ data }) => {
-        if (!cancelled) setMessages(data ?? []);
-      });
+    fetchPinned().then((data) => {
+      if (!cancelled) setMessages(data);
+    });
 
     return () => {
       cancelled = true;
     };
-  }, [channelId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <Modal onClose={onClose}>
@@ -57,9 +59,7 @@ export function PinnedMessagesModal({
         {messages === null ? (
           <p className="text-sm text-muted">carregando...</p>
         ) : messages.length === 0 ? (
-          <p className="text-sm text-muted">
-            Nenhuma mensagem fixada ainda neste canal.
-          </p>
+          <p className="text-sm text-muted">{emptyLabel}</p>
         ) : (
           <ul className="flex flex-col gap-2">
             {messages.map((message) => {
@@ -86,7 +86,7 @@ export function PinnedMessagesModal({
                     <button
                       type="button"
                       onClick={async () => {
-                        await togglePinMessage(message.id, false);
+                        await onUnpin(message.id);
                         setMessages(
                           (prev) =>
                             prev?.filter((m) => m.id !== message.id) ?? null,

@@ -13,6 +13,7 @@ import { createThread } from "@/app/actions/threads";
 import { toggleReaction } from "@/app/actions/reactions";
 import { markChannelRead } from "@/app/actions/reads";
 import { createRealtimeClient } from "@/lib/supabase/realtimeClient";
+import { createClient } from "@/lib/supabase/client";
 import { MessageActionsMenu } from "@/components/MessageActionsMenu";
 import { MessageReactions } from "@/components/MessageReactions";
 import { MentionPopup } from "@/components/MentionPopup";
@@ -683,9 +684,19 @@ export function ChatChannel({
 
       {pinnedModalOpen && (
         <PinnedMessagesModal
-          channelId={channelId}
+          fetchPinned={async () => {
+            const { data } = await createClient()
+              .from("messages")
+              .select("id, content, created_at, user_id")
+              .eq("channel_id", channelId)
+              .eq("pinned", true)
+              .order("created_at");
+            return data ?? [];
+          }}
+          onUnpin={(messageId) => togglePinMessage(messageId, false)}
           members={members}
           canUnpin={canManageMessages}
+          emptyLabel="Nenhuma mensagem fixada ainda neste canal."
           onClose={() => setPinnedModalOpen(false)}
         />
       )}
