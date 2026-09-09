@@ -15,6 +15,7 @@ import { toggleReaction } from "@/app/actions/reactions";
 import { markChannelRead } from "@/app/actions/reads";
 import { createRealtimeClient } from "@/lib/supabase/realtimeClient";
 import { createClient } from "@/lib/supabase/client";
+import { useMessageFeed } from "@/lib/useMessageFeed";
 import { MessageActionsMenu } from "@/components/MessageActionsMenu";
 import { MessageReactions } from "@/components/MessageReactions";
 import { MentionPopup } from "@/components/MentionPopup";
@@ -27,7 +28,7 @@ import { ThreadPanel } from "@/components/ThreadPanel";
 import { UserProfileModal } from "@/components/UserProfileModal";
 import { useMembersPanel } from "@/components/MembersPanelProvider";
 import { useBandoRoles } from "@/components/BandoRolesProvider";
-import { summarizeReactions, type RawReaction } from "@/lib/reactions";
+import type { RawReaction } from "@/lib/reactions";
 import type { RawAttachment } from "@/lib/attachments";
 import type { ThreadSummary } from "@/lib/threads";
 import {
@@ -78,10 +79,38 @@ export function ChatChannel({
   /** Hidden when the chat is docked under a voice call, which has no members panel. */
   showMembersToggle?: boolean;
 }) {
-  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
-  const [reactions, setReactions] = useState<RawReaction[]>(initialReactions);
-  const [attachments, setAttachments] = useState<RawAttachment[]>(initialAttachments);
   const [threads, setThreads] = useState<ThreadSummary[]>(initialThreads);
+  const {
+    messages,
+    setMessages,
+    setAttachments,
+    reactionsByMessage,
+    attachmentsByMessage,
+    bottomRef,
+  } = useMessageFeed<ChatMessage>({
+    channelTopic: `messages:${channelId}`,
+    table: "messages",
+    filterColumn: "channel_id",
+    filterValue: channelId,
+    reactionsTable: "message_reactions",
+    attachmentsTable: "message_attachments",
+    currentUserId,
+    initialMessages,
+    initialReactions,
+    initialAttachments,
+    // Thread replies share channel_id with their parent channel, so the
+    // filter above alone can't exclude them -- they render in the thread
+    // panel, not here. Bump the reply count instead of adding them to the
+    // main feed.
+    onInsert: (row) => {
+      const threadId = row.thread_id as string | null;
+      if (!threadId) return false;
+      setThreads((prev) =>
+        prev.map((t) => (t.id === threadId ? { ...t, reply_count: t.reply_count + 1 } : t)),
+      );
+      return true;
+    },
+  });
   const [openThread, setOpenThread] = useState<{ id: string; name: string; parent: ChatMessage } | null>(
     null,
   );
@@ -90,7 +119,6 @@ export function ChatChannel({
   const [viewingProfile, setViewingProfile] = useState<string | null>(null);
   const [pinnedModalOpen, setPinnedModalOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [inputKey, setInputKey] = useState(0);
   const { membersOpen, toggleMembers } = useMembersPanel();
@@ -206,6 +234,8 @@ export function ChatChannel({
     }
   }
 
+  // New threads created by anyone -- separate from useMessageFeed since it
+  // has nothing to do with the message/reaction/attachment feed itself.
   useEffect(() => {
     let cancelled = false;
     let cleanup: (() => void) | undefined;
@@ -213,63 +243,7 @@ export function ChatChannel({
     createRealtimeClient().then((supabase) => {
       if (cancelled) return;
       const channel = supabase
-        .channel(`messages:${channelId}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "INSERT",
-            schema: "public",
-            table: "messages",
-            filter: `channel_id=eq.${channelId}`,
-          },
-          (payload) => {
-            // Thread replies share channel_id with their parent channel, so
-            // this filter alone can't exclude them -- they render in the
-            // thread panel, not the main feed. Bump the reply count here
-            // instead so the "N replies" pill stays live.
-            const row = payload.new as ChatMessage & { thread_id: string | null };
-            if (row.thread_id) {
-              setThreads((prev) =>
-                prev.map((t) =>
-                  t.id === row.thread_id ? { ...t, reply_count: t.reply_count + 1 } : t,
-                ),
-              );
-              return;
-            }
-            setMessages((prev) =>
-              prev.some((m) => m.id === row.id) ? prev : [...prev, row],
-            );
-          },
-        )
-        .on(
-          "postgres_changes",
-          {
-            event: "UPDATE",
-            schema: "public",
-            table: "messages",
-            filter: `channel_id=eq.${channelId}`,
-          },
-          (payload) => {
-            const row = payload.new as ChatMessage & { thread_id: string | null };
-            if (row.thread_id) return;
-            setMessages((prev) =>
-              prev.map((m) => (m.id === row.id ? { ...m, ...row } : m)),
-            );
-          },
-        )
-        .on(
-          "postgres_changes",
-          {
-            event: "DELETE",
-            schema: "public",
-            table: "messages",
-            filter: `channel_id=eq.${channelId}`,
-          },
-          (payload) => {
-            const row = payload.old as { id: string };
-            setMessages((prev) => prev.filter((m) => m.id !== row.id));
-          },
-        )
+        .channel(`threads:${channelId}`)
         .on(
           "postgres_changes",
           {
@@ -287,56 +261,6 @@ export function ChatChannel({
             );
           },
         )
-        // Attachments finish uploading slightly after the message row itself
-        // (they're a separate insert in the same server action), so other
-        // clients see the text first and the files pop in a beat later.
-        .on(
-          "postgres_changes",
-          { event: "INSERT", schema: "public", table: "message_attachments" },
-          (payload) => {
-            const row = payload.new as RawAttachment;
-            setAttachments((prev) =>
-              prev.some((a) => a.id === row.id) ? prev : [...prev, row],
-            );
-          },
-        )
-        // message_reactions carries no channel_id, so this listens broadly and
-        // drops anything for a message we aren't showing. RLS already limits
-        // the stream to bandos this user belongs to.
-        .on(
-          "postgres_changes",
-          { event: "INSERT", schema: "public", table: "message_reactions" },
-          (payload) => {
-            const row = payload.new as RawReaction;
-            setReactions((prev) =>
-              prev.some(
-                (r) =>
-                  r.message_id === row.message_id &&
-                  r.user_id === row.user_id &&
-                  r.emoji === row.emoji,
-              )
-                ? prev
-                : [...prev, row],
-            );
-          },
-        )
-        .on(
-          "postgres_changes",
-          { event: "DELETE", schema: "public", table: "message_reactions" },
-          (payload) => {
-            const row = payload.old as RawReaction;
-            setReactions((prev) =>
-              prev.filter(
-                (r) =>
-                  !(
-                    r.message_id === row.message_id &&
-                    r.user_id === row.user_id &&
-                    r.emoji === row.emoji
-                  ),
-              ),
-            );
-          },
-        )
         .subscribe();
 
       cleanup = () => supabase.removeChannel(channel);
@@ -348,30 +272,11 @@ export function ChatChannel({
     };
   }, [channelId]);
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
   // Clear the unread badge for this channel whenever new messages land while
   // it's the one on screen.
   useEffect(() => {
     markChannelRead(channelId);
   }, [channelId, messages.length]);
-
-  const reactionsByMessage = useMemo(
-    () => summarizeReactions(reactions, currentUserId),
-    [reactions, currentUserId],
-  );
-
-  const attachmentsByMessage = useMemo(() => {
-    const map = new Map<string, RawAttachment[]>();
-    for (const a of attachments) {
-      const list = map.get(a.message_id) ?? [];
-      list.push(a);
-      map.set(a.message_id, list);
-    }
-    return map;
-  }, [attachments]);
 
   const threadByParentMessage = useMemo(
     () => new Map(threads.map((t) => [t.parent_message_id, t])),

@@ -712,11 +712,37 @@ feito.
   `bandoName`, usado em vários call sites incluindo DM, que não tem
   conceito de bando) -- escopo maior do que o resto desse item, deixado
   de lado por ora.
-- ⬜ **#13 [P1]**: duplicação grande entre `ChatChannel.tsx`/`DmChat.tsx`/
-  `ThreadPanel.tsx` (mentions, wiring de Realtime, memoização de
-  anexos/reações) -- candidato a `useMessageFeed(table, filterColumn, id)`
-  compartilhado. **Deliberadamente não feito ainda**: refactor grande
-  demais pra ir sem QA manual no chat/DM/threads depois.
+- ✅ **#13 [P1]**: `src/lib/useMessageFeed.ts` (novo) extrai o que era
+  quase idêntico entre `ChatChannel.tsx`/`DmChat.tsx`/`ThreadPanel.tsx`
+  -- estado de `messages`/`reactions`/`attachments`, o wiring de Realtime
+  pras três tabelas (INSERT/UPDATE/DELETE de mensagens, INSERT/DELETE de
+  reações, INSERT de anexos), os mapas derivados
+  `reactionsByMessage`/`attachmentsByMessage`, e o scroll-to-bottom.
+  Parâmetros (`table`/`filterColumn`/`filterValue`/`reactionsTable`/
+  `attachmentsTable`) cobrem as diferenças de nome de tabela/coluna entre
+  canal (`messages`/`channel_id`) e DM (`dm_messages`/`conversation_id`)
+  e thread (`messages`/`thread_id`). O que É de fato diferente entre os
+  três ficou de fora do hook, no componente de cada um:
+  - `ChatChannel.tsx` continua com seu próprio `threads` state + listener
+    Realtime da tabela `threads` (não tem nada a ver com o feed de
+    mensagens em si) -- e usa o novo parâmetro `onInsert` do hook pra
+    interceptar replies de thread antes de entrarem no feed principal
+    (mesma lógica de antes: bump no `reply_count` em vez de mostrar a
+    reply no canal).
+  - `ThreadPanel.tsx` carrega os dados iniciais via `getThreadMessages()`
+    (assíncrono) em vez de props -- só chama os setters que o hook
+    devolve depois que a promise resolve, em vez de ter seu próprio
+    `useState` local.
+  - `DmChat.tsx` não precisou de nada especial, encaixou direto.
+  **Risco assumido, maior desta sessão**: é refactor puro (sem bug nem
+  perf por trás, só duplicação) na área mais crítica do app (chat), sem
+  forma de testar mandar/editar/reagir/anexar mensagem de verdade aqui
+  (sem login). Validado por `tsc`/`eslint`/`next build` e releitura
+  cuidadosa comparando cada trecho novo com o original antes de apagar o
+  antigo -- mas essa é a mudança que peço mais atenção ao testar:
+  mandar mensagem (com e sem anexo/@menção), editar, reagir, fixar/
+  desafixar, abrir uma thread e responder nela, tudo isso em canal E em
+  DM.
 - ✅ **#14 [P1]**: validação de tamanho máximo/charset adicionada em
   username, nome de bando/canal + categoria, emoji de reação, memberIds
   de grupo DM (dedupe + cap de 10 participantes), busca de username em

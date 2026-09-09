@@ -11,7 +11,7 @@ import {
 } from "@/app/actions/threads";
 import { editMessage, deleteMessage, togglePinMessage } from "@/app/actions/messages";
 import { toggleReaction } from "@/app/actions/reactions";
-import { createRealtimeClient } from "@/lib/supabase/realtimeClient";
+import { useMessageFeed } from "@/lib/useMessageFeed";
 import { EditMessageForm } from "@/components/ChatChannel";
 import { MessageActionsMenu } from "@/components/MessageActionsMenu";
 import { MessageReactions } from "@/components/MessageReactions";
@@ -22,8 +22,6 @@ import { AttachmentGallery } from "@/components/AttachmentGallery";
 import { EmojiPickerButton } from "@/components/EmojiPickerButton";
 import { useBandoRoles } from "@/components/BandoRolesProvider";
 import { UserProfileModal } from "@/components/UserProfileModal";
-import { summarizeReactions, type RawReaction } from "@/lib/reactions";
-import type { RawAttachment } from "@/lib/attachments";
 import { findMentionTrigger, applyMention, type Mentionable } from "@/lib/mentions";
 
 type Member = { username: string; avatarSeed: string; avatarUrl: string | null };
@@ -56,14 +54,27 @@ export function ThreadPanel({
   canManageMessages: boolean;
   onClose: () => void;
 }) {
-  const [messages, setMessages] = useState<ThreadMessage[]>([]);
-  const [reactions, setReactions] = useState<RawReaction[]>([]);
-  const [attachments, setAttachments] = useState<RawAttachment[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const {
+    messages,
+    setMessages,
+    setReactions,
+    setAttachments,
+    reactionsByMessage,
+    attachmentsByMessage,
+    bottomRef,
+  } = useMessageFeed<ThreadMessage>({
+    channelTopic: `thread:${threadId}`,
+    table: "messages",
+    filterColumn: "thread_id",
+    filterValue: threadId,
+    reactionsTable: "message_reactions",
+    attachmentsTable: "message_attachments",
+    currentUserId,
+  });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [viewingProfile, setViewingProfile] = useState<string | null>(null);
   const [inputKey, setInputKey] = useState(0);
-  const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { roleColorByUserId, mentionableRoles, canMentionEveryone } = useBandoRoles();
 
@@ -123,89 +134,7 @@ export function ThreadPanel({
     return () => {
       cancelled = true;
     };
-  }, [threadId]);
-
-  useEffect(() => {
-    let cancelled = false;
-    let cleanup: (() => void) | undefined;
-
-    createRealtimeClient().then((supabase) => {
-      if (cancelled) return;
-      const channel = supabase
-        .channel(`thread:${threadId}`)
-        .on(
-          "postgres_changes",
-          { event: "INSERT", schema: "public", table: "messages", filter: `thread_id=eq.${threadId}` },
-          (payload) => {
-            const row = payload.new as ThreadMessage;
-            setMessages((prev) => (prev.some((m) => m.id === row.id) ? prev : [...prev, row]));
-          },
-        )
-        .on(
-          "postgres_changes",
-          { event: "UPDATE", schema: "public", table: "messages", filter: `thread_id=eq.${threadId}` },
-          (payload) => {
-            const row = payload.new as ThreadMessage;
-            setMessages((prev) => prev.map((m) => (m.id === row.id ? { ...m, ...row } : m)));
-          },
-        )
-        .on(
-          "postgres_changes",
-          { event: "DELETE", schema: "public", table: "messages", filter: `thread_id=eq.${threadId}` },
-          (payload) => {
-            const row = payload.old as { id: string };
-            setMessages((prev) => prev.filter((m) => m.id !== row.id));
-          },
-        )
-        .on(
-          "postgres_changes",
-          { event: "INSERT", schema: "public", table: "message_reactions" },
-          (payload) => {
-            const row = payload.new as RawReaction;
-            setReactions((prev) =>
-              prev.some(
-                (r) => r.message_id === row.message_id && r.user_id === row.user_id && r.emoji === row.emoji,
-              )
-                ? prev
-                : [...prev, row],
-            );
-          },
-        )
-        .on(
-          "postgres_changes",
-          { event: "DELETE", schema: "public", table: "message_reactions" },
-          (payload) => {
-            const row = payload.old as RawReaction;
-            setReactions((prev) =>
-              prev.filter(
-                (r) =>
-                  !(r.message_id === row.message_id && r.user_id === row.user_id && r.emoji === row.emoji),
-              ),
-            );
-          },
-        )
-        .on(
-          "postgres_changes",
-          { event: "INSERT", schema: "public", table: "message_attachments" },
-          (payload) => {
-            const row = payload.new as RawAttachment;
-            setAttachments((prev) => (prev.some((a) => a.id === row.id) ? prev : [...prev, row]));
-          },
-        )
-        .subscribe();
-
-      cleanup = () => supabase.removeChannel(channel);
-    });
-
-    return () => {
-      cancelled = true;
-      cleanup?.();
-    };
-  }, [threadId]);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [threadId, setMessages, setReactions, setAttachments]);
 
   const sendWithThread = sendThreadMessage.bind(null, threadId, channelId);
   const [state, formAction] = useActionState(sendWithThread, initialState);
@@ -224,20 +153,6 @@ export function ThreadPanel({
       }
     }
   }
-
-  const reactionsByMessage = useMemo(
-    () => summarizeReactions(reactions, currentUserId),
-    [reactions, currentUserId],
-  );
-  const attachmentsByMessage = useMemo(() => {
-    const map = new Map<string, RawAttachment[]>();
-    for (const a of attachments) {
-      const list = map.get(a.message_id) ?? [];
-      list.push(a);
-      map.set(a.message_id, list);
-    }
-    return map;
-  }, [attachments]);
 
   const parentAuthor = parentMessage ? members[parentMessage.user_id] : null;
 

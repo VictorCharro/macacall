@@ -13,8 +13,8 @@ import {
 } from "@/app/actions/dms";
 import { toggleDmReaction } from "@/app/actions/reactions";
 import { markDmRead } from "@/app/actions/reads";
-import { createRealtimeClient } from "@/lib/supabase/realtimeClient";
 import { createClient } from "@/lib/supabase/client";
+import { useMessageFeed } from "@/lib/useMessageFeed";
 import { useCall } from "@/components/CallProvider";
 import { CallInterface } from "@/components/VoiceChannelView";
 import { EditMessageForm } from "@/components/ChatChannel";
@@ -29,7 +29,7 @@ import { PinnedMessagesModal } from "@/components/PinnedMessagesModal";
 import { AddDmParticipantModal } from "@/components/AddDmParticipantModal";
 import { DmProfilePanel } from "@/components/DmProfilePanel";
 import { UserProfileModal } from "@/components/UserProfileModal";
-import { summarizeReactions, type RawReaction } from "@/lib/reactions";
+import type { RawReaction } from "@/lib/reactions";
 import type { RawAttachment } from "@/lib/attachments";
 import {
   findMentionTrigger,
@@ -90,12 +90,27 @@ export function DmChat({
   initialAttachments: RawAttachment[];
   availableFriendsToAdd: Friend[];
 }) {
-  const [messages, setMessages] = useState<DmMessage[]>(initialMessages);
-  const [reactions, setReactions] = useState<RawReaction[]>(initialReactions);
-  const [attachments, setAttachments] = useState<RawAttachment[]>(initialAttachments);
+  const {
+    messages,
+    setMessages,
+    setAttachments,
+    reactionsByMessage,
+    attachmentsByMessage,
+    bottomRef,
+  } = useMessageFeed<DmMessage>({
+    channelTopic: `dm_messages:${conversationId}`,
+    table: "dm_messages",
+    filterColumn: "conversation_id",
+    filterValue: conversationId,
+    reactionsTable: "dm_message_reactions",
+    attachmentsTable: "dm_message_attachments",
+    currentUserId,
+    initialMessages,
+    initialReactions,
+    initialAttachments,
+  });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [viewingProfile, setViewingProfile] = useState<string | null>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [inputKey, setInputKey] = useState(0);
   const [pinnedOpen, setPinnedOpen] = useState(false);
@@ -222,136 +237,8 @@ export function DmChat({
   }
 
   useEffect(() => {
-    let cancelled = false;
-    let cleanup: (() => void) | undefined;
-
-    createRealtimeClient().then((supabase) => {
-      if (cancelled) return;
-      const channel = supabase
-        .channel(`dm_messages:${conversationId}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "INSERT",
-            schema: "public",
-            table: "dm_messages",
-            filter: `conversation_id=eq.${conversationId}`,
-          },
-          (payload) => {
-            const row = payload.new as DmMessage;
-            setMessages((prev) =>
-              prev.some((m) => m.id === row.id) ? prev : [...prev, row],
-            );
-          },
-        )
-        .on(
-          "postgres_changes",
-          {
-            event: "UPDATE",
-            schema: "public",
-            table: "dm_messages",
-            filter: `conversation_id=eq.${conversationId}`,
-          },
-          (payload) => {
-            const row = payload.new as DmMessage;
-            setMessages((prev) =>
-              prev.map((m) => (m.id === row.id ? { ...m, ...row } : m)),
-            );
-          },
-        )
-        .on(
-          "postgres_changes",
-          {
-            event: "DELETE",
-            schema: "public",
-            table: "dm_messages",
-            filter: `conversation_id=eq.${conversationId}`,
-          },
-          (payload) => {
-            const row = payload.old as { id: string };
-            setMessages((prev) => prev.filter((m) => m.id !== row.id));
-          },
-        )
-        .on(
-          "postgres_changes",
-          { event: "INSERT", schema: "public", table: "dm_message_attachments" },
-          (payload) => {
-            const row = payload.new as RawAttachment;
-            setAttachments((prev) =>
-              prev.some((a) => a.id === row.id) ? prev : [...prev, row],
-            );
-          },
-        )
-        // dm_message_reactions has no conversation_id, so this listens broadly
-        // and drops rows for messages we aren't showing. RLS already limits the
-        // stream to conversations this user takes part in.
-        .on(
-          "postgres_changes",
-          { event: "INSERT", schema: "public", table: "dm_message_reactions" },
-          (payload) => {
-            const row = payload.new as RawReaction;
-            setReactions((prev) =>
-              prev.some(
-                (r) =>
-                  r.message_id === row.message_id &&
-                  r.user_id === row.user_id &&
-                  r.emoji === row.emoji,
-              )
-                ? prev
-                : [...prev, row],
-            );
-          },
-        )
-        .on(
-          "postgres_changes",
-          { event: "DELETE", schema: "public", table: "dm_message_reactions" },
-          (payload) => {
-            const row = payload.old as RawReaction;
-            setReactions((prev) =>
-              prev.filter(
-                (r) =>
-                  !(
-                    r.message_id === row.message_id &&
-                    r.user_id === row.user_id &&
-                    r.emoji === row.emoji
-                  ),
-              ),
-            );
-          },
-        )
-        .subscribe();
-
-      cleanup = () => supabase.removeChannel(channel);
-    });
-
-    return () => {
-      cancelled = true;
-      cleanup?.();
-    };
-  }, [conversationId]);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  useEffect(() => {
     markDmRead(conversationId);
   }, [conversationId, messages.length]);
-
-  const reactionsByMessage = useMemo(
-    () => summarizeReactions(reactions, currentUserId),
-    [reactions, currentUserId],
-  );
-
-  const attachmentsByMessage = useMemo(() => {
-    const map = new Map<string, RawAttachment[]>();
-    for (const a of attachments) {
-      const list = map.get(a.message_id) ?? [];
-      list.push(a);
-      map.set(a.message_id, list);
-    }
-    return map;
-  }, [attachments]);
 
   return (
     <div className="flex min-h-0 flex-1 overflow-hidden">
