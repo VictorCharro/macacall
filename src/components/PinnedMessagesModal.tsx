@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { Modal } from "@/components/Modal";
 import { avatarUrl } from "@/lib/avatar";
 
@@ -69,9 +70,12 @@ export function PinnedMessagesModal({
                   key={message.id}
                   className="flex items-start gap-2 rounded-lg border border-border p-2"
                 >
-                  <img
+                  <Image
                     src={avatarUrl(member?.avatarSeed ?? message.user_id, member?.avatarUrl)}
                     alt=""
+                    width={28}
+                    height={28}
+                    unoptimized={!member?.avatarUrl}
                     className="h-7 w-7 shrink-0 rounded-full bg-background object-cover"
                   />
                   <div className="min-w-0 flex-1">

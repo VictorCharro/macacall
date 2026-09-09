@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { Check, Pencil, X } from "lucide-react";
 import {
   updateProfileDetails,
@@ -112,10 +113,12 @@ export function EditProfileModal({
             title="Trocar foto de perfil"
             className="group relative -mt-5 h-12 w-12 shrink-0 overflow-hidden rounded-full border-4 border-card-3 bg-background disabled:opacity-70"
           >
-            <img
+            <Image
               src={avatarUrl(avatarSeed, avatarState.url ?? photoUrl)}
               alt=""
-              className="h-full w-full object-cover"
+              fill
+              unoptimized={!(avatarState.url ?? photoUrl)}
+              className="object-cover"
             />
             <span className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition group-hover:opacity-100">
               <Pencil className="h-4 w-4 text-white" />

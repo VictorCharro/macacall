@@ -8,6 +8,7 @@ import { headers } from "next/headers";
 import type { BandoActionState } from "@/app/actions/bandos";
 import { collectAttachmentFiles, uploadAttachments } from "@/lib/attachments";
 import { sendPushToUser } from "@/lib/push";
+import { isRateLimited } from "@/lib/rateLimit";
 
 export type SendDmState = BandoActionState & {
   message?: {
@@ -229,6 +230,12 @@ export async function sendDmMessage(
   }
 
   const { supabase, user } = await requireUser();
+
+  // Same bucket/limit as sendMessage (messages.ts) -- flooding is the same
+  // abuse regardless of destination.
+  if (isRateLimited(`message-send:${user.id}`, 20, 10 * 1000)) {
+    return { error: "Espera um pouco antes de mandar outra mensagem" };
+  }
 
   const { data, error } = await supabase
     .from("dm_messages")

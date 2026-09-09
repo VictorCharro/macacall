@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import {
   useParticipants,
   useTracks,
@@ -578,9 +579,12 @@ function Tile({
       ) : (
         <div className="flex h-full w-full items-center justify-center bg-card-2 p-4">
           <div className="relative">
-            <img
+            <Image
               src={avatarUrl(avatar?.seed ?? participant.identity, avatar?.url)}
               alt=""
+              width={size === "thumb" ? 48 : 96}
+              height={size === "thumb" ? 48 : 96}
+              unoptimized={!avatar?.url}
               className={`rounded-full border-4 bg-background object-cover transition-transform duration-200 ${
                 size === "thumb" ? "h-12 w-12" : "h-24 w-24"
               } ${

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Plus, MonitorUp } from "lucide-react";
@@ -217,9 +218,11 @@ function ServerIcon({
         className={`flex h-12 w-12 items-center justify-center overflow-hidden text-sm font-bold transition-all duration-200 ${shapeClasses}`}
       >
         {bando.photo_url ? (
-          <img
+          <Image
             src={bando.photo_url}
             alt=""
+            width={48}
+            height={48}
             className="h-full w-full object-cover"
           />
         ) : (

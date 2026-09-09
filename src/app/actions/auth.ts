@@ -1,7 +1,14 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { createClient, getCachedUser } from "@/lib/supabase/server";
+import { isRateLimited } from "@/lib/rateLimit";
+
+async function clientIp() {
+  const h = await headers();
+  return h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? h.get("x-real-ip") ?? "unknown";
+}
 
 function safeNext(next: FormDataEntryValue | null): string {
   const value = String(next ?? "");
@@ -79,6 +86,16 @@ export async function guestSignIn(formData: FormData) {
   let isNewUser = false;
 
   if (!user) {
+    // Only guards *creating a new* guest account -- an already-signed-in
+    // guest changing their username again isn't the abuse case this is
+    // for. 8 new guest accounts per 10 min per IP is generous for real
+    // friends joining a call, not for a script farming accounts.
+    if (isRateLimited(`guest-signin:${await clientIp()}`, 8, 10 * 60 * 1000)) {
+      redirect(
+        `${errorPage}?error=${encodeURIComponent("Muitas tentativas -- espera um pouco e tenta de novo")}`,
+      );
+    }
+
     const { data, error } = await supabase.auth.signInAnonymously();
 
     if (error || !data.user) {

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Search } from "lucide-react";
 import { useEffectiveStatus } from "@/components/FriendRow";
@@ -105,9 +106,12 @@ function DmListItem({ dm, active }: { dm: DmEntry; active: boolean }) {
         }`}
       >
         <div className="relative shrink-0">
-          <img
+          <Image
             src={avatarUrl(dm.avatarSeed, dm.avatarUrl)}
             alt=""
+            width={28}
+            height={28}
+            unoptimized={!dm.avatarUrl}
             className="h-7 w-7 rounded-full bg-background object-cover"
           />
           <span

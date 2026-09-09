@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { Pencil } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { EditProfileModal } from "@/components/EditProfileModal";
@@ -110,9 +111,12 @@ export function ProfilePopout({
       <div className="px-4 pb-4 pt-0">
         <div className="-mt-8 flex items-end gap-1.5">
           <div className="relative shrink-0">
-            <img
+            <Image
               src={avatarUrl(avatarSeed, photoUrl)}
               alt=""
+              width={64}
+              height={64}
+              unoptimized={!photoUrl}
               className="h-16 w-16 rounded-full border-4 border-card bg-background object-cover"
             />
             <span

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { X, MessageSquare } from "lucide-react";
 import { getUserProfile, type ViewedProfile } from "@/app/actions/profiles";
 import { startDm } from "@/app/actions/dms";
@@ -63,9 +64,12 @@ export function UserProfileModal({
             </div>
 
             <div className="relative -mt-9 px-4 pb-4">
-              <img
+              <Image
                 src={avatarUrl(profile.avatarSeed, profile.avatarUrl)}
                 alt=""
+                width={72}
+                height={72}
+                unoptimized={!profile.avatarUrl}
                 className="h-18 w-18 rounded-full border-4 border-card-3 bg-card-2 object-cover shadow-xl"
               />
 

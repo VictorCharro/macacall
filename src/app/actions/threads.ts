@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/authGuard";
 import { collectAttachmentFiles, uploadAttachments } from "@/lib/attachments";
+import { isRateLimited } from "@/lib/rateLimit";
 import type { BandoActionState } from "@/app/actions/bandos";
 
 export type CreateThreadState = BandoActionState & {
@@ -96,6 +97,12 @@ export async function sendThreadMessage(
   }
 
   const { supabase, user } = await requireUser();
+
+  // Same bucket/limit as sendMessage (messages.ts) -- flooding is the same
+  // abuse regardless of destination.
+  if (isRateLimited(`message-send:${user.id}`, 20, 10 * 1000)) {
+    return { error: "Espera um pouco antes de mandar outra mensagem" };
+  }
 
   const { data, error } = await supabase
     .from("messages")

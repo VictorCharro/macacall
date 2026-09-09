@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import { Hash, Pin, Send, Search, Users, CornerDownRight, X, MessageSquare } from "lucide-react";
 import {
   sendMessage,
@@ -522,9 +523,12 @@ export function ChatChannel({
                 </div>
               )}
 
-              <img
+              <Image
                 src={avatarUrl(member?.avatarSeed ?? message.user_id, member?.avatarUrl)}
                 alt=""
+                width={40}
+                height={40}
+                unoptimized={!member?.avatarUrl}
                 onClick={() => setViewingProfile(message.user_id)}
                 className="mt-0.5 h-10 w-10 shrink-0 cursor-pointer rounded-full border border-border bg-card-3 object-cover"
               />

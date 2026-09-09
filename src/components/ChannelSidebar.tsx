@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
 import {
@@ -500,9 +501,12 @@ function VoiceParticipantRow({
       }
     >
       <span className="flex min-w-0 items-center gap-2">
-        <img
+        <Image
           src={avatarUrl(participant.avatarSeed, participant.avatarUrl)}
           alt=""
+          width={20}
+          height={20}
+          unoptimized={!participant.avatarUrl}
           className="h-5 w-5 shrink-0 rounded-full bg-card-3 object-cover ring-1 ring-secondary/40"
         />
         <span className="truncate">{participant.name}</span>

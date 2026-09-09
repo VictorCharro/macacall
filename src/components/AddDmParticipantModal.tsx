@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { addDmParticipant } from "@/app/actions/dms";
 import { Modal } from "@/components/Modal";
 import { avatarUrl } from "@/lib/avatar";
@@ -34,9 +35,12 @@ export function AddDmParticipantModal({
               key={friend.id}
               className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-card-2"
             >
-              <img
+              <Image
                 src={avatarUrl(friend.avatarSeed, friend.avatarUrl)}
                 alt=""
+                width={32}
+                height={32}
+                unoptimized={!friend.avatarUrl}
                 className="h-8 w-8 shrink-0 rounded-full bg-background object-cover"
               />
               <span className="flex-1 truncate text-sm font-medium text-foreground">

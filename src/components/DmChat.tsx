@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Image from "next/image";
 import { Phone, Video, Pin, UserPlus, Globe, Send } from "lucide-react";
 import {
   sendDmMessage,
@@ -356,9 +357,12 @@ export function DmChat({
     <div className="flex min-h-0 flex-1 overflow-hidden">
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <header className="flex h-12 items-center gap-2 border-b border-border-soft bg-background px-4">
-          <img
+          <Image
             src={avatarUrl(participants[0]?.avatarSeed ?? conversationId, participants[0]?.avatarUrl)}
             alt=""
+            width={28}
+            height={28}
+            unoptimized={!participants[0]?.avatarUrl}
             className="h-7 w-7 rounded-full bg-background object-cover"
           />
           <h1 className="min-w-0 flex-1 truncate text-sm font-bold text-accent">
@@ -440,9 +444,12 @@ export function DmChat({
                           mentionsMe ? "bg-primary/10 hover:bg-primary/15" : ""
                         }`}
                       >
-                        <img
+                        <Image
                           src={avatarUrl(member?.avatarSeed ?? message.user_id, member?.avatarUrl)}
                           alt=""
+                          width={36}
+                          height={36}
+                          unoptimized={!member?.avatarUrl}
                           onClick={() => setViewingProfile(message.user_id)}
                           className="h-9 w-9 shrink-0 cursor-pointer rounded-full bg-background object-cover"
                         />

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Image from "next/image";
 import { Crown, Mic, X, MessageSquare, ShieldOff, LogOut } from "lucide-react";
 import { useBandoParticipants } from "@/components/BandoParticipants";
 import { useMembersPanel } from "@/components/MembersPanelProvider";
@@ -126,9 +127,12 @@ export function MembersSidebar({
               className="group flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition hover:bg-card-2"
             >
               <div className="relative shrink-0">
-                <img
+                <Image
                   src={avatarUrl(member.avatarSeed, member.avatarUrl)}
                   alt=""
+                  width={32}
+                  height={32}
+                  unoptimized={!member.avatarUrl}
                   className="h-8 w-8 rounded-full border border-border bg-card-3 object-cover"
                 />
                 <span
@@ -285,9 +289,12 @@ function MemberProfileModal({
 
         <div className="relative -mt-10 max-h-[70vh] overflow-y-auto scroll-hover px-4 pb-4">
           <div className="relative inline-block">
-            <img
+            <Image
               src={avatarUrl(member.avatarSeed, member.avatarUrl)}
               alt=""
+              width={80}
+              height={80}
+              unoptimized={!member.avatarUrl}
               className="h-20 w-20 rounded-full border-4 border-card-3 bg-card-2 object-cover shadow-xl"
             />
             <span

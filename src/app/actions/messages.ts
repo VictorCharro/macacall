@@ -6,6 +6,7 @@ import type { BandoActionState } from "@/app/actions/bandos";
 import { collectAttachmentFiles, uploadAttachments } from "@/lib/attachments";
 import { sendPushToUser } from "@/lib/push";
 import { renderMentionSegments, type Mentionable } from "@/lib/mentions";
+import { isRateLimited } from "@/lib/rateLimit";
 
 export type SendMessageState = BandoActionState & {
   message?: {
@@ -39,6 +40,13 @@ export async function sendMessage(
   }
 
   const { supabase, user } = await requireUser();
+
+  // 20 mensagens em 10s cobre até colar um bloco de texto em várias linhas
+  // ou mandar rajada de mensagens curtas -- não devia incomodar uso real,
+  // só um flood automatizado.
+  if (isRateLimited(`message-send:${user.id}`, 20, 10 * 1000)) {
+    return { error: "Espera um pouco antes de mandar outra mensagem" };
+  }
 
   // The mention lookup only needs channelId/user.id/content -- none of
   // which depend on the message actually existing yet -- so it can run

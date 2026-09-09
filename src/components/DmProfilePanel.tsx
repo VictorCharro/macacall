@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { avatarUrl } from "@/lib/avatar";
 
 type Participant = {
@@ -20,9 +21,12 @@ export function DmProfilePanel({
     <aside className="scroll-hover hidden w-72 shrink-0 flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain border-l border-border bg-card/60 p-4 sm:flex">
       {!isGroup && participants[0] ? (
         <div className="flex flex-col items-center gap-3 py-4 text-center">
-          <img
+          <Image
             src={avatarUrl(participants[0].avatarSeed, participants[0].avatarUrl)}
             alt=""
+            width={96}
+            height={96}
+            unoptimized={!participants[0].avatarUrl}
             className="h-24 w-24 rounded-full bg-background object-cover"
           />
           <div>
@@ -42,9 +46,12 @@ export function DmProfilePanel({
                 key={p.id}
                 className="flex items-center gap-3 rounded-lg px-2 py-2 transition hover:bg-card-2"
               >
-                <img
+                <Image
                   src={avatarUrl(p.avatarSeed, p.avatarUrl)}
                   alt=""
+                  width={36}
+                  height={36}
+                  unoptimized={!p.avatarUrl}
                   className="h-9 w-9 shrink-0 rounded-full bg-background object-cover"
                 />
                 <span className="truncate text-sm font-medium text-foreground">

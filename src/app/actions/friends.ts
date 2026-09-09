@@ -5,6 +5,7 @@ import { requireUser } from "@/lib/authGuard";
 import type { BandoActionState } from "@/app/actions/bandos";
 import type { PresenceStatus } from "@/lib/types";
 import { sendPushToUser } from "@/lib/push";
+import { isRateLimited } from "@/lib/rateLimit";
 
 export async function sendFriendRequest(
   _prevState: BandoActionState,
@@ -17,6 +18,13 @@ export async function sendFriendRequest(
   }
 
   const { supabase, user } = await requireUser();
+
+  // 20 pedidos de amizade por 10 min é bem mais que qualquer uso legítimo
+  // (mesmo alguém entrando num bando novo e adicionando todo mundo), e
+  // corta o caso de spam/assédio via re-pedidos repetidos.
+  if (isRateLimited(`friend-request:${user.id}`, 20, 10 * 60 * 1000)) {
+    return { error: "Muitos pedidos de amizade seguidos -- espera um pouco" };
+  }
 
   const { data: target } = await supabase
     .from("profiles")

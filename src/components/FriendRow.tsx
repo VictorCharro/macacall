@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { usePresence } from "@/components/PresenceProvider";
 import {
   FriendContextMenu,
@@ -41,9 +42,12 @@ export function FriendRow({
       onContextMenu={enableContextMenu ? menu.open : undefined}
     >
       <div className="relative shrink-0">
-        <img
+        <Image
           src={avatarUrl(friend.avatarSeed, friend.avatarUrl)}
           alt=""
+          width={40}
+          height={40}
+          unoptimized={!friend.avatarUrl}
           className={`h-10 w-10 rounded-full bg-background object-cover ${status ? "" : "opacity-50 grayscale"}`}
         />
         <span

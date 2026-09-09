@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { X, UserX, ScrollText } from "lucide-react";
 import { listBannedMembers, unbanMember } from "@/app/actions/roles";
 import { listAuditLog, type AuditEntry } from "@/app/actions/audit";
@@ -103,9 +104,12 @@ export function ServerSettingsModal({
                     className="flex items-center justify-between gap-3 rounded-lg px-2 py-2 hover:bg-card-2"
                   >
                     <div className="flex min-w-0 items-center gap-2.5">
-                      <img
+                      <Image
                         src={avatarUrl(b.profiles?.avatar_seed ?? b.user_id, b.profiles?.avatar_url)}
                         alt=""
+                        width={32}
+                        height={32}
+                        unoptimized={!b.profiles?.avatar_url}
                         className="h-8 w-8 shrink-0 rounded-full border border-border bg-card-3 object-cover"
                       />
                       <div className="min-w-0">

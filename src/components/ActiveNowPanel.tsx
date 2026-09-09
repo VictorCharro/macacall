@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import { Mic } from "lucide-react";
 import { usePresence } from "@/components/PresenceProvider";
 import { STATUS_META } from "@/lib/presence";
@@ -64,9 +65,12 @@ export function ActiveNowPanel({ friends }: { friends: Friend[] }) {
                 className="flex items-center gap-3 rounded-xl border border-border-soft bg-card-2 p-2.5"
               >
                 <div className="relative shrink-0">
-                  <img
+                  <Image
                     src={avatarUrl(friend.avatarSeed, friend.avatarUrl)}
                     alt=""
+                    width={36}
+                    height={36}
+                    unoptimized={!friend.avatarUrl}
                     className="h-9 w-9 rounded-full bg-background object-cover"
                   />
                   <span

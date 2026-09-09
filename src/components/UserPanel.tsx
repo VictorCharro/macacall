@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Mic, MicOff, Headphones, HeadphoneOff, Settings } from "lucide-react";
 import { useCall } from "@/components/CallProvider";
 import { usePresence } from "@/components/PresenceProvider";
@@ -41,9 +42,12 @@ export function UserPanel({
           className="flex w-full min-w-0 items-center gap-1.5 rounded-lg px-1 py-1 text-left transition hover:bg-card-2"
         >
           <div className="relative shrink-0">
-            <img
+            <Image
               src={avatarUrl(avatarSeed, photoUrl)}
               alt=""
+              width={32}
+              height={32}
+              unoptimized={!photoUrl}
               className="h-8 w-8 rounded-full border border-secondary/40 bg-background object-cover"
             />
             <span
