@@ -743,9 +743,28 @@ feito.
   `activeFriends`), `ChannelSidebar` (participantes agrupados por
   `channelId` num `Map` em vez de `.filter()` por canal), `DmChat`
   (`members`).
-- ⬜ **#20 [P2]**: code-split do LiveKit via `next/dynamic` -- toca a
-  mesma lógica frágil de reconexão já documentada acima em "Chamadas de
-  voz/vídeo", sem call real pra validar visualmente aqui.
+- ✅ **#20 [P2]**: `CallProvider.tsx` foi dividido em dois arquivos --
+  `CallLiveKitSession.tsx` (novo) carrega `@livekit/components-react` +
+  a CSS + os hooks que dependem dela (`useLocalParticipant`,
+  `useRemoteParticipants`, `useRoomContext`, o `CallDeviceSync`/
+  `CallRoomRef` que já existiam), e só é importado via
+  `next/dynamic(..., {ssr:false})` a partir de `CallProvider.tsx`, que
+  passa a não importar `@livekit/components-react` (nem a CSS) de
+  forma alguma -- só `ConnectionState`/`type Room` de `livekit-client`
+  continuam eager ali, porque `joinCall`/`setVideoQuality` precisam
+  checar o estado da conexão mesmo antes de qualquer call ter
+  acontecido. `DeviceKind`/`DevicePreferences`/`loadDevicePreferences`
+  saíram pra `src/lib/devicePreferences.ts` (evita import circular
+  entre os dois arquivos de call); `CallProvider.tsx` re-exporta os
+  tipos pra não quebrar quem já importava de lá (`VoiceSettingsModal.tsx`,
+  `lib/callQuality.ts`). **Risco assumido**: não dava pra testar
+  visualmente uma call de verdade aqui (sem login), então validado só
+  por `tsc`/`eslint`/`next build` + revisão cuidadosa de que a árvore de
+  props que `CallLiveKitSession` recebe é exatamente a mesma lógica que
+  já existia (nada de comportamento novo, só onde o código mora e quando
+  o bundle carrega) -- testem uma call de voz/vídeo/tela normal com
+  atenção depois de puxar essa mudança, é a área mais sensível que
+  toquei nesta sessão sem conseguir confirmar ao vivo.
 - ✅ **#21 [P2]**: `PinnedMessagesModal`/`DmPinnedMessagesModal` unificados
   num componente só (`fetchPinned`/`onUnpin`/`canUnpin`/`emptyLabel` como
   props) -- `DmPinnedMessagesModal.tsx` foi deletado.

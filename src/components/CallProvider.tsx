@@ -9,15 +9,8 @@ import {
   useRef,
   useState,
 } from "react";
-import {
-  LiveKitRoom,
-  RoomAudioRenderer,
-  useLocalParticipant,
-  useRemoteParticipants,
-  useRoomContext,
-} from "@livekit/components-react";
-import { ConnectionState, ParticipantEvent, Track, type Room } from "livekit-client";
-import "@livekit/components-styles";
+import dynamic from "next/dynamic";
+import { ConnectionState, type Room } from "livekit-client";
 import {
   applyVideoQualityLive,
   buildRoomOptions,
@@ -25,22 +18,24 @@ import {
   saveVideoQuality,
   type VideoQuality,
 } from "@/lib/callQuality";
+import {
+  loadDevicePreferences,
+  DEVICE_PREFS_KEY,
+  type DeviceKind,
+  type DevicePreferences,
+} from "@/lib/devicePreferences";
+
+export type { DeviceKind, DevicePreferences };
+
+// The actual `@livekit/components-react` tree (+ its CSS + livekit-client's
+// heavier runtime pieces) only loads once someone actually joins a call,
+// instead of every visitor paying for that bundle on first load of
+// anything under /bandos. See CallLiveKitSession.tsx.
+const CallLiveKitSession = dynamic(() => import("@/components/CallLiveKitSession"), {
+  ssr: false,
+});
 
 type ActiveCall = { roomId: string; roomName: string; href: string };
-
-export type DeviceKind = "audioinput" | "videoinput" | "audiooutput";
-export type DevicePreferences = Partial<Record<DeviceKind, string>>;
-
-const DEVICE_PREFS_KEY = "macacall-device-prefs";
-
-function loadDevicePreferences(): DevicePreferences {
-  if (typeof window === "undefined") return {};
-  try {
-    return JSON.parse(localStorage.getItem(DEVICE_PREFS_KEY) ?? "{}");
-  } catch {
-    return {};
-  }
-}
 
 type CallContextValue = {
   activeCall: ActiveCall | null;
@@ -265,183 +260,28 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   if (connected) {
     return (
       <CallContext.Provider value={value}>
-        <LiveKitRoom
+        <CallLiveKitSession
           token={tokenInfo!.token}
           serverUrl={tokenInfo!.serverUrl}
-          connect
-          options={roomOptions}
-          audio={
-            !micEnabled
-              ? false
-              : devicePreferences.audioinput
-                ? { deviceId: devicePreferences.audioinput }
-                : true
-          }
-          video={
-            !camOnJoin
-              ? false
-              : devicePreferences.videoinput
-                ? { deviceId: devicePreferences.videoinput }
-                : true
-          }
-          style={{ display: "contents" }}
-          onDisconnected={leaveCall}
+          roomOptions={roomOptions}
+          micEnabled={micEnabled}
+          camOnJoin={camOnJoin}
+          devicePreferences={devicePreferences}
+          deafened={deafened}
+          activeCall={activeCall}
+          roomRef={roomRef}
+          leaveCall={leaveCall}
+          joinCall={joinCall}
+          setMicEnabled={setMicEnabled}
+          setDeafened={setDeafened}
+          setForceMuted={setForceMuted}
+          setForceDeafened={setForceDeafened}
         >
-          <RoomAudioRenderer />
-          <CallRoomRef roomRef={roomRef} />
-          <CallDeviceSync
-            micEnabled={micEnabled}
-            deafened={deafened}
-            activeCall={activeCall}
-            setMicEnabled={setMicEnabled}
-            setDeafened={setDeafened}
-            setForceMuted={setForceMuted}
-            setForceDeafened={setForceDeafened}
-            joinCall={joinCall}
-          />
           {children}
-        </LiveKitRoom>
+        </CallLiveKitSession>
       </CallContext.Provider>
     );
   }
 
   return <CallContext.Provider value={value}>{children}</CallContext.Provider>;
-}
-
-function CallDeviceSync({
-  micEnabled,
-  deafened,
-  activeCall,
-  setMicEnabled,
-  setDeafened,
-  setForceMuted,
-  setForceDeafened,
-  joinCall,
-}: {
-  micEnabled: boolean;
-  deafened: boolean;
-  activeCall: ActiveCall | null;
-  setMicEnabled: (value: boolean) => void;
-  setDeafened: (value: boolean) => void;
-  setForceMuted: (value: boolean) => void;
-  setForceDeafened: (value: boolean) => void;
-  joinCall: (roomId: string, roomName: string, href: string) => void;
-}) {
-  const { localParticipant } = useLocalParticipant();
-  const remoteParticipants = useRemoteParticipants();
-  const prevForceMutedRef = useRef(false);
-
-  useEffect(() => {
-    localParticipant.setMicrophoneEnabled(micEnabled).catch(() => {});
-  }, [localParticipant, micEnabled]);
-
-  useEffect(() => {
-    remoteParticipants.forEach((p) => p.setVolume(deafened ? 0 : 1));
-  }, [remoteParticipants, deafened]);
-
-  // Server-side moderation signals (forced mute, moved to another channel)
-  // arrive as attribute updates on our own participant.
-  useEffect(() => {
-    function handleAttributesChanged() {
-      const attrs = localParticipant.attributes;
-
-      const nowForceMuted = attrs.forceMuted === "true";
-      setForceMuted(nowForceMuted);
-      if (nowForceMuted) {
-        setMicEnabled(false);
-        // LocalParticipant reconciles its published tracks against every
-        // ParticipantInfo update it receives from the server — if the
-        // publication's own `isMuted` doesn't already agree with the
-        // server-side mute LiveKit just applied (mutePublishedTrack), the
-        // SDK "corrects" it by immediately telling the server to unmute
-        // again. Muting the publication directly (not just flipping React
-        // state, which only calls setMicrophoneEnabled on a later effect)
-        // keeps that reconcile from fighting — and racing — the mod-mute.
-        localParticipant
-          .getTrackPublication(Track.Source.Microphone)
-          ?.mute()
-          .catch(() => {});
-      } else if (prevForceMutedRef.current) {
-        // Force-mute was just lifted. We muted the publication directly
-        // above (not through setMicrophoneEnabled), so the effect that
-        // syncs `micEnabled` never reruns on its own here — without this,
-        // the publication stays muted forever and every future reconcile
-        // keeps "correcting" the server back to muted, even after an
-        // admin unmute. Re-sync it to whatever the user's own mic state
-        // should be (usually still off, same as real Discord: lifting a
-        // server mute doesn't turn your mic back on by itself).
-        localParticipant.setMicrophoneEnabled(micEnabled).catch(() => {});
-      }
-      prevForceMutedRef.current = nowForceMuted;
-
-      const nowForceDeafened = attrs.forceDeafened === "true";
-      setForceDeafened(nowForceDeafened);
-      if (nowForceDeafened) setDeafened(true);
-
-      const movedToChannelId = attrs.movedToChannelId;
-      const movedToChannelName = attrs.movedToChannelName;
-      if (movedToChannelId && activeCall) {
-        // The bando-scoped href always ends in the channel id — swap it for
-        // the destination channel's id instead of replacing the whole path,
-        // so this keeps working regardless of the /bandos/{bandoId}/ prefix.
-        const nextHref = activeCall.href.replace(
-          /[^/]+$/,
-          movedToChannelId,
-        );
-        joinCall(
-          movedToChannelId,
-          movedToChannelName ?? "canal de voz",
-          nextHref,
-        );
-      }
-    }
-
-    // Also check on attach, in case moderation landed moments before this
-    // listener was wired up (e.g. right after joining).
-    handleAttributesChanged();
-
-    localParticipant.on(ParticipantEvent.AttributesChanged, handleAttributesChanged);
-    return () => {
-      localParticipant.off(
-        ParticipantEvent.AttributesChanged,
-        handleAttributesChanged,
-      );
-    };
-  }, [
-    localParticipant,
-    activeCall,
-    setForceMuted,
-    setForceDeafened,
-    setMicEnabled,
-    setDeafened,
-    joinCall,
-    micEnabled,
-  ]);
-
-  useEffect(() => {
-    localParticipant
-      .setAttributes({ deafened: deafened ? "true" : "false" })
-      .catch(() => {});
-  }, [localParticipant, deafened]);
-
-  return null;
-}
-
-/** Stashes the connected Room instance in a ref so setDevicePreference (which
- * lives outside the LiveKitRoom subtree) can hot-swap devices mid-call, and
- * applies the saved speaker preference once on connect -- there's no
- * join-time prop for audio output like there is for audio/video input. */
-function CallRoomRef({ roomRef }: { roomRef: React.MutableRefObject<Room | null> }) {
-  const room = useRoomContext();
-
-  useEffect(() => {
-    roomRef.current = room;
-    const speakerId = loadDevicePreferences().audiooutput;
-    if (speakerId) room.switchActiveDevice("audiooutput", speakerId).catch(() => {});
-    return () => {
-      roomRef.current = null;
-    };
-  }, [room, roomRef]);
-
-  return null;
 }
