@@ -360,8 +360,17 @@ ações. Resumo:
   `POST /api/livekit/moderate` ({action: "mute"|"unmute"|"deafen"|
   "undeafen"|"move", channelId, targetUserId, destinationChannelId?}),
   checado no servidor via `has_channel_permission`
-  (`MUTE_MEMBERS`/`DEAFEN_MEMBERS`/`MOVE_MEMBERS`, um bit por ação). Como o
-  LiveKit não tem um "mover participante de sala" nativo, "mover" é só um
+  (`MUTE_MEMBERS`/`DEAFEN_MEMBERS`/`MOVE_MEMBERS`, um bit por ação).
+  **Bug de segurança corrigido (issue #10)**: `has_channel_permission`
+  só confirma que quem chama tem `MOVE_MEMBERS` no canal de **origem** --
+  não diz nada sobre o canal de **destino**. Sem checar isso, um
+  moderador com `MOVE_MEMBERS` num bando conseguia mover um participante
+  pra dentro de um canal de voz de **qualquer outro bando** só
+  informando o `destinationChannelId` certo, mesmo sem ser membro dele.
+  Fix: a rota agora busca o `bando_id` dos dois canais (origem e
+  destino) e rejeita com 403 se forem diferentes, antes de sinalizar o
+  `movedToChannelId`. Como o LiveKit não tem um "mover participante de
+  sala" nativo, "mover" é só um
   **sinal**: o servidor marca atributos (`movedToChannelId`/
   `movedToChannelName`) no participante alvo via
   `RoomServiceClient.updateParticipant`, e é o **próprio cliente do alvo**

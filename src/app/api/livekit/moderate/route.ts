@@ -116,17 +116,32 @@ export async function POST(request: Request) {
         );
       }
 
-      const { data: destination } = await supabase
-        .from("channels")
-        .select("id, name")
-        .eq("id", destinationChannelId)
-        .eq("type", "voice")
-        .maybeSingle();
+      const [{ data: origin }, { data: destination }] = await Promise.all([
+        supabase.from("channels").select("bando_id").eq("id", channelId).maybeSingle(),
+        supabase
+          .from("channels")
+          .select("id, name, bando_id")
+          .eq("id", destinationChannelId)
+          .eq("type", "voice")
+          .maybeSingle(),
+      ]);
 
       if (!destination) {
         return NextResponse.json(
           { error: "canal de destino não encontrado" },
           { status: 404 },
+        );
+      }
+
+      // Without this check, `MOVE_MEMBERS` in one bando would let a
+      // moderator move a participant into a voice channel of a completely
+      // different bando -- has_channel_permission above only confirmed
+      // permission on the *origin* channel, it says nothing about whether
+      // the destination is even in the same server.
+      if (!origin || origin.bando_id !== destination.bando_id) {
+        return NextResponse.json(
+          { error: "canal de destino não pertence ao mesmo bando" },
+          { status: 403 },
         );
       }
 
