@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { X, Mic, Video, Volume2 } from "lucide-react";
+import { X, Mic, Video, Volume2, Gauge } from "lucide-react";
 import { useCall, type DeviceKind } from "@/components/CallProvider";
+import { VIDEO_QUALITY_LABELS, VIDEO_QUALITY_ORDER } from "@/lib/callQuality";
 
 type DeviceOption = { deviceId: string; label: string };
 
@@ -10,7 +11,8 @@ const SUPPORTS_OUTPUT_SELECTION =
   typeof window !== "undefined" && "setSinkId" in HTMLMediaElement.prototype;
 
 export function VoiceSettingsModal({ onClose }: { onClose: () => void }) {
-  const { devicePreferences, setDevicePreference } = useCall();
+  const { devicePreferences, setDevicePreference, videoQuality, setVideoQuality } =
+    useCall();
   const [mics, setMics] = useState<DeviceOption[]>([]);
   const [cameras, setCameras] = useState<DeviceOption[]>([]);
   const [speakers, setSpeakers] = useState<DeviceOption[]>([]);
@@ -214,9 +216,33 @@ export function VoiceSettingsModal({ onClose }: { onClose: () => void }) {
               </div>
             )}
 
+            <div>
+              <label className="mb-1.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-muted">
+                <Gauge className="h-3.5 w-3.5" />
+                Qualidade de vídeo e tela
+              </label>
+              <select
+                value={videoQuality}
+                onChange={(e) => setVideoQuality(e.target.value as typeof videoQuality)}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+              >
+                {VIDEO_QUALITY_ORDER.map((q) => (
+                  <option key={q} value={q}>
+                    {VIDEO_QUALITY_LABELS[q]}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-[11px] text-muted">
+                &ldquo;Automática&rdquo; já ajusta a resolução pro seu aparelho (celular usa menos
+                que desktop). &ldquo;Economia de dados&rdquo; prioriza conexões fracas;
+                &ldquo;Alta qualidade&rdquo; usa mais internet e bateria. Aplica na próxima vez
+                que você entrar numa call.
+              </p>
+            </div>
+
             <p className="text-[11px] text-muted">
-              Trocar aqui aplica na hora se você já estiver numa call, e vale como padrão pra
-              próxima vez que entrar em uma.
+              Trocar dispositivo aqui aplica na hora se você já estiver numa call, e vale como
+              padrão pra próxima vez que entrar em uma.
             </p>
           </div>
         )}

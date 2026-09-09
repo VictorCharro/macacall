@@ -206,6 +206,27 @@ ações. Resumo:
 - `CallProvider` é o contexto global de chamada (mic/deafen/câmera/tela,
   `joinCall(roomId, roomName, href)`), funciona tanto pra canal de voz de
   bando quanto pra chamada de DM (generalizado, não é bando-only).
+- **Qualidade adaptativa de vídeo/tela/áudio** (`src/lib/callQuality.ts`):
+  antes a `<LiveKitRoom>` não passava nenhum `options`, então rodava 100% no
+  default puro do client LiveKit (sem `adaptiveStream`/`dynacast`, sem
+  presets de resolução/bitrate pensados pro app). Agora `buildRoomOptions(quality)`
+  monta `RoomOptions` (câmera, tela, preset de áudio) a partir de dois eixos:
+  **dispositivo** (`isMobileDevice()` via `navigator.userAgent` -- mobile
+  ganha presets mais leves, ex. `auto` = 540p em vez de 720p) e **escolha do
+  usuário** (`VideoQuality` = `"data-saver" | "auto" | "high"`, seletor em
+  `VoiceSettingsModal`, persistida em `localStorage` igual aos outros
+  `devicePreferences`). `adaptiveStream`+`dynacast` ficam sempre ligados
+  (baixam resolução/param de publicar layer que ninguém tá vendo, custo
+  praticamente zero). **De propósito não força codec VP9/AV1** (fica no
+  default `vp8` do SDK): esses codecs não têm encoder de hardware no
+  iOS/na maioria dos Android, então forçar significaria codificar vídeo
+  via software no celular -- pior bateria, frames caindo, exatamente nos
+  aparelhos que menos aguentam isso. Como a `<LiveKitRoom>` fica montada
+  entre trocas de canal (ver nota mais abaixo sobre reconexão), a troca de
+  qualidade só reconfigura a instância de `Room` da próxima vez que você
+  conecta numa call, não no meio de uma -- diferente da troca de
+  dispositivo (mic/câmera/saída), que já faz hot-swap via
+  `switchActiveDevice`.
 - Canal de voz mostra o vídeo/grid **acima** do chat de texto, não troca um
   pelo outro (decisão explícita — ver commit "dock voice call above text
   chat").

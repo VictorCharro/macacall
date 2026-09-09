@@ -18,6 +18,12 @@ import {
 } from "@livekit/components-react";
 import { ConnectionState, ParticipantEvent, Track, type Room } from "livekit-client";
 import "@livekit/components-styles";
+import {
+  buildRoomOptions,
+  loadVideoQuality,
+  saveVideoQuality,
+  type VideoQuality,
+} from "@/lib/callQuality";
 
 type ActiveCall = { roomId: string; roomName: string; href: string };
 
@@ -57,6 +63,11 @@ type CallContextValue = {
   devicePreferences: DevicePreferences;
   /** Persists the choice and, if a call is active, hot-swaps the live track. */
   setDevicePreference: (kind: DeviceKind, deviceId: string) => void;
+  videoQuality: VideoQuality;
+  /** Persists the choice; takes effect the next time a call is joined (the
+   * room's encoding options are set at connect time, changing them mid-call
+   * would mean tearing down and rebuilding the whole peer connection). */
+  setVideoQuality: (quality: VideoQuality) => void;
 };
 
 const CallContext = createContext<CallContextValue | null>(null);
@@ -83,6 +94,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   const [devicePreferences, setDevicePreferences] = useState<DevicePreferences>(
     loadDevicePreferences,
   );
+  const [videoQuality, setVideoQualityState] = useState<VideoQuality>(loadVideoQuality);
   const roomRef = useRef<Room | null>(null);
   const activeCallRef = useRef<ActiveCall | null>(null);
   useEffect(() => {
@@ -97,6 +109,13 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     });
     roomRef.current?.switchActiveDevice(kind, deviceId).catch(() => {});
   }, []);
+
+  const setVideoQuality = useCallback((quality: VideoQuality) => {
+    setVideoQualityState(quality);
+    saveVideoQuality(quality);
+  }, []);
+
+  const roomOptions = useMemo(() => buildRoomOptions(videoQuality), [videoQuality]);
 
   const toggleMic = useCallback(() => {
     // A moderator mute can only be lifted by the moderator (or by leaving and
@@ -209,6 +228,8 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       toggleDeafen,
       devicePreferences,
       setDevicePreference,
+      videoQuality,
+      setVideoQuality,
     }),
     [
       activeCall,
@@ -224,6 +245,8 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       toggleDeafen,
       devicePreferences,
       setDevicePreference,
+      videoQuality,
+      setVideoQuality,
     ],
   );
 
@@ -234,6 +257,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
           token={tokenInfo!.token}
           serverUrl={tokenInfo!.serverUrl}
           connect
+          options={roomOptions}
           audio={
             !micEnabled
               ? false
