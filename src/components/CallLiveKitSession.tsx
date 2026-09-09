@@ -8,6 +8,7 @@ import {
   useRemoteParticipants,
   useRoomContext,
 } from "@livekit/components-react";
+import { useKrispNoiseFilter } from "@livekit/components-react/krisp";
 import { ParticipantEvent, Track, type Room, type RoomOptions } from "livekit-client";
 import "@livekit/components-styles";
 import { loadDevicePreferences, type DevicePreferences } from "@/lib/devicePreferences";
@@ -82,6 +83,7 @@ export default function CallLiveKitSession({
     >
       <RoomAudioRenderer />
       <CallRoomRef roomRef={roomRef} />
+      <NoiseFilter />
       <CallDeviceSync
         micEnabled={micEnabled}
         deafened={deafened}
@@ -95,6 +97,26 @@ export default function CallLiveKitSession({
       {children}
     </LiveKitRoom>
   );
+}
+
+/** Turns on LiveKit Cloud's Krisp-based noise cancellation for the local mic
+ * as soon as it's published -- runs as a WASM track processor entirely in
+ * the browser, on top of (not instead of) the browser's own
+ * echoCancellation/noiseSuppression/autoGainControl (already on by default
+ * for a plain `audio: true`/`{deviceId}` capture). This is the "supressão
+ * de ruído" that was missing: those browser constraints handle echo/gain,
+ * Krisp is what actually cuts background noise (keyboard, fan, other people
+ * talking) the way Discord's own noise suppression does. No UI toggle for
+ * now -- always on, same as it being unconditional in a real Discord call. */
+function NoiseFilter() {
+  const { setNoiseFilterEnabled } = useKrispNoiseFilter();
+  const { microphoneTrack } = useLocalParticipant();
+
+  useEffect(() => {
+    if (microphoneTrack) setNoiseFilterEnabled(true);
+  }, [microphoneTrack, setNoiseFilterEnabled]);
+
+  return null;
 }
 
 function CallDeviceSync({

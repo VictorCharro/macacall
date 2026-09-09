@@ -231,7 +231,15 @@ export function CallInterface({
   const cam = useTrackToggle({ source: Track.Source.Camera });
   const screen = useTrackToggle({
     source: Track.Source.ScreenShare,
-    captureOptions: { audio: true },
+    // contentHint tells the browser's encoder to prioritize spatial
+    // sharpness over motion smoothness -- the default ("motion") treats a
+    // shared screen like a webcam feed and blurs text/UI edges to save bits
+    // on frame-to-frame change, which is exactly the "pixelated" complaint
+    // for anything with text (code, slides, chat). Resolution/bitrate are
+    // still driven centrally by the chosen video quality (lib/callQuality.ts)
+    // -- this only changes how the encoder spends the bits it's already
+    // given, so it doesn't fight the data-saver preset.
+    captureOptions: { audio: true, contentHint: "detail" },
   });
 
   // Mirrors the clone: one tile gets a roomy single column, two split the row,

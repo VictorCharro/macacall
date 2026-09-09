@@ -251,6 +251,26 @@ ações. Resumo:
   começar a compartilhar tela pela primeira vez depois de trocar a
   qualidade -- também pegar o preset novo, e não o que existia no momento
   em que entrou na call.
+- **Supressão de ruído real (Krisp)**: `NoiseFilter`, montado dentro da
+  `<LiveKitRoom>` em `CallLiveKitSession.tsx`, liga o filtro Krisp da
+  LiveKit Cloud (`@livekit/components-react/krisp` + pacote peer
+  `@livekit/krisp-noise-filter`, um *track processor* WASM que roda 100%
+  no navegador) assim que o mic publica -- sem toggle de UI, sempre ligado,
+  igual à supressão de ruído do Discord de verdade. **Diferente** de
+  `echoCancellation`/`noiseSuppression`/`autoGainControl` (já ligados por
+  padrão pelo próprio `livekit-client` desde sempre, mesmo sem passar
+  nada): aquilo trata eco/ganho de volume, o Krisp é quem de fato corta
+  ruído de fundo (teclado, ventilador, gente falando ao lado).
+- **Compartilhamento de tela pixelado/borrado**: além do preset de
+  bitrate/resolução (`callQuality.ts` acima), faltava dizer pro encoder
+  do navegador *como* gastar os bits que ele já tem. Sem isso, uma tela
+  compartilhada é tratada como vídeo comum e o encoder prioriza suavidade
+  de movimento sobre nitidez, borrando texto/UI a cada frame que muda.
+  Fix em `VoiceChannelView.tsx` (`useTrackToggle` do botão de tela):
+  `captureOptions.contentHint: "detail"` inverte essa prioridade pro
+  encoder gastar os bits em nitidez espacial. Só isso, sem mexer em
+  bitrate/resolução aqui -- que continuam vindo do preset de qualidade
+  central, pra não brigar com o modo "economia de dados".
 - Canal de voz mostra o vídeo/grid **acima** do chat de texto, não troca um
   pelo outro (decisão explícita — ver commit "dock voice call above text
   chat").
