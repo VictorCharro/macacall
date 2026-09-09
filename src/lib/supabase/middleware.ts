@@ -4,6 +4,12 @@ import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config";
 
 const PUBLIC_PATHS = ["/login", "/signup", "/auth", "/join"];
 
+// LiveKit calls this directly (server-to-server, no cookie session ever
+// exists) -- its own signature check inside the route is what secures it,
+// not this session gate. Without this exception the redirect below would
+// bounce every webhook delivery to /login and the route would never run.
+const PUBLIC_API_PATHS = ["/api/livekit/webhook"];
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
@@ -31,7 +37,9 @@ export async function updateSession(request: NextRequest) {
 
   const path = request.nextUrl.pathname;
   const isPublic =
-    path === "/" || PUBLIC_PATHS.some((p) => path.startsWith(p));
+    path === "/" ||
+    PUBLIC_PATHS.some((p) => path.startsWith(p)) ||
+    PUBLIC_API_PATHS.some((p) => path.startsWith(p));
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();

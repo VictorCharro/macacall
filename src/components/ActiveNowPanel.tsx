@@ -17,7 +17,11 @@ export function ActiveNowPanel({ friends }: { friends: Friend[] }) {
   useEffect(() => {
     let cancelled = false;
 
+    // Pausado enquanto a aba não está visível -- não tem motivo de bater
+    // nessa rota a cada poucos segundos com a aba em segundo plano, e
+    // busca de novo na hora ao voltar pra não ficar com dado velho.
     async function poll() {
+      if (document.hidden) return;
       try {
         const res = await fetch("/api/friends/activity");
         const data = await res.json();
@@ -29,9 +33,16 @@ export function ActiveNowPanel({ friends }: { friends: Friend[] }) {
 
     poll();
     const interval = setInterval(poll, 5000);
+
+    function onVisibilityChange() {
+      if (!document.hidden) poll();
+    }
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
     return () => {
       cancelled = true;
       clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, []);
 

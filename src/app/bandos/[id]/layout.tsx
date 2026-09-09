@@ -171,8 +171,12 @@ export default async function BandoLayout({
   const canMentionEveryone = isOwner || hasPermission(myPermissions, "MENTION_EVERYONE");
   const myRoleIds = roleIdsByUser.get(user.id) ?? [];
 
+  const voiceChannelIds = (channels ?? [])
+    .filter((c) => c.type === "voice")
+    .map((c) => c.id);
+
   return (
-    <BandoParticipantsProvider bandoId={id}>
+    <BandoParticipantsProvider bandoId={id} voiceChannelIds={voiceChannelIds}>
       <BandoRolesProvider
         roleColorByUserId={roleColorByUserId}
         mentionableRoles={mentionableRoles}

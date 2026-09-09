@@ -674,13 +674,44 @@ feito.
 - ✅ **#10 [P0]**: `/api/livekit/moderate` (ação "move") agora confere
   que o canal de destino é do mesmo bando do canal de origem antes de
   sinalizar a mudança (era um gap de escopo de permissão real).
-- ⬜ **#11/#12 [P1]**: os dois polls HTTP recorrentes do app (participantes
-  de voz a cada 4s em `BandoParticipants.tsx`, atividade de amigos a cada
-  5s em `ActiveNowPanel.tsx`) -- candidatos a virar push via Realtime.
-  **Deliberadamente não feito ainda**: precisa de LiveKit webhooks
-  configurados no dashboard do projeto (fora do código) e não dava pra
-  testar contra uma sala/call real neste ambiente -- risco alto de
-  quebrar silenciosamente sem forma de validar.
+- 🟡 **#11 [P1] (parcial)**: `BandoParticipants.tsx` agora pausa o poll
+  quando a aba não está visível (`document.hidden`, refetch imediato ao
+  voltar), o intervalo caiu de 4s pra 15s (era o caminho primário, virou
+  fallback), e `api/livekit/webhook/route.ts` (novo) relaciona atividade
+  de sala do LiveKit (`participant_joined`/`left`,
+  `track_published`/`unpublished`) num broadcast Supabase Realtime por
+  canal de voz (`voice-activity:{channelId}`, via `channel.httpSend()` --
+  REST, sem precisar manter socket aberto num handler serverless), que o
+  client escuta pra disparar um refresh imediato. Assinatura verificada
+  com `WebhookReceiver` reaproveitando `LIVEKIT_API_KEY`/`SECRET` (sem
+  segredo novo). **Testado nesta sessão** (`AccessToken` local simulando
+  o LiveKit, chave de teste): assinatura válida → 200 processa o evento;
+  corpo alterado → 401; sem assinatura → 401. **Bug real encontrado e
+  corrigido no processo**: o `proxy.ts`/`middleware.ts` redireciona toda
+  request sem sessão pra `/login` -- sem uma exceção explícita pro path
+  do webhook, o LiveKit (que nunca manda cookie) teria sido bloqueado
+  *sempre*, tornando a rota inatingível em produção (`PUBLIC_API_PATHS`
+  em `lib/supabase/middleware.ts`).
+  **Falta pra funcionar de ponta a ponta, e é decisão/ação de vocês**:
+  configurar o webhook no dashboard do LiveKit Cloud apontando pra
+  `https://<seu-domínio>/api/livekit/webhook`. **Incerteza que não deu
+  pra verificar sem acesso ao projeto Supabase real**: se "Realtime
+  Authorization" estiver habilitado no projeto, esse broadcast anônimo
+  pode ser rejeitado silenciosamente pelo Supabase -- nesse caso o poll
+  de 15s (fallback) continua funcionando normalmente, só não fica
+  "instantâneo". Testem depois de configurar o webhook: se a lista de
+  participantes não ficar visivelmente mais rápida que antes, é esse o
+  motivo mais provável.
+- 🟡 **#12 [P1] (parcial)**: mesma pausa por `document.hidden` aplicada
+  em `ActiveNowPanel.tsx`. **Não migrado pra Realtime/Presence** como o
+  título original da issue sugeria -- essa atividade vem de consultar
+  salas do LiveKit (`listRooms`/`listParticipants`) via
+  `api/friends/activity`, não do `PresenceProvider` (que só rastreia
+  status online/ausente, sem noção de bando/canal). Fazer isso de verdade
+  precisaria de mudança de assinatura do `joinCall()` (hoje não carrega
+  `bandoName`, usado em vários call sites incluindo DM, que não tem
+  conceito de bando) -- escopo maior do que o resto desse item, deixado
+  de lado por ora.
 - ⬜ **#13 [P1]**: duplicação grande entre `ChatChannel.tsx`/`DmChat.tsx`/
   `ThreadPanel.tsx` (mentions, wiring de Realtime, memoização de
   anexos/reações) -- candidato a `useMessageFeed(table, filterColumn, id)`
@@ -694,11 +725,13 @@ feito.
   antes de promover a DM pra grupo (defesa em profundidade -- a policy de
   RLS de `dm_conversations` em si não foi auditada, sem acesso ao projeto
   Supabase nesta sessão).
-- 🟡 **#16 [P1] (parcial)**: `generateInviteCode()` trocado pra
-  `crypto.randomInt`. Rate limiting em si (`guestSignIn`/
-  `sendFriendRequest`/`sendMessage`) continua faltando -- precisa de uma
-  decisão de infra (Redis/Upstash/Vercel KV) que não é pra tomar sem o
-  dono do projeto.
+- ✅ **#16 [P1]**: `generateInviteCode()` usa `crypto.randomInt`, e
+  `src/lib/rateLimit.ts` (limiter em memória, sliding-window, comentado
+  com a limitação de não sobreviver a múltiplas instâncias serverless --
+  decisão de trocar por Redis/Upstash fica pra depois, se necessário) foi
+  plugado em `guestSignIn` (só conta criada, por IP), `sendFriendRequest`
+  (por usuário) e `sendMessage`/`sendDmMessage`/`sendThreadMessage`
+  (mesmo bucket "message-send" por usuário).
 - ✅ **#17 [P1]**: `Promise.all` aplicados em `roles.ts` (`createRole`,
   `kickMember`/`banMember`/`unbanMember`), `dms.ts`
   (`getOrCreateDmConversationId`), `messages.ts` (mention lookup do
@@ -710,9 +743,9 @@ feito.
   `activeFriends`), `ChannelSidebar` (participantes agrupados por
   `channelId` num `Map` em vez de `.filter()` por canal), `DmChat`
   (`members`).
-- ⬜ **#20 [P2]**: code-split do LiveKit via `next/dynamic` -- não feito,
-  mesmo motivo do #11/#12: toca a mesma lógica frágil de reconexão já
-  documentada acima em "Chamadas de voz/vídeo", sem call real pra validar.
+- ⬜ **#20 [P2]**: code-split do LiveKit via `next/dynamic` -- toca a
+  mesma lógica frágil de reconexão já documentada acima em "Chamadas de
+  voz/vídeo", sem call real pra validar visualmente aqui.
 - ✅ **#21 [P2]**: `PinnedMessagesModal`/`DmPinnedMessagesModal` unificados
   num componente só (`fetchPinned`/`onUnpin`/`canUnpin`/`emptyLabel` como
   props) -- `DmPinnedMessagesModal.tsx` foi deletado.
@@ -724,11 +757,19 @@ feito.
 - ✅ **#23 [P3]**: `src/app/error.tsx` (com botão "Tentar de novo") e
   `src/app/global-error.tsx` (caso raro do próprio root layout falhar,
   precisa do próprio `<html>/<body>`) adicionados.
-- ⬜ **#24 [P3]**: avatares via `<img>` cru sem `next/image` --
-  não feito: seria uma mudança mecânica mas espalhada por ~15 arquivos, e
-  sem conseguir logar com credenciais reais neste ambiente pra confirmar
-  visualmente que nada quebrou (`next/image` exige `width`/`height`/`fill`
-  corretos, ou o layout quebra silenciosamente).
+- ✅ **#24 [P3]**: os 18 usos de `<img>` pra avatar/foto de bando
+  trocados por `next/image`. `remotePatterns` novo em `next.config.ts`
+  pra `api.dicebear.com` e `*.supabase.co`. **Detalhe que importa se for
+  tocar em avatar de novo**: avatar gerado (Dicebear) é SVG, e o
+  otimizador de imagem do Next recusa SVG por padrão -- todo `<Image>` de
+  avatar usa `unoptimized={!temFotoReal}` (só quando cai no fallback
+  gerado; foto real enviada pro Storage continua sendo otimizada
+  normalmente). Único `<img>` que ficou de fora, de propósito:
+  `AttachmentGallery.tsx` (imagem de anexo enviada pelo usuário, sem
+  aspect ratio fixo -- já tinha comentário explicando a escolha antes
+  desta sessão). **Não verificado visualmente** (nenhuma tela com avatar
+  é alcançável sem login neste ambiente) -- só validado por
+  tsc/eslint/build.
 
 ## Histórico resumido (mais recente primeiro)
 
