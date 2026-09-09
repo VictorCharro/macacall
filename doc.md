@@ -652,6 +652,46 @@ lá (`gh issue list`) antes de assumir que algo falta ou já foi feito.
   (cliente nativo em vez de só navegador). Ver seção "App desktop"
   acima.
 
+## Auditoria de performance/qualidade pré-produto (issues #10-#25)
+
+Pedido do dono do projeto pensando em abrir o app pra usuários reais (não
+só amigos): levantamento de performance, segurança e duplicação de código
+no app inteiro, virou 16 issues em `VictorCharro/macacall`, prefixadas por
+prioridade no título (`[P0]` = bug de segurança real, `[P1]` = alto valor
+antes de escalar, `[P2]` = qualidade sem urgência, `[P3]` = hygiene/baixa
+prioridade). Confira o estado das issues antes de assumir que algo já foi
+feito.
+
+- **#10 [P0]**: `/api/livekit/moderate` (ação "move") não confere que o
+  canal de destino é do mesmo bando do canal de origem -- gap de escopo
+  de permissão real, não cosmético.
+- **#11/#12 [P1]**: os dois polls HTTP recorrentes do app (participantes
+  de voz a cada 4s em `BandoParticipants.tsx`, atividade de amigos a cada
+  5s em `ActiveNowPanel.tsx`) -- candidatos a virar push via Realtime.
+- **#13 [P1]**: duplicação grande entre `ChatChannel.tsx`/`DmChat.tsx`/
+  `ThreadPanel.tsx` (mentions, wiring de Realtime, memoização de
+  anexos/reações) -- candidato a `useMessageFeed(table, filterColumn, id)`
+  compartilhado.
+- **#14 [P1]**: falta validação de tamanho máximo/charset em vários
+  inputs (username, nome de bando/canal, emoji, memberIds de grupo DM).
+- **#15 [P1]**: `addDmParticipant` promove DM pra grupo sem checar
+  membership na própria Action -- depende só da RLS, vale confirmar a
+  policy de UPDATE em `dm_conversations`.
+- **#16 [P1]**: sem rate limiting em ações sensíveis + `generateInviteCode()`
+  usa `Math.random()` (não criptográfico, brute-forceável).
+- **#17 [P1]**: `Promise.all` perdidos em `roles.ts`/`dms.ts`/`messages.ts`
+  + `.select("*")` desnecessário em `roles.ts` -- mesmo padrão que a seção
+  "Performance de navegação" já corrigiu em outros lugares.
+- **#18-#21 [P2]**: memoização ausente em `PresenceProvider`/
+  `MembersSidebar`/`ActiveNowPanel`/`ChannelSidebar`/`DmChat`, code-split
+  do LiveKit via `next/dynamic` (hoje todo usuário carrega o bundle do
+  LiveKit mesmo sem abrir call), unificar `PinnedMessagesModal`/
+  `DmPinnedMessagesModal`.
+- **#22-#25 [P3]**: uso inconsistente de `getCachedUser()` (~40 pontos
+  ainda chamando `auth.getUser()` direto), sem `app/error.tsx`, avatares
+  Dicebear via `<img>` cru sem `next/image`, `requireUser()` copiado à
+  mão em cada arquivo de `actions/` em vez de um helper único.
+
 ## Histórico resumido (mais recente primeiro)
 
 - Upload de foto de perfil real (avatar deixa de ser só o gerado do
