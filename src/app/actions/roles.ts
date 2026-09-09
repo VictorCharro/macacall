@@ -1,21 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import type { createClient } from "@/lib/supabase/server";
 import type { BandoActionState } from "@/app/actions/bandos";
 import { PERMISSIONS, type PermissionKey } from "@/lib/permissions";
 import type { Role } from "@/lib/types";
 import { logAudit } from "@/lib/auditLog";
-
-async function requireUser() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-  return { supabase, user };
-}
+import { requireUser } from "@/lib/authGuard";
 
 export type CreateRoleState = BandoActionState & { role?: Role };
 
@@ -36,18 +27,19 @@ export async function createRole(
   });
   if (!allowed) return { error: "Você não tem permissão pra gerenciar cargos" };
 
-  const { data: myPosition } = await supabase.rpc("highest_role_position", {
-    p_user_id: user.id,
-    p_bando_id: bandoId,
-  });
-
-  const { data: maxRow } = await supabase
-    .from("roles")
-    .select("position")
-    .eq("bando_id", bandoId)
-    .order("position", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const [{ data: myPosition }, { data: maxRow }] = await Promise.all([
+    supabase.rpc("highest_role_position", {
+      p_user_id: user.id,
+      p_bando_id: bandoId,
+    }),
+    supabase
+      .from("roles")
+      .select("position")
+      .eq("bando_id", bandoId)
+      .order("position", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
 
   const nextPosition = Math.min(
     (maxRow?.position ?? 0) + 1,
@@ -62,7 +54,9 @@ export async function createRole(
       color: String(formData.get("color") ?? "#99aab5"),
       position: Math.max(nextPosition, 1),
     })
-    .select("*")
+    .select(
+      "id, bando_id, name, color, icon, position, hoist, is_default, permissions_allow, permissions_deny, created_at",
+    )
     .single();
 
   if (error) return { error: error.message };
@@ -254,15 +248,14 @@ export async function kickMember(
 ): Promise<BandoActionState> {
   const { supabase, user } = await requireUser();
 
-  const { error } = await supabase
-    .from("bando_members")
-    .delete()
-    .eq("bando_id", bandoId)
-    .eq("user_id", userId);
+  const [{ error }, targetName] = await Promise.all([
+    supabase.from("bando_members").delete().eq("bando_id", bandoId).eq("user_id", userId),
+    targetUsername(supabase, userId),
+  ]);
 
   if (error) return { error: error.message };
 
-  await logAudit(supabase, bandoId, user.id, "kick_member", await targetUsername(supabase, userId));
+  await logAudit(supabase, bandoId, user.id, "kick_member", targetName);
 
   revalidatePath(`/bandos/${bandoId}`, "layout");
   return {};
@@ -283,13 +276,12 @@ export async function banMember(
   });
   if (banError) return { error: banError.message };
 
-  await supabase
-    .from("bando_members")
-    .delete()
-    .eq("bando_id", bandoId)
-    .eq("user_id", userId);
+  const [, targetName] = await Promise.all([
+    supabase.from("bando_members").delete().eq("bando_id", bandoId).eq("user_id", userId),
+    targetUsername(supabase, userId),
+  ]);
 
-  await logAudit(supabase, bandoId, user.id, "ban_member", await targetUsername(supabase, userId));
+  await logAudit(supabase, bandoId, user.id, "ban_member", targetName);
 
   revalidatePath(`/bandos/${bandoId}`, "layout");
   return {};
@@ -301,13 +293,10 @@ export async function unbanMember(
 ): Promise<BandoActionState> {
   const { supabase, user } = await requireUser();
 
-  const label = await targetUsername(supabase, userId);
-
-  const { error } = await supabase
-    .from("banned_users")
-    .delete()
-    .eq("bando_id", bandoId)
-    .eq("user_id", userId);
+  const [label, { error }] = await Promise.all([
+    targetUsername(supabase, userId),
+    supabase.from("banned_users").delete().eq("bando_id", bandoId).eq("user_id", userId),
+  ]);
 
   if (error) return { error: error.message };
 

@@ -1,9 +1,10 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { requireUser } from "@/lib/authGuard";
+import type { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
-import { createClient } from "@/lib/supabase/server";
 import type { BandoActionState } from "@/app/actions/bandos";
 import { collectAttachmentFiles, uploadAttachments } from "@/lib/attachments";
 import { sendPushToUser } from "@/lib/push";
@@ -23,15 +24,10 @@ async function getOrCreateDmConversationId(
   userId: string,
   friendId: string,
 ): Promise<{ id: string } | { error: string }> {
-  const { data: mine } = await supabase
-    .from("dm_participants")
-    .select("conversation_id")
-    .eq("user_id", userId);
-
-  const { data: theirs } = await supabase
-    .from("dm_participants")
-    .select("conversation_id")
-    .eq("user_id", friendId);
+  const [{ data: mine }, { data: theirs }] = await Promise.all([
+    supabase.from("dm_participants").select("conversation_id").eq("user_id", userId),
+    supabase.from("dm_participants").select("conversation_id").eq("user_id", friendId),
+  ]);
 
   const theirIds = new Set((theirs ?? []).map((r) => r.conversation_id));
   const sharedIds = (mine ?? [])
@@ -74,12 +70,7 @@ async function getOrCreateDmConversationId(
 }
 
 export async function startDm(friendId: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
+  const { supabase, user } = await requireUser();
 
   const result = await getOrCreateDmConversationId(supabase, user.id, friendId);
 
@@ -91,12 +82,7 @@ export async function startDm(friendId: string) {
 }
 
 export async function startDmCall(friendId: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
+  const { supabase, user } = await requireUser();
 
   const result = await getOrCreateDmConversationId(supabase, user.id, friendId);
 
@@ -111,12 +97,7 @@ export async function inviteFriendToBando(
   friendId: string,
   bandoId: string,
 ): Promise<BandoActionState> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
+  const { supabase, user } = await requireUser();
 
   const { data: bando } = await supabase
     .from("bandos")
@@ -145,13 +126,26 @@ export async function inviteFriendToBando(
   return {};
 }
 
-export async function createGroupDm(memberIds: string[]) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+// 1 (the creator, added separately below) + up to 9 others -- matches the
+// size a "group DM" is meant for, not an open-ended broadcast list.
+const GROUP_DM_MAX_OTHER_MEMBERS = 9;
 
-  if (!user) redirect("/login");
+export async function createGroupDm(memberIds: string[]) {
+  const { supabase, user } = await requireUser();
+
+  const uniqueMemberIds = [...new Set(memberIds)].filter((id) => id !== user.id);
+
+  if (uniqueMemberIds.length < 1) {
+    redirect(
+      `/bandos?error=${encodeURIComponent("Escolha pelo menos um amigo pro grupo")}`,
+    );
+  }
+
+  if (uniqueMemberIds.length > GROUP_DM_MAX_OTHER_MEMBERS) {
+    redirect(
+      `/bandos?error=${encodeURIComponent(`Grupo só pode ter até ${GROUP_DM_MAX_OTHER_MEMBERS + 1} pessoas`)}`,
+    );
+  }
 
   const { data: created, error } = await supabase
     .from("dm_conversations")
@@ -169,7 +163,7 @@ export async function createGroupDm(memberIds: string[]) {
     .from("dm_participants")
     .insert([
       { conversation_id: created.id, user_id: user.id },
-      ...memberIds.map((id) => ({ conversation_id: created.id, user_id: id })),
+      ...uniqueMemberIds.map((id) => ({ conversation_id: created.id, user_id: id })),
     ]);
 
   if (participantsError) {
@@ -185,12 +179,21 @@ export async function addDmParticipant(
   conversationId: string,
   friendId: string,
 ): Promise<BandoActionState> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await requireUser();
 
-  if (!user) redirect("/login");
+  // Defense in depth: don't rely solely on RLS to keep someone from adding
+  // participants to a DM they're not even part of -- confirm membership
+  // explicitly before promoting it to a group or inserting anyone into it.
+  const { data: membership } = await supabase
+    .from("dm_participants")
+    .select("user_id")
+    .eq("conversation_id", conversationId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (!membership) {
+    return { error: "Você não faz parte dessa conversa" };
+  }
 
   await supabase
     .from("dm_conversations")
@@ -225,12 +228,7 @@ export async function sendDmMessage(
     return { error: "Mensagem muito longa (máximo 2000 caracteres)" };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
+  const { supabase, user } = await requireUser();
 
   const { data, error } = await supabase
     .from("dm_messages")
@@ -277,12 +275,7 @@ export async function toggleDmPinMessage(
   messageId: string,
   pinned: boolean,
 ): Promise<BandoActionState> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
+  const { supabase } = await requireUser();
 
   const { error } = await supabase
     .from("dm_messages")
@@ -303,12 +296,7 @@ export async function editDmMessage(
     return { error: "Mensagem muito longa (máximo 2000 caracteres)" };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
+  const { supabase, user } = await requireUser();
 
   const { error } = await supabase
     .from("dm_messages")
@@ -323,12 +311,7 @@ export async function editDmMessage(
 export async function deleteDmMessage(
   messageId: string,
 ): Promise<{ error?: string }> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
+  const { supabase } = await requireUser();
 
   const { error } = await supabase
     .from("dm_messages")

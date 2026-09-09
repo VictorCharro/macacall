@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCachedUser } from "@/lib/supabase/server";
 import { joinBandoNoRevalidate } from "@/app/actions/bandos";
 import { guestSignIn } from "@/app/actions/auth";
 
@@ -18,7 +18,7 @@ export default async function JoinPage({
   const supabase = await createClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await getCachedUser();
 
   if (user) {
     await joinBandoNoRevalidate(code);

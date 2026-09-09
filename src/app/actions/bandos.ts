@@ -1,17 +1,26 @@
 "use server";
 
+import { randomInt } from "node:crypto";
 import { redirect } from "next/navigation";
+import { requireUser } from "@/lib/authGuard";
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
 import { logAudit } from "@/lib/auditLog";
 
 export type BandoActionState = { error?: string };
 
+const BANDO_NAME_MAX_LENGTH = 50;
+
+function isValidBandoName(name: string) {
+  return name.length >= 2 && name.length <= BANDO_NAME_MAX_LENGTH;
+}
+
 function generateInviteCode() {
+  // crypto.randomInt, not Math.random -- an invite code guards access to a
+  // private bando, so it needs to be unpredictable, not just "looks random".
   const chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
   let code = "";
   for (let i = 0; i < 6; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)];
+    code += chars[randomInt(chars.length)];
   }
   return code;
 }
@@ -19,18 +28,13 @@ function generateInviteCode() {
 export async function createBando(formData: FormData) {
   const name = String(formData.get("name")).trim();
 
-  if (name.length < 2) {
+  if (!isValidBandoName(name)) {
     redirect(
-      `/bandos?error=${encodeURIComponent("Dê um nome ao seu bando")}`,
+      `/bandos?error=${encodeURIComponent(`Dê um nome ao seu bando (até ${BANDO_NAME_MAX_LENGTH} caracteres)`)}`,
     );
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
+  const { supabase, user } = await requireUser();
 
   const { data, error } = await supabase
     .from("bandos")
@@ -59,16 +63,11 @@ export async function renameBando(
 ): Promise<BandoActionState> {
   const name = String(formData.get("name")).trim();
 
-  if (name.length < 2) {
-    return { error: "Dê um nome ao seu bando" };
+  if (!isValidBandoName(name)) {
+    return { error: `Dê um nome ao seu bando (até ${BANDO_NAME_MAX_LENGTH} caracteres)` };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
+  const { supabase, user } = await requireUser();
 
   const { error } = await supabase
     .from("bandos")
@@ -105,12 +104,7 @@ export async function updateBandoPhoto(
     return { error: "A imagem precisa ter até 5MB" };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
+  const { supabase, user } = await requireUser();
 
   const { data: bando } = await supabase
     .from("bandos")
@@ -152,12 +146,7 @@ export async function updateBandoPhoto(
 }
 
 export async function deleteBando(bandoId: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
+  const { supabase, user } = await requireUser();
 
   const { error } = await supabase
     .from("bandos")
@@ -176,12 +165,7 @@ export async function deleteBando(bandoId: string) {
 async function joinBandoCore(
   code: string,
 ): Promise<{ bandoId: string } | { error: string }> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect(`/login`);
+  const { supabase, user } = await requireUser();
 
   const { data: bandoId, error: bandoError } = await supabase.rpc(
     "get_bando_id_by_invite_code",

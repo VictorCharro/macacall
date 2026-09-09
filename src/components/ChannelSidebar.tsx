@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Hash,
   Volume2,
@@ -86,6 +86,20 @@ export function ChannelSidebar({
   const participants = useBandoParticipants();
   const refreshParticipants = useRefreshBandoParticipants();
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+
+  // Grouping once here means each voice channel below does a single Map
+  // lookup instead of a full scan of `participants` -- this provider polls
+  // every 4s, so re-scanning per channel on every one of those ticks adds up
+  // once a bando has more than a couple of voice channels.
+  const participantsByChannel = useMemo(() => {
+    const map = new Map<string, BandoParticipant[]>();
+    for (const p of participants) {
+      const list = map.get(p.channelId);
+      if (list) list.push(p);
+      else map.set(p.channelId, [p]);
+    }
+    return map;
+  }, [participants]);
 
   const canManageChannels =
     isOwner || hasPermission(myPermissions, "MANAGE_CHANNELS");
@@ -208,9 +222,8 @@ export function ChannelSidebar({
             {!collapsed.has(`voice-${category}`) && (
               <ul className="flex flex-col gap-0.5 pt-1">
                 {channels.map((channel) => {
-                  const channelParticipants = participants.filter(
-                    (p) => p.channelId === channel.id,
-                  );
+                  const channelParticipants =
+                    participantsByChannel.get(channel.id) ?? [];
                   const isInThisCall = channelParticipants.length > 0;
 
                   return (

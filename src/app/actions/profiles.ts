@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCachedUser } from "@/lib/supabase/server";
 
 export type ViewedProfile = {
   id: string;
@@ -20,7 +20,7 @@ export async function getUserProfile(userId: string): Promise<ViewedProfile | nu
   const supabase = await createClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await getCachedUser();
   if (!user) return null;
 
   const { data } = await supabase

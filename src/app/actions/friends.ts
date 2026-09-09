@@ -1,8 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/authGuard";
 import type { BandoActionState } from "@/app/actions/bandos";
 import type { PresenceStatus } from "@/lib/types";
 import { sendPushToUser } from "@/lib/push";
@@ -13,16 +12,11 @@ export async function sendFriendRequest(
 ): Promise<BandoActionState> {
   const username = String(formData.get("username")).trim();
 
-  if (!username) {
-    return { error: "Digite um nome de usuário" };
+  if (!username || username.length > 24) {
+    return { error: "Digite um nome de usuário válido" };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
+  const { supabase, user } = await requireUser();
 
   const { data: target } = await supabase
     .from("profiles")
@@ -82,12 +76,7 @@ export async function respondFriendRequest(
   friendshipId: string,
   accept: boolean,
 ): Promise<BandoActionState> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
+  const { supabase } = await requireUser();
 
   if (accept) {
     const { error } = await supabase
@@ -112,12 +101,7 @@ export async function respondFriendRequest(
 export async function removeFriend(
   friendshipId: string,
 ): Promise<BandoActionState> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
+  const { supabase } = await requireUser();
 
   const { error } = await supabase
     .from("friendships")
@@ -133,12 +117,7 @@ export async function removeFriend(
 export async function removeFriendByUserId(
   otherUserId: string,
 ): Promise<BandoActionState> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
+  const { supabase, user } = await requireUser();
 
   const { error } = await supabase
     .from("friendships")
@@ -156,12 +135,7 @@ export async function removeFriendByUserId(
 export async function blockUser(
   otherUserId: string,
 ): Promise<BandoActionState> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
+  const { supabase, user } = await requireUser();
 
   await supabase
     .from("friendships")
@@ -181,12 +155,7 @@ export async function blockUser(
 }
 
 export async function updateStatus(status: PresenceStatus) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
+  const { supabase, user } = await requireUser();
 
   await supabase.from("profiles").update({ status }).eq("id", user.id);
   revalidatePath("/bandos", "layout");
@@ -195,12 +164,7 @@ export async function updateStatus(status: PresenceStatus) {
 export async function updateStatusMessage(
   message: string,
 ): Promise<BandoActionState> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
+  const { supabase, user } = await requireUser();
 
   const trimmed = message.trim().slice(0, 100);
 

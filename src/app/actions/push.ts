@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCachedUser } from "@/lib/supabase/server";
 
 export async function savePushSubscription(
   endpoint: string,
@@ -10,7 +10,7 @@ export async function savePushSubscription(
   const supabase = await createClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await getCachedUser();
 
   if (!user) return { error: "Não autenticado" };
 

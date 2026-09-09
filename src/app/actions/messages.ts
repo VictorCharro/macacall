@@ -1,7 +1,7 @@
 "use server";
 
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/authGuard";
+import type { createClient } from "@/lib/supabase/server";
 import type { BandoActionState } from "@/app/actions/bandos";
 import { collectAttachmentFiles, uploadAttachments } from "@/lib/attachments";
 import { sendPushToUser } from "@/lib/push";
@@ -38,31 +38,28 @@ export async function sendMessage(
     return { error: "Mensagem muito longa (máximo 2000 caracteres)" };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await requireUser();
 
-  if (!user) redirect("/login");
-
-  const { data, error } = await supabase
-    .from("messages")
-    .insert({
-      channel_id: channelId,
-      user_id: user.id,
-      content,
-      reply_to_id:
-        typeof replyToId === "string" && replyToId ? replyToId : null,
-    })
-    .select("id, content, created_at, user_id, reply_to_id, pinned")
-    .single();
+  // The mention lookup only needs channelId/user.id/content -- none of
+  // which depend on the message actually existing yet -- so it can run
+  // concurrently with the insert instead of waiting on it.
+  const [{ data, error }] = await Promise.all([
+    supabase
+      .from("messages")
+      .insert({
+        channel_id: channelId,
+        user_id: user.id,
+        content,
+        reply_to_id:
+          typeof replyToId === "string" && replyToId ? replyToId : null,
+      })
+      .select("id, content, created_at, user_id, reply_to_id, pinned")
+      .single(),
+    content ? notifyMentionedMembers(supabase, channelId, user.id, content) : null,
+  ]);
 
   if (error || !data) {
     return { error: error?.message ?? "Erro ao enviar mensagem" };
-  }
-
-  if (content) {
-    await notifyMentionedMembers(supabase, channelId, user.id, content);
   }
 
   if (files.length === 0) {
@@ -98,12 +95,7 @@ export async function togglePinMessage(
   messageId: string,
   pinned: boolean,
 ): Promise<{ error?: string }> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
+  const { supabase } = await requireUser();
 
   const { error } = await supabase
     .from("messages")
@@ -127,12 +119,7 @@ export async function editMessage(
     return { error: "Mensagem muito longa (máximo 2000 caracteres)" };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
+  const { supabase, user } = await requireUser();
 
   // RLS also enforces user_id = auth.uid(), so this only ever touches the
   // caller's own message -- the .eq is just a cheaper first filter.
@@ -149,12 +136,7 @@ export async function editMessage(
 export async function deleteMessage(
   messageId: string,
 ): Promise<{ error?: string }> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
+  const { supabase } = await requireUser();
 
   const { error } = await supabase.from("messages").delete().eq("id", messageId);
 

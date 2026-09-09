@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Mic } from "lucide-react";
 import { usePresence } from "@/components/PresenceProvider";
 import { STATUS_META } from "@/lib/presence";
@@ -34,9 +34,13 @@ export function ActiveNowPanel({ friends }: { friends: Friend[] }) {
     };
   }, []);
 
-  const activityByFriend = new Map(activity.map((a) => [a.friendId, a]));
-  const activeFriends = friends.filter(
-    (f) => online.has(f.id) && online.get(f.id) !== "invisible",
+  const activityByFriend = useMemo(
+    () => new Map(activity.map((a) => [a.friendId, a])),
+    [activity],
+  );
+  const activeFriends = useMemo(
+    () => friends.filter((f) => online.has(f.id) && online.get(f.id) !== "invisible"),
+    [friends, online],
   );
 
   return (

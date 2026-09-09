@@ -1,8 +1,7 @@
 "use server";
 
-import { redirect } from "next/navigation";
+import { requireUser } from "@/lib/authGuard";
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
 
 export type AvatarActionState = { error?: string; url?: string };
 
@@ -24,12 +23,7 @@ export async function uploadAvatar(
     return { error: "A imagem precisa ter até 5MB" };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
+  const { supabase, user } = await requireUser();
 
   const ext = file.name.split(".").pop() || "png";
   const path = `${user.id}/avatar-${Date.now()}.${ext}`;
@@ -60,12 +54,7 @@ export async function uploadAvatar(
 }
 
 export async function removeAvatar(): Promise<{ error?: string }> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
+  const { supabase, user } = await requireUser();
 
   const { error } = await supabase
     .from("profiles")
@@ -94,12 +83,7 @@ export async function updateProfileDetails(
     return { error: "Cor inválida" };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
+  const { supabase, user } = await requireUser();
 
   const { error } = await supabase
     .from("profiles")

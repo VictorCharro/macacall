@@ -2,8 +2,10 @@
 
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -72,13 +74,18 @@ export function PresenceProvider({
     channelRef.current?.track({ status: myStatus });
   }, [myStatus]);
 
-  function setMyStatus(status: PresenceStatus) {
+  const setMyStatus = useCallback((status: PresenceStatus) => {
     setMyStatusState(status);
     updateStatus(status);
-  }
+  }, []);
+
+  const value = useMemo<PresenceContextValue>(
+    () => ({ online, myStatus, setMyStatus }),
+    [online, myStatus, setMyStatus],
+  );
 
   return (
-    <PresenceContext.Provider value={{ online, myStatus, setMyStatus }}>
+    <PresenceContext.Provider value={value}>
       {children}
     </PresenceContext.Provider>
   );

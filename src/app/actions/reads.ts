@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCachedUser } from "@/lib/supabase/server";
 
 /**
  * Stamps "I've seen everything in this channel up to now". Unread counts are
@@ -11,7 +11,7 @@ export async function markChannelRead(channelId: string) {
   const supabase = await createClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await getCachedUser();
 
   // Fired on navigation, so a signed-out user is a no-op rather than a redirect.
   if (!user) return {};
@@ -33,7 +33,7 @@ export async function markDmRead(conversationId: string) {
   const supabase = await createClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await getCachedUser();
 
   if (!user) return {};
 

@@ -62,6 +62,39 @@ export function MembersSidebar({
     [participants],
   );
 
+  const grouped = useMemo<{ title: string; colorClass: string; list: Member[] }[]>(() => {
+    const owners = members.filter((m) => m.isOwner);
+    const rest = members.filter((m) => !m.isOwner);
+
+    const hoistedRoles = roles
+      .filter((r) => r.hoist && !r.is_default)
+      .sort((a, b) => b.position - a.position);
+
+    const result: { title: string; colorClass: string; list: Member[] }[] = [
+      { title: "👑 DONO DO BANDO", colorClass: "text-primary", list: owners },
+    ];
+    const consumed = new Set(owners.map((m) => m.id));
+    for (const role of hoistedRoles) {
+      const list = rest.filter(
+        (m) => !consumed.has(m.id) && m.roleIds.includes(role.id),
+      );
+      list.forEach((m) => consumed.add(m.id));
+      if (list.length) {
+        result.push({
+          title: `${role.name.toUpperCase()}`,
+          colorClass: "",
+          list,
+        });
+      }
+    }
+    result.push({
+      title: "🐒 MEMBROS",
+      colorClass: "text-muted",
+      list: rest.filter((m) => !consumed.has(m.id)),
+    });
+    return result;
+  }, [members, roles]);
+
   if (!membersOpen) return null;
 
   const statusOf = (id: string): PresenceStatus | "offline" => {
@@ -69,36 +102,6 @@ export function MembersSidebar({
     if (!status || status === "invisible") return "offline";
     return status;
   };
-
-  const owners = members.filter((m) => m.isOwner);
-  const rest = members.filter((m) => !m.isOwner);
-
-  const hoistedRoles = roles
-    .filter((r) => r.hoist && !r.is_default)
-    .sort((a, b) => b.position - a.position);
-
-  const grouped: { title: string; colorClass: string; list: Member[] }[] = [
-    { title: "👑 DONO DO BANDO", colorClass: "text-primary", list: owners },
-  ];
-  const consumed = new Set(owners.map((m) => m.id));
-  for (const role of hoistedRoles) {
-    const list = rest.filter(
-      (m) => !consumed.has(m.id) && m.roleIds.includes(role.id),
-    );
-    list.forEach((m) => consumed.add(m.id));
-    if (list.length) {
-      grouped.push({
-        title: `${role.name.toUpperCase()}`,
-        colorClass: "",
-        list,
-      });
-    }
-  }
-  grouped.push({
-    title: "🐒 MEMBROS",
-    colorClass: "text-muted",
-    list: rest.filter((m) => !consumed.has(m.id)),
-  });
 
   const renderGroup = (title: string, colorClass: string, list: Member[]) => {
     if (list.length === 0) return null;

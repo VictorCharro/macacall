@@ -1,6 +1,6 @@
 import { RoomServiceClient, TrackSource } from "livekit-server-sdk";
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCachedUser } from "@/lib/supabase/server";
 
 type ParticipantInfo = {
   identity: string;
@@ -30,7 +30,7 @@ export async function GET(request: Request) {
   const supabase = await createClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await getCachedUser();
 
   if (!user) {
     return NextResponse.json({ error: "não autenticado" }, { status: 401 });

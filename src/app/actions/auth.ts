@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCachedUser } from "@/lib/supabase/server";
 
 function safeNext(next: FormDataEntryValue | null): string {
   const value = String(next ?? "");
@@ -11,6 +11,15 @@ function safeNext(next: FormDataEntryValue | null): string {
 function safeErrorPage(page: FormDataEntryValue | null): string {
   const value = String(page ?? "");
   return value.startsWith("/") ? value : "/login";
+}
+
+// Matches the `maxLength={24}` already on every username input in the UI
+// (guest sign-in, onboarding, login) -- this was never enforced server-side,
+// so a direct POST could still write an arbitrarily long username.
+const USERNAME_MAX_LENGTH = 24;
+
+function isValidUsernameLength(username: string) {
+  return username.length >= 3 && username.length <= USERNAME_MAX_LENGTH;
 }
 
 export async function signUp(formData: FormData) {
@@ -54,9 +63,9 @@ export async function guestSignIn(formData: FormData) {
   const next = safeNext(formData.get("next"));
   const errorPage = safeErrorPage(formData.get("errorPage"));
 
-  if (username.length < 3) {
+  if (!isValidUsernameLength(username)) {
     redirect(
-      `${errorPage}?error=${encodeURIComponent("Nome de macaco precisa ter pelo menos 3 letras")}`,
+      `${errorPage}?error=${encodeURIComponent(`Nome de macaco precisa ter entre 3 e ${USERNAME_MAX_LENGTH} letras`)}`,
     );
   }
 
@@ -64,7 +73,7 @@ export async function guestSignIn(formData: FormData) {
 
   const {
     data: { user: existingUser },
-  } = await supabase.auth.getUser();
+  } = await getCachedUser();
 
   let user = existingUser;
   let isNewUser = false;
@@ -109,16 +118,16 @@ export async function logOut() {
 export async function completeOnboarding(formData: FormData) {
   const username = String(formData.get("username")).trim();
 
-  if (username.length < 3) {
+  if (!isValidUsernameLength(username)) {
     redirect(
-      `/onboarding?error=${encodeURIComponent("Nome de macaco precisa ter pelo menos 3 letras")}`,
+      `/onboarding?error=${encodeURIComponent(`Nome de macaco precisa ter entre 3 e ${USERNAME_MAX_LENGTH} letras`)}`,
     );
   }
 
   const supabase = await createClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await getCachedUser();
 
   if (!user) {
     redirect("/login");

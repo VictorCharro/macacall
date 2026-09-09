@@ -1,7 +1,7 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/authGuard";
 import { collectAttachmentFiles, uploadAttachments } from "@/lib/attachments";
 import type { BandoActionState } from "@/app/actions/bandos";
 
@@ -19,12 +19,7 @@ export async function createThread(
 ): Promise<CreateThreadState> {
   const trimmed = name.trim() || "Thread";
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
+  const { supabase, user } = await requireUser();
 
   const { data, error } = await supabase
     .from("threads")
@@ -100,12 +95,7 @@ export async function sendThreadMessage(
     return { error: "Mensagem muito longa (máximo 2000 caracteres)" };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
+  const { supabase, user } = await requireUser();
 
   const { data, error } = await supabase
     .from("messages")

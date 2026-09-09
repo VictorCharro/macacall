@@ -117,16 +117,20 @@ export function DmChat({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const members: Record<string, Member> = Object.fromEntries([
-    ...participants.map((p) => [
-      p.id,
-      { username: p.username, avatarSeed: p.avatarSeed, avatarUrl: p.avatarUrl },
-    ]),
-    [
-      currentUserId,
-      { username: "Você", avatarSeed: currentAvatarSeed, avatarUrl: currentAvatarUrl },
-    ],
-  ]);
+  const members: Record<string, Member> = useMemo(
+    () =>
+      Object.fromEntries([
+        ...participants.map((p) => [
+          p.id,
+          { username: p.username, avatarSeed: p.avatarSeed, avatarUrl: p.avatarUrl },
+        ]),
+        [
+          currentUserId,
+          { username: "Você", avatarSeed: currentAvatarSeed, avatarUrl: currentAvatarUrl },
+        ],
+      ]),
+    [participants, currentUserId, currentAvatarSeed, currentAvatarUrl],
+  );
 
   // Only other participants -- mentioning yourself in a DM does nothing.
   const mentionables: Mentionable[] = useMemo(

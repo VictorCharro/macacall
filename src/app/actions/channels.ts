@@ -1,10 +1,15 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { requireUser } from "@/lib/authGuard";
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
 import type { BandoActionState } from "@/app/actions/bandos";
 import { logAudit } from "@/lib/auditLog";
+
+// Matches the `maxLength={40}` already on the channel-name input in the UI
+// (CreateChannelButton.tsx) -- wasn't enforced server-side before.
+const CHANNEL_NAME_MAX_LENGTH = 40;
+const CHANNEL_CATEGORY_MAX_LENGTH = 40;
 
 export async function createChannel(
   bandoId: string,
@@ -15,16 +20,15 @@ export async function createChannel(
   const name = String(formData.get("name")).trim();
   const category = String(formData.get("category") ?? "").trim();
 
-  if (name.length < 2) {
-    return { error: "Dê um nome ao canal" };
+  if (name.length < 2 || name.length > CHANNEL_NAME_MAX_LENGTH) {
+    return { error: `Dê um nome ao canal (até ${CHANNEL_NAME_MAX_LENGTH} caracteres)` };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  if (category.length > CHANNEL_CATEGORY_MAX_LENGTH) {
+    return { error: `Categoria muito longa (máximo ${CHANNEL_CATEGORY_MAX_LENGTH} caracteres)` };
+  }
 
-  if (!user) redirect("/login");
+  const { supabase, user } = await requireUser();
 
   const { error } = await supabase
     .from("channels")
@@ -51,12 +55,7 @@ export async function updateChannelTopic(
     return { error: "Tópico muito longo (máximo 200 caracteres)" };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
+  const { supabase } = await requireUser();
 
   const { data: channel, error } = await supabase
     .from("channels")
@@ -80,16 +79,11 @@ export async function renameChannel(
 ): Promise<BandoActionState> {
   const name = String(formData.get("name")).trim();
 
-  if (name.length < 2) {
-    return { error: "Dê um nome ao canal" };
+  if (name.length < 2 || name.length > CHANNEL_NAME_MAX_LENGTH) {
+    return { error: `Dê um nome ao canal (até ${CHANNEL_NAME_MAX_LENGTH} caracteres)` };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
+  const { supabase } = await requireUser();
 
   const { data: channel, error } = await supabase
     .from("channels")
@@ -107,12 +101,7 @@ export async function renameChannel(
 }
 
 export async function deleteChannel(bandoId: string, channelId: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
+  const { supabase, user } = await requireUser();
 
   const { data: channel } = await supabase
     .from("channels")
