@@ -221,12 +221,36 @@ ações. Resumo:
   default `vp8` do SDK): esses codecs não têm encoder de hardware no
   iOS/na maioria dos Android, então forçar significaria codificar vídeo
   via software no celular -- pior bateria, frames caindo, exatamente nos
-  aparelhos que menos aguentam isso. Como a `<LiveKitRoom>` fica montada
-  entre trocas de canal (ver nota mais abaixo sobre reconexão), a troca de
-  qualidade só reconfigura a instância de `Room` da próxima vez que você
-  conecta numa call, não no meio de uma -- diferente da troca de
-  dispositivo (mic/câmera/saída), que já faz hot-swap via
-  `switchActiveDevice`.
+  aparelhos que menos aguentam isso.
+- **Troca de qualidade aplica na hora, sem sair da call** (`applyVideoQualityLive`
+  em `callQuality.ts`, chamado por `setVideoQuality` em `CallProvider.tsx`
+  quando `roomRef.current` já está `Connected`). Testado que a `<LiveKitRoom>`
+  do `@livekit/components-react` cria a instância de `Room` só uma vez (lazy
+  `useState` no `useLiveKitRoom` interno) -- mudar o prop `options` depois de
+  montada é ignorado silenciosamente, então só valeria pro próximo `connect()`
+  se não existisse esse caminho ao vivo. Dois mecanismos, nenhum dos dois
+  passa perto de um disconnect/reconnect de sala (que derrubaria áudio +
+  vídeo de todo mundo por alguns segundos, igual ao bug de "sumiço ao mover
+  de canal" documentado abaixo):
+  1. `localParticipant.republishAllTracks(publishOptions, false)` --
+     renegocia bitrate de vídeo/tela e o preset de áudio dos tracks que já
+     estão publicados, com `restartTracks: false` (não para a captura, só
+     troca os parâmetros de encoding via SDP) -- sem gap visível, mic e
+     câmera continuam rodando.
+  2. **Resolução da câmera só muda reiniciando a captura de verdade**
+     (`getUserMedia` com constraints novas) -- isso é uma interrupção real,
+     mas escopada só no track de câmera (`setCameraEnabled(false)` seguido
+     de `setCameraEnabled(true, {resolution, deviceId}, {videoEncoding})`),
+     nunca na sala/mic/tela. Só roda se a câmera estiver **publicada e não
+     mutada** -- checar isso é essencial: reiniciar uma câmera que o usuário
+     desligou voltaria a ligá-la sozinha, um bug bem pior que o problema que
+     isso resolve.
+  `room.options.videoCaptureDefaults`/`publishDefaults` também são
+  atualizados em memória (mesma referência que `localParticipant.roomOptions`
+  usa internamente) pra qualquer publish futuro nessa sessão -- por exemplo
+  começar a compartilhar tela pela primeira vez depois de trocar a
+  qualidade -- também pegar o preset novo, e não o que existia no momento
+  em que entrou na call.
 - Canal de voz mostra o vídeo/grid **acima** do chat de texto, não troca um
   pelo outro (decisão explícita — ver commit "dock voice call above text
   chat").

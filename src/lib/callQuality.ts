@@ -1,9 +1,14 @@
 import {
   AudioPresets,
   ScreenSharePresets,
+  Track,
   VideoPresets,
+  type LocalParticipant,
+  type Room,
   type RoomOptions,
+  type TrackPublishOptions,
 } from "livekit-client";
+import type { DeviceKind, DevicePreferences } from "@/components/CallProvider";
 
 export type VideoQuality = "data-saver" | "auto" | "high";
 
@@ -84,6 +89,10 @@ const PRESETS: Record<"mobile" | "desktop", Record<VideoQuality, {
   },
 };
 
+function getQualityPreset(quality: VideoQuality) {
+  return PRESETS[isMobileDevice() ? "mobile" : "desktop"][quality];
+}
+
 /**
  * Builds the LiveKit `RoomOptions` for a chosen quality level.
  *
@@ -95,7 +104,7 @@ const PRESETS: Record<"mobile" | "desktop", Record<VideoQuality, {
  * and LiveKit still negotiates simulcast fine with it.
  */
 export function buildRoomOptions(quality: VideoQuality): RoomOptions {
-  const preset = PRESETS[isMobileDevice() ? "mobile" : "desktop"][quality];
+  const preset = getQualityPreset(quality);
   return {
     adaptiveStream: true,
     dynacast: true,
@@ -109,4 +118,64 @@ export function buildRoomOptions(quality: VideoQuality): RoomOptions {
       audioPreset: preset.audio,
     },
   };
+}
+
+/**
+ * Applies a quality change to an already-connected room, without leaving and
+ * rejoining the call (which would drop audio + video for everyone for a few
+ * seconds -- see the "sumiço ao mover de canal" bug in doc.md, same root
+ * cause: tearing down and rebuilding the whole peer connection).
+ *
+ * Two separate mechanisms, both much lighter than a reconnect:
+ *  1. `localParticipant.republishAllTracks(..., false)` renegotiates the
+ *     bitrate/audio-preset of whatever's already publishing *without*
+ *     stopping capture -- no visible glitch, mic/camera keep running.
+ *  2. The camera's actual capture *resolution* can only change by
+ *     restarting that one MediaStreamTrack (new getUserMedia constraints).
+ *     That's a real interruption, but scoped to the camera track alone --
+ *     the room connection, mic and screen share are untouched, and it only
+ *     runs when a camera track is actually live (off/muted camera is
+ *     left alone so this never turns it back on for the user).
+ *
+ * Also updates `room.options` in place so any track published *after* this
+ * call (e.g. starting screen share for the first time, or an automatic
+ * reconnect) picks up the new preset too, instead of the one captured at
+ * join time.
+ */
+export async function applyVideoQualityLive(
+  room: Room,
+  quality: VideoQuality,
+  devicePreferences: DevicePreferences,
+) {
+  const preset = getQualityPreset(quality);
+  const publishOptions: TrackPublishOptions = {
+    simulcast: true,
+    videoEncoding: preset.camera.encoding,
+    screenShareEncoding: preset.screenShare.encoding,
+    audioPreset: preset.audio,
+  };
+
+  room.options.videoCaptureDefaults = {
+    ...room.options.videoCaptureDefaults,
+    resolution: preset.camera.resolution,
+  };
+  room.options.publishDefaults = {
+    ...room.options.publishDefaults,
+    ...publishOptions,
+  };
+
+  const lp: LocalParticipant = room.localParticipant;
+
+  await lp.republishAllTracks(publishOptions, false).catch(() => {});
+
+  const cameraPub = lp.getTrackPublication(Track.Source.Camera);
+  if (cameraPub && !cameraPub.isMuted) {
+    const videoInputId = devicePreferences["videoinput" satisfies DeviceKind];
+    await lp.setCameraEnabled(false);
+    await lp.setCameraEnabled(
+      true,
+      { deviceId: videoInputId, resolution: preset.camera.resolution },
+      { simulcast: true, videoEncoding: preset.camera.encoding },
+    );
+  }
 }

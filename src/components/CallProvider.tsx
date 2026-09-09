@@ -19,6 +19,7 @@ import {
 import { ConnectionState, ParticipantEvent, Track, type Room } from "livekit-client";
 import "@livekit/components-styles";
 import {
+  applyVideoQualityLive,
   buildRoomOptions,
   loadVideoQuality,
   saveVideoQuality,
@@ -64,9 +65,9 @@ type CallContextValue = {
   /** Persists the choice and, if a call is active, hot-swaps the live track. */
   setDevicePreference: (kind: DeviceKind, deviceId: string) => void;
   videoQuality: VideoQuality;
-  /** Persists the choice; takes effect the next time a call is joined (the
-   * room's encoding options are set at connect time, changing them mid-call
-   * would mean tearing down and rebuilding the whole peer connection). */
+  /** Persists the choice and, if a call is active, applies it live (see
+   * `applyVideoQualityLive` -- renegotiates bitrate/audio in place, only
+   * restarts the camera capture itself, never the room connection). */
   setVideoQuality: (quality: VideoQuality) => void;
 };
 
@@ -100,6 +101,10 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     activeCallRef.current = activeCall;
   }, [activeCall]);
+  const devicePreferencesRef = useRef<DevicePreferences>(devicePreferences);
+  useEffect(() => {
+    devicePreferencesRef.current = devicePreferences;
+  }, [devicePreferences]);
 
   const setDevicePreference = useCallback((kind: DeviceKind, deviceId: string) => {
     setDevicePreferences((prev) => {
@@ -110,10 +115,17 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     roomRef.current?.switchActiveDevice(kind, deviceId).catch(() => {});
   }, []);
 
-  const setVideoQuality = useCallback((quality: VideoQuality) => {
-    setVideoQualityState(quality);
-    saveVideoQuality(quality);
-  }, []);
+  const setVideoQuality = useCallback(
+    (quality: VideoQuality) => {
+      setVideoQualityState(quality);
+      saveVideoQuality(quality);
+      const room = roomRef.current;
+      if (room && room.state === ConnectionState.Connected) {
+        applyVideoQualityLive(room, quality, devicePreferencesRef.current).catch(() => {});
+      }
+    },
+    [],
+  );
 
   const roomOptions = useMemo(() => buildRoomOptions(videoQuality), [videoQuality]);
 
